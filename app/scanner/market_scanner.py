@@ -1,5 +1,5 @@
-from app.exchange.okx_client import OKXClient
 from app.config.settings import QUOTE_CURRENCY
+from app.exchange.okx_client import OKXClient
 
 
 class MarketScanner:

@@ -1,11 +1,8 @@
 import pandas as pd
 import ta
 
+from app.config.settings import CANDLE_LIMIT, ENTRY_TIMEFRAME
 from app.exchange.okx_client import OKXClient
-from app.config.settings import (
-    ENTRY_TIMEFRAME,
-    CANDLE_LIMIT
-)
 
 
 class IndicatorEngine:
@@ -20,22 +17,10 @@ class IndicatorEngine:
         limit: int = CANDLE_LIMIT,
     ):
 
-        candles = self.client.get_ohlcv(
-            symbol=symbol,
-            timeframe=timeframe,
-            limit=limit
-        )
+        candles = self.client.get_ohlcv(symbol=symbol, timeframe=timeframe, limit=limit)
 
         df = pd.DataFrame(
-            candles,
-            columns=[
-                "timestamp",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume"
-            ]
+            candles, columns=["timestamp", "open", "high", "low", "close", "volume"]
         )
 
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
@@ -61,10 +46,7 @@ class IndicatorEngine:
         # Momentum
         # ======================
 
-        df["rsi"] = ta.momentum.rsi(
-            df["close"],
-            window=14
-        )
+        df["rsi"] = ta.momentum.rsi(df["close"], window=14)
 
         macd = ta.trend.MACD(df["close"])
 
@@ -76,46 +58,28 @@ class IndicatorEngine:
         # Trend Strength
         # ======================
 
-        df["adx"] = ta.trend.adx(
-            df["high"],
-            df["low"],
-            df["close"]
-        )
+        df["adx"] = ta.trend.adx(df["high"], df["low"], df["close"])
 
         # ======================
         # Volatility
         # ======================
 
-        df["atr"] = ta.volatility.average_true_range(
-            df["high"],
-            df["low"],
-            df["close"]
-        )
+        df["atr"] = ta.volatility.average_true_range(df["high"], df["low"], df["close"])
 
         # ATR ως ποσοστό της τιμής
-        df["atr_percent"] = (
-            df["atr"] / df["close"]
-        ) * 100
+        df["atr_percent"] = (df["atr"] / df["close"]) * 100
 
         # ======================
         # Volume
         # ======================
 
-        df["volume_ma20"] = (
-            df["volume"]
-            .rolling(20)
-            .mean()
-        )
+        df["volume_ma20"] = df["volume"].rolling(20).mean()
 
         # ======================
         # Bollinger Bands
         # ======================
 
-        bb = ta.volatility.BollingerBands(
-            close=df["close"],
-            window=20,
-            window_dev=2
-        )
+        bb = ta.volatility.BollingerBands(close=df["close"], window=20, window_dev=2)
 
         df["bb_upper"] = bb.bollinger_hband()
         df["bb_middle"] = bb.bollinger_mavg()

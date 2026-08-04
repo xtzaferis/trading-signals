@@ -1,10 +1,11 @@
-from app.strategy.scoring import SignalResult
+from app.config.weights import BUY_THRESHOLD
 from app.strategy.filters import (
-    ema_filter,
-    rsi_filter,
-    macd_filter,
     adx_filter,
+    ema_filter,
+    macd_filter,
+    rsi_filter,
 )
+from app.strategy.scoring import SignalResult
 
 
 class SignalEngine:
@@ -31,7 +32,7 @@ class SignalEngine:
 
         result.confidence = result.score / 100
 
-        if result.score >= 90:
+        if result.score >= BUY_THRESHOLD:
             result.action = "BUY"
 
         return result

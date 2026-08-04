@@ -2,17 +2,16 @@ import ccxt
 
 from app.config.settings import (
     OKX_API_KEY,
+    OKX_PASSPHRASE,
     OKX_SECRET,
-    OKX_PASSPHRASE
 )
+from app.exceptions import MissingApiKeysError
 
 
 class OKXClient:
-
     def __init__(self):
-
         config = {
-            "enableRateLimit": True
+            "enableRateLimit": True,
         }
 
         # Αν υπάρχουν API Keys, χρησιμοποίησέ τα
@@ -21,7 +20,6 @@ class OKXClient:
             and OKX_SECRET
             and OKX_PASSPHRASE
         ):
-
             config["apiKey"] = OKX_API_KEY
             config["secret"] = OKX_SECRET
             config["password"] = OKX_PASSPHRASE
@@ -32,13 +30,14 @@ class OKXClient:
         return self.exchange.load_markets()
 
     def get_balance(self):
-
         if not (
             OKX_API_KEY
             and OKX_SECRET
             and OKX_PASSPHRASE
         ):
-            raise Exception("API Keys are not configured.")
+            raise MissingApiKeysError(
+                "API keys are not configured."
+            )
 
         return self.exchange.fetch_balance()
 
@@ -49,10 +48,10 @@ class OKXClient:
         self,
         symbol,
         timeframe="15m",
-        limit=200
+        limit=200,
     ):
         return self.exchange.fetch_ohlcv(
             symbol,
             timeframe=timeframe,
-            limit=limit
+            limit=limit,
         )
