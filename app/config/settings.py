@@ -53,3 +53,9 @@ SCAN_INTERVAL = 60  # δευτερόλεπτα
 # Strategy
 # ==========================
 MIN_SCORE = 90
+
+# ==========================
+# Market Analyzer
+# ==========================
+MARKET_SYMBOL = "BTC/USDC"
+MARKET_MIN_SCORE = 75

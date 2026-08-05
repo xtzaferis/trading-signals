@@ -17,72 +17,88 @@ class IndicatorEngine:
         limit: int = CANDLE_LIMIT,
     ):
 
-        candles = self.client.get_ohlcv(symbol=symbol, timeframe=timeframe, limit=limit)
-
-        df = pd.DataFrame(
-            candles, columns=["timestamp", "open", "high", "low", "close", "volume"]
+        candles = self.client.get_ohlcv(
+            symbol=symbol,
+            timeframe=timeframe,
+            limit=limit,
         )
 
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+        df = pd.DataFrame(
+            candles,
+            columns=[
+                "timestamp",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+            ],
+        )
+
+        df["timestamp"] = pd.to_datetime(
+            df["timestamp"],
+            unit="ms",
+        )
+
+        numeric_columns = [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        ]
+
+        for column in numeric_columns:
+            df[column] = pd.to_numeric(df[column])
 
         return df
 
-    def calculate(self, symbol: str):
+    def calculate(
+        self,
+        symbol: str,
+        timeframe: str = ENTRY_TIMEFRAME,
+    ):
 
-        df = self.get_dataframe(symbol)
+        df = self.get_dataframe(
+            symbol=symbol,
+            timeframe=timeframe,
+        )
 
-        # ======================
-        # Trend
-        # ======================
+        df["ema20"] = ta.trend.ema_indicator(
+            df["close"],
+            window=20,
+        )
 
-        df["ema20"] = ta.trend.ema_indicator(df["close"], window=20)
-        df["ema50"] = ta.trend.ema_indicator(df["close"], window=50)
-        df["ema200"] = ta.trend.ema_indicator(df["close"], window=200)
+        df["ema50"] = ta.trend.ema_indicator(
+            df["close"],
+            window=50,
+        )
 
-        # EMA slope
-        df["ema20_prev"] = df["ema20"].shift(1)
+        df["ema200"] = ta.trend.ema_indicator(
+            df["close"],
+            window=200,
+        )
 
-        # ======================
-        # Momentum
-        # ======================
-
-        df["rsi"] = ta.momentum.rsi(df["close"], window=14)
+        df["rsi"] = ta.momentum.rsi(
+            df["close"],
+            window=14,
+        )
 
         macd = ta.trend.MACD(df["close"])
 
         df["macd"] = macd.macd()
         df["macd_signal"] = macd.macd_signal()
-        df["macd_hist"] = macd.macd_diff()
 
-        # ======================
-        # Trend Strength
-        # ======================
+        df["adx"] = ta.trend.adx(
+            df["high"],
+            df["low"],
+            df["close"],
+        )
 
-        df["adx"] = ta.trend.adx(df["high"], df["low"], df["close"])
-
-        # ======================
-        # Volatility
-        # ======================
-
-        df["atr"] = ta.volatility.average_true_range(df["high"], df["low"], df["close"])
-
-        # ATR ως ποσοστό της τιμής
-        df["atr_percent"] = (df["atr"] / df["close"]) * 100
-
-        # ======================
-        # Volume
-        # ======================
-
-        df["volume_ma20"] = df["volume"].rolling(20).mean()
-
-        # ======================
-        # Bollinger Bands
-        # ======================
-
-        bb = ta.volatility.BollingerBands(close=df["close"], window=20, window_dev=2)
-
-        df["bb_upper"] = bb.bollinger_hband()
-        df["bb_middle"] = bb.bollinger_mavg()
-        df["bb_lower"] = bb.bollinger_lband()
+        df["atr"] = ta.volatility.average_true_range(
+            df["high"],
+            df["low"],
+            df["close"],
+        )
 
         return df.iloc[-1]
