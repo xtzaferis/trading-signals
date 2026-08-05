@@ -26,7 +26,9 @@ class ScreenerService:
 
             try:
 
-                data = self.indicators.calculate(symbol)
+                data = self.indicators.calculate_multi_timeframe(
+                    symbol=symbol,
+                )
 
                 result = self.signal.evaluate(
                     symbol,

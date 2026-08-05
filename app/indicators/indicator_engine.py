@@ -102,3 +102,23 @@ class IndicatorEngine:
         )
 
         return df.iloc[-1]
+
+    def calculate_multi_timeframe(
+        self,
+        symbol: str,
+    ):
+
+        return {
+            "trend": self.calculate(
+                symbol=symbol,
+                timeframe="4h",
+            ),
+            "confirm": self.calculate(
+                symbol=symbol,
+                timeframe="1h",
+            ),
+            "entry": self.calculate(
+                symbol=symbol,
+                timeframe="15m",
+            ),
+        }

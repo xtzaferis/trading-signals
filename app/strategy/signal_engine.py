@@ -14,6 +14,25 @@ class SignalEngine:
 
         result = SignalResult(symbol=symbol)
 
+        # -----------------------------
+        # Multi-Timeframe
+        # -----------------------------
+
+        if (
+            isinstance(data, dict)
+            and "trend" in data
+        ):
+
+            trend = data["trend"]
+            confirm = data["confirm"]
+            entry = data["entry"]
+
+        else:
+            # Backward compatibility
+            trend = data
+            confirm = data
+            entry = data
+
         filters = [
             ema_filter,
             rsi_filter,
@@ -23,7 +42,11 @@ class SignalEngine:
 
         for check in filters:
 
-            points, reason = check(data)
+            points, reason = check(
+                trend,
+                confirm,
+                entry,
+            )
 
             result.score += points
 
