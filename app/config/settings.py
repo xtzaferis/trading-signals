@@ -24,20 +24,17 @@ CONFIRM_TIMEFRAME = "1h"
 ENTRY_TIMEFRAME = "15m"
 
 # ==========================
-# Risk
-# ==========================
-RISK_PER_TRADE = 0.01
-MAX_OPEN_POSITIONS = 3
-
-# ==========================
 # Scanner
 # ==========================
+QUOTE_CURRENCY = os.getenv("QUOTE_CURRENCY", "USDC")
 TOP_COINS = 5
+SCAN_INTERVAL = 60
 
 # ==========================
-# Quote Currency
+# Market Analyzer
 # ==========================
-QUOTE_CURRENCY = os.getenv("QUOTE_CURRENCY", "USDC")
+MARKET_SYMBOL = "BTC/USDC"
+MARKET_MIN_SCORE = 75
 
 # ==========================
 # Candles
@@ -45,17 +42,28 @@ QUOTE_CURRENCY = os.getenv("QUOTE_CURRENCY", "USDC")
 CANDLE_LIMIT = 200
 
 # ==========================
-# Scanner
-# ==========================
-SCAN_INTERVAL = 60  # δευτερόλεπτα
-
-# ==========================
 # Strategy
 # ==========================
 MIN_SCORE = 90
 
 # ==========================
-# Market Analyzer
+# Risk Management
 # ==========================
-MARKET_SYMBOL = "BTC/USDC"
-MARKET_MIN_SCORE = 75
+
+# Αρχικό κεφάλαιο (paper trading)
+ACCOUNT_SIZE = 1000.0
+
+# Ρίσκο ανά trade (1%)
+RISK_PER_TRADE = 0.01
+
+# Μέγιστες ανοιχτές θέσεις
+MAX_OPEN_POSITIONS = 3
+
+# ATR Stop Loss
+ATR_MULTIPLIER = 2.0
+
+# Risk / Reward
+RISK_REWARD_RATIO = 2.0
+
+# Μέγιστο ποσοστό κεφαλαίου ανά θέση
+MAX_POSITION_SIZE = 0.20

@@ -2,6 +2,7 @@ import ccxt
 
 from app.core.logger import logger
 from app.indicators.indicator_engine import IndicatorEngine
+from app.risk.risk_manager import RiskManager
 from app.scanner.market_scanner import MarketScanner
 from app.strategy.signal_engine import SignalEngine
 
@@ -9,13 +10,15 @@ from app.strategy.signal_engine import SignalEngine
 class ScreenerService:
 
     def __init__(self):
+
         self.scanner = MarketScanner()
         self.indicators = IndicatorEngine()
         self.signal = SignalEngine()
+        self.risk = RiskManager()
 
     def run(self):
 
-        results = []
+        trade_plans = []
 
         pairs = self.scanner.get_spot_pairs()
 
@@ -30,12 +33,18 @@ class ScreenerService:
                     symbol=symbol,
                 )
 
-                result = self.signal.evaluate(
+                signal = self.signal.evaluate(
                     symbol,
                     data,
                 )
 
-                results.append(result)
+                trade = self.risk.create_trade_plan(
+                    signal=signal,
+                    indicators=data["entry"],
+                )
+
+                if trade is not None:
+                    trade_plans.append(trade)
 
             except (
                 ccxt.NetworkError,
@@ -44,9 +53,9 @@ class ScreenerService:
 
                 logger.error(f"{symbol}: {e}")
 
-        results.sort(
-            key=lambda x: x.score,
+        trade_plans.sort(
+            key=lambda x: x.position_size,
             reverse=True,
         )
 
-        return results
+        return trade_plans

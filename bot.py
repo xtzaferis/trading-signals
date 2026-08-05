@@ -2,6 +2,7 @@ from app.core.logger import logger
 from app.market.market_analyzer import MarketAnalyzer
 from app.services.screener_service import ScreenerService
 
+
 def main():
 
     logger.info("=" * 50)
