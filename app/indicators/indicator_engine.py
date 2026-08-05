@@ -2,13 +2,13 @@ import pandas as pd
 import ta
 
 from app.config.settings import CANDLE_LIMIT, ENTRY_TIMEFRAME
-from app.exchange.okx_client import OKXClient
+from app.data.data_service import DataService
 
 
 class IndicatorEngine:
 
     def __init__(self):
-        self.client = OKXClient()
+        self.data_service = DataService()
 
     def get_dataframe(
         self,
@@ -17,7 +17,7 @@ class IndicatorEngine:
         limit: int = CANDLE_LIMIT,
     ):
 
-        candles = self.client.get_ohlcv(
+        candles = self.data_service.get_ohlcv(
             symbol=symbol,
             timeframe=timeframe,
             limit=limit,

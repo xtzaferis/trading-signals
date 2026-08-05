@@ -1,6 +1,5 @@
 import ccxt
 
-from app.cache.candle_cache import cache
 from app.config.settings import (
     OKX_API_KEY,
     OKX_PASSPHRASE,
@@ -54,23 +53,8 @@ class OKXClient:
         limit=200,
     ):
 
-        cache_key = f"{symbol}:{timeframe}:{limit}"
-
-        cached = cache.get(cache_key)
-
-        if cached is not None:
-            return cached
-
-        candles = self.exchange.fetch_ohlcv(
+        return self.exchange.fetch_ohlcv(
             symbol,
             timeframe=timeframe,
             limit=limit,
         )
-
-        cache.set(
-            cache_key,
-            candles,
-            ttl_seconds=60,
-        )
-
-        return candles
