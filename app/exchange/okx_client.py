@@ -1,5 +1,6 @@
 import ccxt
 
+from app.cache.candle_cache import cache
 from app.config.settings import (
     OKX_API_KEY,
     OKX_PASSPHRASE,
@@ -9,12 +10,13 @@ from app.exceptions import MissingApiKeysError
 
 
 class OKXClient:
+
     def __init__(self):
+
         config = {
             "enableRateLimit": True,
         }
 
-        # Αν υπάρχουν API Keys, χρησιμοποίησέ τα
         if (
             OKX_API_KEY
             and OKX_SECRET
@@ -30,6 +32,7 @@ class OKXClient:
         return self.exchange.load_markets()
 
     def get_balance(self):
+
         if not (
             OKX_API_KEY
             and OKX_SECRET
@@ -50,8 +53,24 @@ class OKXClient:
         timeframe="15m",
         limit=200,
     ):
-        return self.exchange.fetch_ohlcv(
+
+        cache_key = f"{symbol}:{timeframe}:{limit}"
+
+        cached = cache.get(cache_key)
+
+        if cached is not None:
+            return cached
+
+        candles = self.exchange.fetch_ohlcv(
             symbol,
             timeframe=timeframe,
             limit=limit,
         )
+
+        cache.set(
+            cache_key,
+            candles,
+            ttl_seconds=60,
+        )
+
+        return candles

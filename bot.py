@@ -1,12 +1,12 @@
+from app.core.logger import logger
 from app.market.market_analyzer import MarketAnalyzer
 from app.services.screener_service import ScreenerService
 
-
 def main():
 
-    print("=" * 50)
-    print("OKX Trading Bot")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("OKX Trading Bot")
+    logger.info("=" * 50)
 
     # ----------------------------------
     # Market Analysis
@@ -16,26 +16,21 @@ def main():
 
     market = analyzer.analyze()
 
-    print("\nMarket Analysis")
-    print("-" * 50)
-
-    print(f"Score : {market.score}")
-    print(f"Bullish : {market.bullish}")
+    logger.info("Market Analysis")
+    logger.info("-" * 50)
+    logger.info(f"Score: {market.score}")
+    logger.info(f"Bullish: {market.bullish}")
 
     for reason in market.reasons:
-        print(f"  ✓ {reason}")
+        logger.info(f"✓ {reason}")
 
-    # Αν η αγορά είναι bearish,
-    # σταματάμε εδώ.
     if not market.bullish:
-
-        print("\nMarket is bearish.")
-        print("Skipping scan.\n")
-
+        logger.warning("Market is bearish.")
+        logger.warning("Skipping scan.")
         return
 
-    print("\nMarket is bullish.")
-    print("Starting screener...\n")
+    logger.info("Market is bullish.")
+    logger.info("Starting screener...")
 
     # ----------------------------------
     # Screener
@@ -45,21 +40,18 @@ def main():
 
     results = service.run()
 
-    print("\nTop Trading Signals\n")
+    logger.info("Top Trading Signals")
 
     for signal in results[:10]:
 
-        print(
+        logger.info(
             f"{signal.symbol:<15}"
             f" Score: {signal.score:<3}"
             f" Action: {signal.action}"
         )
 
         for reason in signal.reasons:
-            print(f"   - {reason}")
-
-        print()
-
-
+            logger.info(f"   - {reason}")
+        
 if __name__ == "__main__":
     main()
