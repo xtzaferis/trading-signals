@@ -24,7 +24,10 @@ class TradingService:
 
         if not candidates:
 
-            logger.info("No trades to execute.")
+            logger.info(
+                "No trades to execute."
+            )
+
             return
 
         logger.info("")
@@ -32,11 +35,22 @@ class TradingService:
         logger.info("EXECUTING PAPER TRADES")
         logger.info("=" * 50)
 
-        # ----------------------------------
-        # Open positions
-        # ----------------------------------
+        portfolio = self.paper_trader.portfolio
 
         for candidate in candidates:
+
+            symbol = candidate.signal.symbol
+
+            if portfolio.has_open_position(
+                symbol
+            ):
+
+                logger.info(
+                    f"Skipping {symbol} "
+                    f"(already open)."
+                )
+
+                continue
 
             self.paper_trader.execute_buy(
                 candidate
@@ -44,34 +58,36 @@ class TradingService:
 
         self.paper_trader.print_portfolio()
 
-        # ----------------------------------
-        # Development Mode
-        # ----------------------------------
-
         if not PAPER_MONITOR_CONTINUOUS:
 
             logger.info("")
-            logger.info("Development mode.")
-            logger.info("Running one monitor cycle...")
+            logger.info(
+                "Development mode."
+            )
+
+            logger.info(
+                "Running one monitor cycle..."
+            )
 
             self.monitor.monitor(
-                self.paper_trader.portfolio
+                portfolio
             )
 
             return
 
-        # ----------------------------------
-        # Production Mode
-        # ----------------------------------
-
         logger.info("")
-        logger.info("Production mode.")
-        logger.info("Starting continuous monitoring...")
+        logger.info(
+            "Production mode."
+        )
 
-        while self.paper_trader.portfolio.open_positions:
+        logger.info(
+            "Starting continuous monitoring..."
+        )
+
+        while portfolio.open_positions:
 
             self.monitor.monitor(
-                self.paper_trader.portfolio
+                portfolio
             )
 
             time.sleep(
@@ -80,7 +96,9 @@ class TradingService:
 
         logger.info("")
         logger.info("=" * 50)
-        logger.info("ALL POSITIONS CLOSED")
+        logger.info(
+            "ALL POSITIONS CLOSED"
+        )
         logger.info("=" * 50)
 
         self.paper_trader.print_portfolio()

@@ -1,7 +1,6 @@
 from app.core.logger import logger
 from app.exchange.okx_client import OKXClient
 from app.journal.trade_journal import TradeJournal
-from app.models.position import Position
 from app.trading.portfolio import Portfolio
 
 

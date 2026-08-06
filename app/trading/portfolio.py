@@ -22,10 +22,7 @@ class Portfolio:
             for position in self.open_positions
         )
 
-        return (
-            self.cash
-            + positions_value
-        )
+        return self.cash + positions_value
 
     @property
     def realized_pnl(self) -> float:
@@ -33,6 +30,16 @@ class Portfolio:
         return sum(
             position.realized_pnl
             for position in self.closed_positions
+        )
+
+    def has_open_position(
+        self,
+        symbol: str,
+    ) -> bool:
+
+        return any(
+            position.symbol == symbol
+            for position in self.open_positions
         )
 
     def add_position(

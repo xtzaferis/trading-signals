@@ -1,0 +1,20 @@
+from enum import Enum
+
+
+class BotState(Enum):
+
+    STARTING = "STARTING"
+
+    ANALYZING_MARKET = "ANALYZING_MARKET"
+
+    SCANNING = "SCANNING"
+
+    EXECUTING = "EXECUTING"
+
+    MONITORING = "MONITORING"
+
+    SLEEPING = "SLEEPING"
+
+    STOPPING = "STOPPING"
+
+    ERROR = "ERROR"
