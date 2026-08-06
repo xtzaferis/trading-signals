@@ -5,7 +5,7 @@ from app.config.settings import (
     RISK_PER_TRADE,
     RISK_REWARD_RATIO,
 )
-from app.risk.trade_plan import TradePlan
+from app.models.trade_plan import TradePlan
 
 
 class RiskManager:
