@@ -1,6 +1,7 @@
 from app.core.logger import logger
 from app.market.market_analyzer import MarketAnalyzer
 from app.services.screener_service import ScreenerService
+from app.services.trading_service import TradingService
 
 
 def main():
@@ -37,9 +38,9 @@ def main():
     # Screener
     # ----------------------------------
 
-    service = ScreenerService()
+    screener = ScreenerService()
 
-    candidates = service.run()
+    candidates = screener.run()
 
     logger.info("")
     logger.info("=" * 50)
@@ -50,7 +51,7 @@ def main():
         logger.info("No BUY candidates found.")
         return
 
-    for candidate in candidates[:10]:
+    for candidate in candidates:
 
         signal = candidate.signal
         trade = candidate.trade
@@ -65,27 +66,25 @@ def main():
         for reason in signal.reasons:
             logger.info(f"   ✓ {reason}")
 
-        logger.info(
-            f"   Entry:         {trade.entry}"
-        )
-
-        logger.info(
-            f"   Stop Loss:     {trade.stop_loss}"
-        )
-
-        logger.info(
-            f"   Take Profit:   {trade.take_profit}"
-        )
-
+        logger.info(f"   Entry:         {trade.entry}")
+        logger.info(f"   Stop Loss:     {trade.stop_loss}")
+        logger.info(f"   Take Profit:   {trade.take_profit}")
         logger.info(
             f"   Position Size: {trade.position_size:.2f} USDC"
         )
-
         logger.info(
             f"   RR:            {trade.risk_reward}:1"
         )
 
         logger.info("-" * 50)
+
+    # ----------------------------------
+    # Paper Trading
+    # ----------------------------------
+
+    trading = TradingService()
+
+    trading.execute(candidates)
 
 
 if __name__ == "__main__":
