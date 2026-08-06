@@ -6,19 +6,53 @@ from app.config.weights import (
 )
 
 
+# =====================================
+# Gates
+# =====================================
+
+def trend_filter(trend):
+    """
+    4H Trend Gate
+    """
+
+    return (
+        trend["ema20"] > trend["ema50"]
+        and trend["ema50"] > trend["ema200"]
+    )
+
+
+def confirmation_filter(confirm):
+    """
+    1H Confirmation Gate
+    """
+
+    return (
+        confirm["macd"] > confirm["macd_signal"]
+    )
+
+
+def entry_filter(entry):
+    """
+    15m Entry Gate
+    """
+
+    return (
+        50 <= entry["rsi"] <= 65
+        and entry["adx"] > 25
+    )
+
+
+# =====================================
+# Scoring Filters
+# =====================================
+
 def ema_filter(
     trend,
     confirm,
     entry,
 ):
-    """
-    Trend (4H)
-    """
 
-    if (
-        trend["ema20"] > trend["ema50"]
-        and trend["ema50"] > trend["ema200"]
-    ):
+    if trend_filter(trend):
         return EMA_WEIGHT, "4H EMA Trend"
 
     return 0, None
@@ -29,9 +63,6 @@ def rsi_filter(
     confirm,
     entry,
 ):
-    """
-    Entry (15m)
-    """
 
     if 50 <= entry["rsi"] <= 65:
         return RSI_WEIGHT, "15m Healthy RSI"
@@ -44,11 +75,8 @@ def macd_filter(
     confirm,
     entry,
 ):
-    """
-    Confirmation (1H)
-    """
 
-    if confirm["macd"] > confirm["macd_signal"]:
+    if confirmation_filter(confirm):
         return MACD_WEIGHT, "1H Bullish MACD"
 
     return 0, None
@@ -59,9 +87,6 @@ def adx_filter(
     confirm,
     entry,
 ):
-    """
-    Entry (15m)
-    """
 
     if entry["adx"] > 25:
         return ADX_WEIGHT, "15m Strong Trend"

@@ -16,16 +16,20 @@ class RiskManager:
         indicators,
     ):
 
-        if signal.action != "BUY":
-            return None
-
         entry = float(indicators["close"])
 
         atr = float(indicators["atr"])
 
-        stop_loss = entry - (atr * ATR_MULTIPLIER)
+        stop_loss = entry - (
+            atr * ATR_MULTIPLIER
+        )
 
         risk = entry - stop_loss
+
+        if risk <= 0:
+            raise ValueError(
+                "Invalid risk calculation."
+            )
 
         take_profit = entry + (
             risk * RISK_REWARD_RATIO
@@ -35,7 +39,9 @@ class RiskManager:
             ACCOUNT_SIZE * RISK_PER_TRADE
         )
 
-        position_size = capital_at_risk / risk
+        position_size = (
+            capital_at_risk / risk
+        )
 
         max_position = (
             ACCOUNT_SIZE * MAX_POSITION_SIZE

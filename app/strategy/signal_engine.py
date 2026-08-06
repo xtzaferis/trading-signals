@@ -1,9 +1,11 @@
-from app.config.weights import BUY_THRESHOLD
 from app.strategy.filters import (
     adx_filter,
+    confirmation_filter,
     ema_filter,
+    entry_filter,
     macd_filter,
     rsi_filter,
+    trend_filter,
 )
 from app.strategy.scoring import SignalResult
 
@@ -14,24 +16,36 @@ class SignalEngine:
 
         result = SignalResult(symbol=symbol)
 
-        # -----------------------------
-        # Multi-Timeframe
-        # -----------------------------
+        # ---------------------------------
+        # Multi-Timeframe Data
+        # ---------------------------------
 
-        if (
-            isinstance(data, dict)
-            and "trend" in data
-        ):
+        trend = data["trend"]
+        confirm = data["confirm"]
+        entry = data["entry"]
 
-            trend = data["trend"]
-            confirm = data["confirm"]
-            entry = data["entry"]
+        # ---------------------------------
+        # Gate Strategy
+        # ---------------------------------
 
-        else:
-            # Backward compatibility
-            trend = data
-            confirm = data
-            entry = data
+        if not trend_filter(trend):
+            result.action = "HOLD"
+            result.reasons.append("Trend filter failed")
+            return result
+
+        if not confirmation_filter(confirm):
+            result.action = "HOLD"
+            result.reasons.append("Confirmation filter failed")
+            return result
+
+        if not entry_filter(entry):
+            result.action = "HOLD"
+            result.reasons.append("Entry filter failed")
+            return result
+
+        # ---------------------------------
+        # Scoring
+        # ---------------------------------
 
         filters = [
             ema_filter,
@@ -55,7 +69,6 @@ class SignalEngine:
 
         result.confidence = result.score / 100
 
-        if result.score >= BUY_THRESHOLD:
-            result.action = "BUY"
+        result.action = "BUY"
 
         return result
