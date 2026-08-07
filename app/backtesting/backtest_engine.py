@@ -141,6 +141,16 @@ class BacktestEngine:
                 ),
             )
 
+        report = (
+            self.statistics.generate(
+                self.portfolio
+            )
+        )
+
+        self.printer.print(
+            report
+        )
+
         logger.info("")
         logger.info(
             "Backtest finished."

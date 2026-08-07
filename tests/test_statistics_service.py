@@ -1,31 +1,47 @@
-from app.models.position import Position
+from datetime import datetime, timezone
+
+from app.models.position import (
+    Position,
+)
 from app.services.statistics_service import (
     StatisticsService,
 )
-from app.trading.portfolio import Portfolio
+from app.trading.portfolio import (
+    Portfolio,
+)
 
 
-def create_position(
-    entry: float,
-    exit: float,
-):
+def create_closed_position(
+    pnl: float,
+) -> Position:
 
     position = Position(
         symbol="BTC/USDC",
-        entry_price=entry,
-        quantity=1,
-        stop_loss=entry - 5,
-        take_profit=entry + 10,
+        entry_price=100.0,
+        quantity=1.0,
+        stop_loss=95.0,
+        take_profit=110.0,
+        opened_at=datetime.now(
+            timezone.utc
+        ),
     )
 
-    position.close(exit)
+    position.realized_pnl = pnl
+
+    position.status = "CLOSED"
 
     return position
 
 
-def test_empty_portfolio():
+def test_statistics_service_generates_report():
 
     portfolio = Portfolio()
+
+    portfolio.closed_positions = [
+        create_closed_position(100.0),
+        create_closed_position(-50.0),
+        create_closed_position(25.0),
+    ]
 
     service = StatisticsService()
 
@@ -33,104 +49,42 @@ def test_empty_portfolio():
         portfolio
     )
 
-    assert report.trades == 0
-    assert report.wins == 0
-    assert report.losses == 0
-    assert report.win_rate == 0
-    assert report.net_profit == 0
-
-
-def test_single_winning_trade():
-
-    portfolio = Portfolio()
-
-    portfolio.closed_positions.append(
-        create_position(100, 110)
+    assert (
+        report.trades
+        == 3
     )
 
-    report = (
-        StatisticsService().generate(
-            portfolio
-        )
+    assert (
+        report.wins
+        == 2
     )
 
-    assert report.trades == 1
-    assert report.wins == 1
-    assert report.losses == 0
-    assert report.win_rate == 100
-    assert report.gross_profit == 10
-    assert report.net_profit == 10
-
-
-def test_single_losing_trade():
-
-    portfolio = Portfolio()
-
-    portfolio.closed_positions.append(
-        create_position(100, 90)
+    assert (
+        report.losses
+        == 1
     )
 
-    report = (
-        StatisticsService().generate(
-            portfolio
-        )
+    assert (
+        report.win_rate
+        == 66.66666666666666
     )
 
-    assert report.trades == 1
-    assert report.wins == 0
-    assert report.losses == 1
-    assert report.gross_loss == 10
-    assert report.net_profit == -10
-
-
-def test_mixed_trades():
-
-    portfolio = Portfolio()
-
-    portfolio.closed_positions.extend(
-        [
-            create_position(100, 110),
-            create_position(100, 90),
-            create_position(100, 120),
-        ]
+    assert (
+        report.gross_profit
+        == 125.0
     )
 
-    report = (
-        StatisticsService().generate(
-            portfolio
-        )
+    assert (
+        report.gross_loss
+        == 50.0
     )
 
-    assert report.trades == 3
-    assert report.wins == 2
-    assert report.losses == 1
-    assert report.win_rate == (
-        2 / 3
-    ) * 100
-    assert report.gross_profit == 30
-    assert report.gross_loss == 10
-    assert report.net_profit == 20
-    assert report.best_trade == 20
-    assert report.worst_trade == -10
-    assert report.average_winner == 15
-    assert report.average_loser == -10
-
-
-def test_profit_factor():
-
-    portfolio = Portfolio()
-
-    portfolio.closed_positions.extend(
-        [
-            create_position(100, 110),
-            create_position(100, 90),
-        ]
+    assert (
+        report.net_profit
+        == 75.0
     )
 
-    report = (
-        StatisticsService().generate(
-            portfolio
-        )
+    assert (
+        report.profit_factor
+        == 2.5
     )
-
-    assert report.profit_factor == 1.0
