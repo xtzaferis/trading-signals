@@ -5,26 +5,28 @@ class HistoricalDataProvider(DataProvider):
 
     def __init__(self):
 
-        self.candles = []
+        self.data = {
+            "15m": [],
+            "1h": [],
+            "4h": [],
+        }
 
-        self.index = 0
+        self.index = 200
 
     def load(
         self,
-        candles: list,
+        data: dict,
     ):
 
-        self.candles = candles
+        self.data = data
 
-        # Ξεκινάμε όταν υπάρχουν αρκετά
-        # candles για όλους τους indicators.
         self.index = 200
 
     def has_next(self) -> bool:
 
         return (
             self.index
-            < len(self.candles)
+            < len(self.data["15m"])
         )
 
     def step(self):
@@ -40,13 +42,45 @@ class HistoricalDataProvider(DataProvider):
         limit: int,
     ):
 
+        candles = self.data[
+            timeframe
+        ]
+
+        #
+        # Προσεγγιστική αντιστοίχιση
+        # του 15m index στα μεγαλύτερα
+        # timeframes.
+        #
+
+        if timeframe == "15m":
+
+            index = self.index
+
+        elif timeframe == "1h":
+
+            index = max(
+                50,
+                self.index // 4,
+            )
+
+        elif timeframe == "4h":
+
+            index = max(
+                50,
+                self.index // 16,
+            )
+
+        else:
+
+            index = self.index
+
         start = max(
             0,
-            self.index - limit,
+            index - limit,
         )
 
-        return self.candles[
-            start:self.index
+        return candles[
+            start:index
         ]
 
     @property
@@ -56,7 +90,9 @@ class HistoricalDataProvider(DataProvider):
 
             return None
 
-        return self.candles[
+        return self.data[
+            "15m"
+        ][
             self.index - 1
         ]
 
@@ -64,7 +100,7 @@ class HistoricalDataProvider(DataProvider):
     def total(self):
 
         return len(
-            self.candles
+            self.data["15m"]
         )
 
     @property

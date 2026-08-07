@@ -8,6 +8,9 @@ from app.indicators.indicator_engine import (
 from app.services.historical_data_service import (
     HistoricalDataService,
 )
+from app.strategy.signal_engine import (
+    SignalEngine,
+)
 
 
 class Backtester:
@@ -28,6 +31,10 @@ class Backtester:
             )
         )
 
+        self.signal_engine = (
+            SignalEngine()
+        )
+
     def run(self):
 
         logger.info("")
@@ -35,35 +42,62 @@ class Backtester:
         logger.info("BACKTEST ENGINE")
         logger.info("=" * 50)
 
-        candles = self.history.load(
-            symbol="BTC/USDC",
-            timeframe="15m",
-            limit=300,
+        data = (
+            self.history.load_multiple(
+                symbol="BTC/USDC",
+                timeframes=[
+                    "4h",
+                    "1h",
+                    "15m",
+                ],
+                limit=300,
+            )
         )
 
         self.provider.load(
-            candles
+            data
         )
 
         logger.info(
-            f"Loaded {len(candles)} candles."
+            f"15m candles: "
+            f"{len(data['15m'])}"
+        )
+
+        logger.info(
+            f"1h candles: "
+            f"{len(data['1h'])}"
+        )
+
+        logger.info(
+            f"4h candles: "
+            f"{len(data['4h'])}"
         )
 
         self.execute()
 
         logger.info("")
-        logger.info("Backtest finished.")
+        logger.info(
+            "Backtest finished."
+        )
 
     def execute(self):
 
         while self.provider.has_next():
 
-            indicators = (
-                self.indicators.calculate(
+            data = (
+                self.indicators.calculate_multi_timeframe(
                     symbol="BTC/USDC",
-                    timeframe="15m",
                 )
             )
+
+            signal = (
+                self.signal_engine.evaluate(
+                    symbol="BTC/USDC",
+                    data=data,
+                )
+            )
+
+            entry = data["entry"]
 
             if (
                 self.provider.index
@@ -73,15 +107,20 @@ class Backtester:
 
                 logger.info(
                     f"{self.provider.index:>3} | "
-                    f"Close={indicators['close']:.2f} | "
-                    f"EMA20={indicators['ema20']:.2f} | "
-                    f"EMA50={indicators['ema50']:.2f} | "
-                    f"RSI={indicators['rsi']:.2f}"
+                    f"Close={entry['close']:.2f} | "
+                    f"EMA20={entry['ema20']:.2f} | "
+                    f"EMA50={entry['ema50']:.2f} | "
+                    f"EMA200={entry['ema200']:.2f} | "
+                    f"RSI={entry['rsi']:.2f} | "
+                    f"Action={signal.action} | "
+                    f"Score={signal.score} | "
+                    f"Reasons={signal.reasons}"
                 )
 
             self.provider.step()
 
         logger.info("")
+
         logger.info(
             f"Processed "
             f"{self.provider.total} candles."
