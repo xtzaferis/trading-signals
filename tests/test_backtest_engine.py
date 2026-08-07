@@ -158,3 +158,88 @@ def test_engine_closes_position_on_stop_loss():
         position.realized_pnl
         == -50.0
     )
+
+
+def test_engine_full_trade_lifecycle_take_profit():
+
+    engine = BacktestEngine()
+
+    first_market = {
+        "entry": {
+            "close": 100.0,
+            "atr": 5.0,
+        },
+    }
+
+    second_market = {
+    "entry": {
+        "close": 120.0,
+        "high": 120.0,
+        "low": 119.0,
+        "atr": 5.0,
+    },
+}
+
+    mock_signal = Mock()
+
+    mock_signal.symbol = (
+        "BTC/USDC"
+    )
+
+    mock_signal.action = (
+        "BUY"
+    )
+
+    mock_signal.score = 80
+
+    mock_provider = Mock()
+
+    mock_provider.has_next.side_effect = [
+        True,
+        True,
+        False,
+    ]
+
+    mock_provider.next.side_effect = [
+        (
+            first_market,
+            {
+                "timestamp": Mock(),
+            },
+        ),
+        (
+            second_market,
+            {
+                "timestamp": Mock(),
+            },
+        ),
+    ]
+
+    with patch.object(
+        engine.signal_engine,
+        "evaluate",
+        return_value=mock_signal,
+    ), patch(
+        "app.backtesting.backtest_engine.MarketProvider",
+        return_value=mock_provider,
+    ):
+
+        engine.run()
+
+    assert (
+        len(
+            engine.portfolio.closed_positions
+        )
+        == 1
+    )
+
+    assert (
+        engine.portfolio.open_positions_count
+        == 0
+    )
+
+    assert (
+        engine.portfolio.closed_positions[0]
+        .realized_pnl
+        > 0
+    )

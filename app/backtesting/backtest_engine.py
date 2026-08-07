@@ -115,19 +115,43 @@ class BacktestEngine:
                 entry["close"]
             )
 
+            high = float(
+                entry.get(
+                    "high",
+                    current_price,
+                )
+            )
+
+            low = float(
+                entry.get(
+                    "low",
+                    current_price,
+                )
+            )
+
+            position_closed = False
+
             for position in list(
                 self.portfolio.open_positions
             ):
 
-                self.broker.update(
-                    position,
-                    high=current_price,
-                    low=current_price,
-                    close=current_price,
-                    timestamp=snapshot.get(
-                        "timestamp"
-                    ),
+                closed = (
+                    self.broker.update(
+                        position,
+                        high=high,
+                        low=low,
+                        close=current_price,
+                        timestamp=snapshot.get(
+                            "timestamp"
+                        ),
+                    )
                 )
+
+                if closed:
+                    position_closed = True
+
+            if position_closed:
+                continue
 
             signal = (
                 self.signal_engine.evaluate(
