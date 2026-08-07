@@ -25,6 +25,8 @@ class Position:
 
     current_price: float = 0.0
 
+    highest_price: float = 0.0
+
     status: str = "OPEN"
 
     break_even: bool = False
@@ -35,6 +37,7 @@ class Position:
     def market_value(self) -> float:
 
         if self.current_price == 0:
+
             return (
                 self.entry_price
                 * self.quantity
@@ -49,6 +52,7 @@ class Position:
     def unrealized_pnl(self) -> float:
 
         if self.current_price == 0:
+
             return 0.0
 
         return (
@@ -62,6 +66,13 @@ class Position:
     ):
 
         self.current_price = price
+
+        if (
+            self.highest_price == 0
+            or price > self.highest_price
+        ):
+
+            self.highest_price = price
 
     def close(
         self,

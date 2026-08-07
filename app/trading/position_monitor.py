@@ -1,3 +1,8 @@
+from app.config.settings import (
+    BREAK_EVEN_ENABLED,
+    BREAK_EVEN_R,
+    TRAILING_STOP_ENABLED,
+)
 from app.core.logger import logger
 from app.exchange.okx_client import OKXClient
 from app.journal.trade_journal import TradeJournal
@@ -9,6 +14,7 @@ class PositionMonitor:
     def __init__(self):
 
         self.client = OKXClient()
+
         self.journal = TradeJournal()
 
     def monitor(
@@ -45,21 +51,26 @@ class PositionMonitor:
                 f"Price: {current_price:.6f}"
             )
 
+            risk = (
+                position.entry_price
+                - position.stop_loss
+            )
+
             # ----------------------------------
             # Break Even
             # ----------------------------------
 
-            if not position.break_even:
+            if (
+                BREAK_EVEN_ENABLED
+                and not position.break_even
+            ):
 
-                risk = (
+                trigger = (
                     position.entry_price
-                    - position.stop_loss
+                    + risk * BREAK_EVEN_R
                 )
 
-                if current_price >= (
-                    position.entry_price
-                    + risk
-                ):
+                if current_price >= trigger:
 
                     position.stop_loss = (
                         position.entry_price
@@ -68,7 +79,35 @@ class PositionMonitor:
                     position.break_even = True
 
                     logger.info(
-                        f"{position.symbol} moved Stop Loss to Break Even."
+                        f"{position.symbol} moved to Break Even."
+                    )
+
+            # ----------------------------------
+            # Trailing Stop
+            # ----------------------------------
+
+            if (
+                TRAILING_STOP_ENABLED
+                and position.break_even
+            ):
+
+                trailing_stop = (
+                    position.highest_price
+                    - risk
+                )
+
+                if (
+                    trailing_stop
+                    > position.stop_loss
+                ):
+
+                    position.stop_loss = (
+                        trailing_stop
+                    )
+
+                    logger.info(
+                        f"{position.symbol} trailing SL -> "
+                        f"{position.stop_loss:.6f}"
                     )
 
             # ----------------------------------

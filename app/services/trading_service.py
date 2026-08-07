@@ -6,10 +6,18 @@ from app.config.settings import (
 )
 from app.core.logger import logger
 from app.models.trade_candidate import TradeCandidate
+from app.services.statistics_printer import (
+    StatisticsPrinter,
+)
+from app.services.statistics_service import (
+    StatisticsService,
+)
 from app.trading.paper_trader import PaperTrader
 from app.trading.position_monitor import PositionMonitor
 from app.trading.rules.cash_rule import CashRule
-from app.trading.rules.duplicate_rule import DuplicateRule
+from app.trading.rules.duplicate_rule import (
+    DuplicateRule,
+)
 from app.trading.rules.max_positions_rule import (
     MaxPositionsRule,
 )
@@ -22,6 +30,14 @@ class TradingService:
         self.paper_trader = PaperTrader()
 
         self.monitor = PositionMonitor()
+
+        self.statistics = (
+            StatisticsService()
+        )
+
+        self.printer = (
+            StatisticsPrinter()
+        )
 
         self.rules = [
             MaxPositionsRule(),
@@ -44,10 +60,14 @@ class TradingService:
 
         logger.info("")
         logger.info("=" * 50)
-        logger.info("EXECUTING PAPER TRADES")
+        logger.info(
+            "EXECUTING PAPER TRADES"
+        )
         logger.info("=" * 50)
 
-        portfolio = self.paper_trader.portfolio
+        portfolio = (
+            self.paper_trader.portfolio
+        )
 
         # ----------------------------------
         # Trading Rules
@@ -66,7 +86,9 @@ class TradingService:
 
                 if not ok:
 
-                    logger.info(reason)
+                    logger.info(
+                        reason
+                    )
 
                     allowed = False
 
@@ -97,6 +119,10 @@ class TradingService:
             )
 
             self.monitor.monitor(
+                portfolio
+            )
+
+            self.print_statistics(
                 portfolio
             )
 
@@ -133,3 +159,25 @@ class TradingService:
         logger.info("=" * 50)
 
         self.paper_trader.print_portfolio()
+
+        self.print_statistics(
+            portfolio
+        )
+
+    def print_statistics(
+        self,
+        portfolio,
+    ):
+
+        if not portfolio.closed_positions:
+        return
+
+        report = (
+            self.statistics.generate(
+                portfolio
+            )
+        )
+
+        self.printer.print(
+            report
+        )
