@@ -111,3 +111,50 @@ def test_engine_closes_position_on_take_profit():
         position.realized_pnl
         == 100.0
     )
+
+
+def test_engine_closes_position_on_stop_loss():
+
+    engine = BacktestEngine()
+
+    position = engine.broker.open(
+        trade_plan=TradePlan(
+            symbol="BTC/USDC",
+            action="BUY",
+            entry=100.0,
+            stop_loss=95.0,
+            take_profit=110.0,
+            position_size=1000.0,
+            risk_reward=2.0,
+        ),
+        opened_at=Mock(),
+    )
+
+    assert position is not None
+
+    closed = engine.broker.update(
+        position,
+        high=101.0,
+        low=94.0,
+        close=95.0,
+        timestamp=Mock(),
+    )
+
+    assert closed is True
+
+    assert (
+        engine.portfolio.open_positions_count
+        == 0
+    )
+
+    assert (
+        len(
+            engine.portfolio.closed_positions
+        )
+        == 1
+    )
+
+    assert (
+        position.realized_pnl
+        == -50.0
+    )
