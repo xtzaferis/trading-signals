@@ -20,10 +20,10 @@ class CashRule(BaseTradingRule):
             < required_cash
         ):
 
-            return (
-                False,
-                f"Insufficient cash "
-                f"({portfolio.available_cash:.2f} USDC)."
+            message = (
+                f"Insufficient cash ({portfolio.available_cash:.2f} USDC)."
             )
+
+            return False, message
 
         return True, None

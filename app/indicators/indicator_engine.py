@@ -1,11 +1,13 @@
 import pandas as pd
-import ta
 
 from app.config.settings import (
     CANDLE_LIMIT,
     ENTRY_TIMEFRAME,
 )
 from app.data.data_service import DataService
+from app.indicators.indicator_calculator import (
+    IndicatorCalculator,
+)
 
 
 class IndicatorEngine:
@@ -18,6 +20,10 @@ class IndicatorEngine:
         self.data_service = (
             data_service
             or DataService()
+        )
+
+        self.calculator = (
+            IndicatorCalculator()
         )
 
     def get_dataframe(
@@ -79,48 +85,8 @@ class IndicatorEngine:
             timeframe=timeframe,
         )
 
-        df["ema20"] = ta.trend.ema_indicator(
-            df["close"],
-            window=20,
-        )
-
-        df["ema50"] = ta.trend.ema_indicator(
-            df["close"],
-            window=50,
-        )
-
-        df["ema200"] = ta.trend.ema_indicator(
-            df["close"],
-            window=200,
-        )
-
-        df["rsi"] = ta.momentum.rsi(
-            df["close"],
-            window=14,
-        )
-
-        macd = ta.trend.MACD(
-            df["close"]
-        )
-
-        df["macd"] = macd.macd()
-
-        df["macd_signal"] = (
-            macd.macd_signal()
-        )
-
-        df["adx"] = ta.trend.adx(
-            df["high"],
-            df["low"],
-            df["close"],
-        )
-
-        df["atr"] = (
-            ta.volatility.average_true_range(
-                df["high"],
-                df["low"],
-                df["close"],
-            )
+        df = self.calculator.calculate(
+            df
         )
 
         return df.iloc[-1]
