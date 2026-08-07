@@ -103,13 +103,31 @@ class BacktestEngine:
 
         while self.market_provider.has_next():
 
-            market, _snapshot = (
+            market, snapshot = (
                 self.market_provider.next()
             )
 
             entry = market[
                 "entry"
             ]
+
+            current_price = float(
+                entry["close"]
+            )
+
+            for position in list(
+                self.portfolio.open_positions
+            ):
+
+                self.broker.update(
+                    position,
+                    high=current_price,
+                    low=current_price,
+                    close=current_price,
+                    timestamp=snapshot.get(
+                        "timestamp"
+                    ),
+                )
 
             signal = (
                 self.signal_engine.evaluate(
@@ -119,7 +137,7 @@ class BacktestEngine:
             )
 
             logger.info(
-                f"{entry['close']:.2f} | "
+                f"{current_price:.2f} | "
                 f"Score={signal.score} | "
                 f"Action={signal.action}"
             )
@@ -136,7 +154,7 @@ class BacktestEngine:
 
             self.broker.open(
                 trade_plan,
-                opened_at=_snapshot.get(
+                opened_at=snapshot.get(
                     "timestamp"
                 ),
             )
