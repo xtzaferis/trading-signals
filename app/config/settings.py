@@ -72,3 +72,9 @@ MAX_POSITION_SIZE = 0.20
 # Paper Trading
 # ==========================
 PAPER_MONITOR_CONTINUOUS = False
+
+# =====================================
+# Test Mode
+# =====================================
+
+TEST_MODE = False

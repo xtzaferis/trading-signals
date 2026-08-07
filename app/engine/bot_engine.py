@@ -2,6 +2,7 @@ import time
 
 from app.config.settings import SCAN_INTERVAL
 from app.core.logger import logger
+from app.database.database import Database
 from app.engine.state import BotState
 from app.market.market_analyzer import MarketAnalyzer
 from app.services.screener_service import ScreenerService
@@ -16,9 +17,9 @@ class BotEngine:
 
         self.running = True
 
-        self.market_analyzer = MarketAnalyzer()
-        self.screener = ScreenerService()
-        self.trading = TradingService()
+        self.market_analyzer = None
+        self.screener = None
+        self.trading = None
 
     def run(self):
 
@@ -36,6 +37,31 @@ class BotEngine:
 
             self.stop()
 
+    def start(self):
+
+        self.state = BotState.STARTING
+
+        logger.info("=" * 50)
+        logger.info("OKX Trading Bot")
+        logger.info("=" * 50)
+
+        Database().initialize()
+
+        self.market_analyzer = MarketAnalyzer()
+        self.screener = ScreenerService()
+        self.trading = TradingService()
+
+    def stop(self):
+
+        self.state = BotState.STOPPING
+
+        logger.info("")
+        logger.info("=" * 50)
+        logger.info("Stopping Bot...")
+        logger.info("=" * 50)
+
+        self.running = False
+
     def run_cycle(self):
 
         if not self.analyze_market():
@@ -50,25 +76,6 @@ class BotEngine:
         self.execute_trades(
             candidates
         )
-
-    def start(self):
-
-        self.state = BotState.STARTING
-
-        logger.info("=" * 50)
-        logger.info("OKX Trading Bot")
-        logger.info("=" * 50)
-
-    def stop(self):
-
-        self.state = BotState.STOPPING
-
-        logger.info("")
-        logger.info("=" * 50)
-        logger.info("Stopping Bot...")
-        logger.info("=" * 50)
-
-        self.running = False
 
     def sleep(self):
 

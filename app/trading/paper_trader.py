@@ -1,4 +1,10 @@
 from app.core.logger import logger
+from app.database.repositories.portfolio_repository import (
+    PortfolioRepository,
+)
+from app.database.repositories.position_repository import (
+    PositionRepository,
+)
 from app.models.position import Position
 from app.models.trade_candidate import TradeCandidate
 from app.trading.portfolio import Portfolio
@@ -8,7 +14,35 @@ class PaperTrader:
 
     def __init__(self):
 
-        self.portfolio = Portfolio()
+        self.portfolio_repository = (
+            PortfolioRepository()
+        )
+
+        self.position_repository = (
+            PositionRepository()
+        )
+
+        if self.portfolio_repository.exists():
+
+            logger.info(
+                "Loading portfolio..."
+            )
+
+            self.portfolio = (
+                self.portfolio_repository.load()
+            )
+
+        else:
+
+            logger.info(
+                "Creating new portfolio..."
+            )
+
+            self.portfolio = Portfolio()
+
+            self.portfolio_repository.save(
+                self.portfolio
+            )
 
     def execute_buy(
         self,
@@ -35,6 +69,14 @@ class PaperTrader:
         )
 
         self.portfolio.add_position(
+            position
+        )
+
+        self.portfolio_repository.save(
+            self.portfolio
+        )
+
+        self.position_repository.save(
             position
         )
 
