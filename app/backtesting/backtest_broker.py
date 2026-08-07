@@ -18,7 +18,13 @@ class BacktestBroker:
         self,
         trade_plan: TradePlan,
         opened_at: datetime,
-    ) -> Position:
+    ) -> Position | None:
+
+        if self.portfolio.has_open_position(
+            trade_plan.symbol,
+        ):
+
+            return None
 
         quantity = (
             trade_plan.position_size
