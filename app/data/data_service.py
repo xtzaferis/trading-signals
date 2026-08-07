@@ -1,8 +1,9 @@
 from app.cache.candle_cache import cache
 from app.exchange.okx_client import OKXClient
+from app.data.data_provider import DataProvider
 
 
-class DataService:
+class DataService(DataProvider):
 
     def __init__(self):
         self.client = OKXClient()

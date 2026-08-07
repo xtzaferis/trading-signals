@@ -1,9 +1,9 @@
+from app.backtesting.historical_data_provider import (
+    HistoricalDataProvider,
+)
 from app.core.logger import logger
 from app.services.historical_data_service import (
     HistoricalDataService,
-)
-from app.backtesting.candle_player import (
-    CandlePlayer,
 )
 
 
@@ -11,12 +11,10 @@ class Backtester:
 
     def __init__(self):
 
-        self.data = (
-            HistoricalDataService()
-        )
+        self.data = HistoricalDataService()
 
-        self.player = (
-            CandlePlayer()
+        self.provider = (
+            HistoricalDataProvider()
         )
 
     def run(self):
@@ -29,10 +27,10 @@ class Backtester:
         candles = self.data.load(
             symbol="BTC/USDC",
             timeframe="15m",
-            limit=500,
+            limit=300,
         )
 
-        self.player.load(
+        self.provider.load(
             candles
         )
 
@@ -49,26 +47,19 @@ class Backtester:
 
     def execute(self):
 
-        while self.player.has_next():
+        while self.provider.has_next():
 
-            candle = self.player.next()
+            self.provider.step()
 
-            timestamp = candle[0]
-
-            close = candle[4]
-
-            if (
-                self.player.index
-                % 100
-                == 0
-            ):
+            if self.provider.index % 100 == 0:
 
                 logger.info(
-                    f"{self.player.index} | "
-                    f"Close: {close}"
+                    f"Processed "
+                    f"{self.provider.index} candles."
                 )
 
+        logger.info("")
         logger.info(
-            f"Processed "
-            f"{self.player.index} candles."
+            f"Finished "
+            f"{self.provider.index} candles."
         )
