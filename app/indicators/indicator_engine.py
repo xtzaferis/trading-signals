@@ -1,14 +1,24 @@
 import pandas as pd
 import ta
 
-from app.config.settings import CANDLE_LIMIT, ENTRY_TIMEFRAME
+from app.config.settings import (
+    CANDLE_LIMIT,
+    ENTRY_TIMEFRAME,
+)
 from app.data.data_service import DataService
 
 
 class IndicatorEngine:
 
-    def __init__(self):
-        self.data_service = DataService()
+    def __init__(
+        self,
+        data_service=None,
+    ):
+
+        self.data_service = (
+            data_service
+            or DataService()
+        )
 
     def get_dataframe(
         self,
@@ -17,10 +27,12 @@ class IndicatorEngine:
         limit: int = CANDLE_LIMIT,
     ):
 
-        candles = self.data_service.get_ohlcv(
-            symbol=symbol,
-            timeframe=timeframe,
-            limit=limit,
+        candles = (
+            self.data_service.get_ohlcv(
+                symbol=symbol,
+                timeframe=timeframe,
+                limit=limit,
+            )
         )
 
         df = pd.DataFrame(
@@ -49,7 +61,10 @@ class IndicatorEngine:
         ]
 
         for column in numeric_columns:
-            df[column] = pd.to_numeric(df[column])
+
+            df[column] = pd.to_numeric(
+                df[column]
+            )
 
         return df
 
@@ -84,10 +99,15 @@ class IndicatorEngine:
             window=14,
         )
 
-        macd = ta.trend.MACD(df["close"])
+        macd = ta.trend.MACD(
+            df["close"]
+        )
 
         df["macd"] = macd.macd()
-        df["macd_signal"] = macd.macd_signal()
+
+        df["macd_signal"] = (
+            macd.macd_signal()
+        )
 
         df["adx"] = ta.trend.adx(
             df["high"],
@@ -95,10 +115,12 @@ class IndicatorEngine:
             df["close"],
         )
 
-        df["atr"] = ta.volatility.average_true_range(
-            df["high"],
-            df["low"],
-            df["close"],
+        df["atr"] = (
+            ta.volatility.average_true_range(
+                df["high"],
+                df["low"],
+                df["close"],
+            )
         )
 
         return df.iloc[-1]
@@ -109,14 +131,17 @@ class IndicatorEngine:
     ):
 
         return {
+
             "trend": self.calculate(
                 symbol=symbol,
                 timeframe="4h",
             ),
+
             "confirm": self.calculate(
                 symbol=symbol,
                 timeframe="1h",
             ),
+
             "entry": self.calculate(
                 symbol=symbol,
                 timeframe="15m",
