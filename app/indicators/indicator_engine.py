@@ -1,10 +1,13 @@
-import pandas as pd
-
 from app.config.settings import (
     CANDLE_LIMIT,
     ENTRY_TIMEFRAME,
 )
-from app.data.data_service import DataService
+from app.data.data_service import (
+    DataService,
+)
+from app.indicators.candle_dataframe_builder import (
+    CandleDataFrameBuilder,
+)
 from app.indicators.indicator_calculator import (
     IndicatorCalculator,
 )
@@ -20,6 +23,10 @@ class IndicatorEngine:
         self.data_service = (
             data_service
             or DataService()
+        )
+
+        self.builder = (
+            CandleDataFrameBuilder()
         )
 
         self.calculator = (
@@ -41,38 +48,9 @@ class IndicatorEngine:
             )
         )
 
-        df = pd.DataFrame(
-            candles,
-            columns=[
-                "timestamp",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-            ],
+        return self.builder.build(
+            candles
         )
-
-        df["timestamp"] = pd.to_datetime(
-            df["timestamp"],
-            unit="ms",
-        )
-
-        numeric_columns = [
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-        ]
-
-        for column in numeric_columns:
-
-            df[column] = pd.to_numeric(
-                df[column]
-            )
-
-        return df
 
     def calculate(
         self,
