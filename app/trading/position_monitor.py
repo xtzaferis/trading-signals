@@ -46,6 +46,32 @@ class PositionMonitor:
             )
 
             # ----------------------------------
+            # Break Even
+            # ----------------------------------
+
+            if not position.break_even:
+
+                risk = (
+                    position.entry_price
+                    - position.stop_loss
+                )
+
+                if current_price >= (
+                    position.entry_price
+                    + risk
+                ):
+
+                    position.stop_loss = (
+                        position.entry_price
+                    )
+
+                    position.break_even = True
+
+                    logger.info(
+                        f"{position.symbol} moved Stop Loss to Break Even."
+                    )
+
+            # ----------------------------------
             # Stop Loss
             # ----------------------------------
 
@@ -92,6 +118,7 @@ class PositionMonitor:
             )
 
         logger.info("")
+
         logger.info(
             f"Cash: {portfolio.cash:.2f} USDC"
         )
@@ -101,9 +128,11 @@ class PositionMonitor:
         )
 
         logger.info(
-            f"Open Positions: {len(portfolio.open_positions)}"
+            f"Open Positions: "
+            f"{len(portfolio.open_positions)}"
         )
 
         logger.info(
-            f"Closed Positions: {len(portfolio.closed_positions)}"
+            f"Closed Positions: "
+            f"{len(portfolio.closed_positions)}"
         )

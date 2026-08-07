@@ -27,6 +27,8 @@ class Position:
 
     status: str = "OPEN"
 
+    break_even: bool = False
+
     realized_pnl: float = 0.0
 
     @property
