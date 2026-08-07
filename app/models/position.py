@@ -77,6 +77,7 @@ class Position:
     def close(
         self,
         price: float,
+        closed_at: datetime | None = None,
     ):
 
         self.current_price = price
@@ -86,8 +87,11 @@ class Position:
             - self.entry_price
         ) * self.quantity
 
-        self.closed_at = datetime.now(
-            timezone.utc
+        self.closed_at = (
+            closed_at
+            or datetime.now(
+                timezone.utc
+            )
         )
 
         self.status = "CLOSED"
