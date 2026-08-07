@@ -10,9 +10,7 @@ class HistoricalFeed(DataFeed):
 
     def __init__(self):
 
-        self.timeline = (
-            Timeline()
-        )
+        self.timeline = Timeline()
 
         self.data = {}
 
@@ -55,27 +53,42 @@ class HistoricalFeed(DataFeed):
             )
         )
 
-        market = {
+        snapshot = {
 
-            "trend": self.data[
-                "4h"
-            ][
-                : trend_index + 1
-            ],
+            "trend": {
 
-            "confirm": self.data[
-                "1h"
-            ][
-                : confirm_index + 1
-            ],
+                "timeframe": "4h",
 
-            "entry": self.data[
-                "15m"
-            ][
-                : entry_index + 1
-            ],
+                "candles": self.data[
+                    "4h"
+                ][
+                    : trend_index + 1
+                ],
+            },
+
+            "confirm": {
+
+                "timeframe": "1h",
+
+                "candles": self.data[
+                    "1h"
+                ][
+                    : confirm_index + 1
+                ],
+            },
+
+            "entry": {
+
+                "timeframe": "15m",
+
+                "candles": self.data[
+                    "15m"
+                ][
+                    : entry_index + 1
+                ],
+            },
         }
 
         self.timeline.step()
 
-        return market
+        return snapshot
