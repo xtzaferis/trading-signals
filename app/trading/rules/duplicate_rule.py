@@ -17,10 +17,11 @@ class DuplicateRule(BaseTradingRule):
             symbol
         ):
 
-            return (
-                False,
+            message = (
                 f"Skipping {symbol}: "
                 "position already open."
             )
+
+            return False, message
 
         return True, None

@@ -1,4 +1,6 @@
-from app.config.settings import MAX_OPEN_POSITIONS
+from app.config.settings import (
+    MAX_OPEN_POSITIONS,
+)
 from app.models.trade_candidate import TradeCandidate
 from app.trading.portfolio import Portfolio
 from app.trading.rules.base_rule import BaseTradingRule
@@ -17,10 +19,11 @@ class MaxPositionsRule(BaseTradingRule):
             >= MAX_OPEN_POSITIONS
         ):
 
-            return (
-                False,
-                "Maximum open positions "
-                f"reached ({MAX_OPEN_POSITIONS})."
+            message = (
+                f"Maximum open positions reached "
+                f"({MAX_OPEN_POSITIONS})."
             )
+
+            return False, message
 
         return True, None

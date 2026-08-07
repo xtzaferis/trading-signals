@@ -170,7 +170,7 @@ class TradingService:
     ):
 
         if not portfolio.closed_positions:
-        return
+            return
 
         report = (
             self.statistics.generate(

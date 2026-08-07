@@ -16,20 +16,22 @@ class HistoricalDataProvider(DataProvider):
 
         self.candles = candles
 
-        self.index = 0
+        # Ξεκινάμε όταν υπάρχουν αρκετά
+        # candles για όλους τους indicators.
+        self.index = 200
 
-    def step(self):
-
-        if self.index < len(self.candles):
-
-            self.index += 1
-
-    def has_next(self):
+    def has_next(self) -> bool:
 
         return (
             self.index
             < len(self.candles)
         )
+
+    def step(self):
+
+        if self.has_next():
+
+            self.index += 1
 
     def get_ohlcv(
         self,
@@ -46,3 +48,33 @@ class HistoricalDataProvider(DataProvider):
         return self.candles[
             start:self.index
         ]
+
+    @property
+    def current_candle(self):
+
+        if self.index == 0:
+
+            return None
+
+        return self.candles[
+            self.index - 1
+        ]
+
+    @property
+    def total(self):
+
+        return len(
+            self.candles
+        )
+
+    @property
+    def progress(self):
+
+        if self.total == 0:
+
+            return 0.0
+
+        return (
+            self.index
+            / self.total
+        ) * 100

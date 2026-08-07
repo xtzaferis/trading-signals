@@ -1,4 +1,3 @@
-import ccxt
 
 from app.core.logger import logger
 from app.exchange.okx_client import OKXClient
