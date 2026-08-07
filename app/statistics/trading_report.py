@@ -1,8 +1,8 @@
-from app.statistics.statistics_service import (
-    StatisticsService,
-)
 from app.statistics.statistics_printer import (
     StatisticsPrinter,
+)
+from app.statistics.statistics_service import (
+    StatisticsService,
 )
 
 
