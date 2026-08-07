@@ -4,6 +4,9 @@ from app.backtesting.data_feed import (
 from app.backtesting.timeline import (
     Timeline,
 )
+from app.models.market_snapshot import (
+    MarketSnapshot,
+)
 
 
 class HistoricalFeed(DataFeed):
@@ -53,6 +56,12 @@ class HistoricalFeed(DataFeed):
             )
         )
 
+        current = self.data[
+            "15m"
+        ][
+            entry_index
+        ]
+
         snapshot = {
 
             "trend": {
@@ -86,6 +95,15 @@ class HistoricalFeed(DataFeed):
                 ][
                     : entry_index + 1
                 ],
+
+                "current": MarketSnapshot(
+                    timestamp=current[0],
+                    open=current[1],
+                    high=current[2],
+                    low=current[3],
+                    close=current[4],
+                    volume=current[5],
+                ),
             },
         }
 

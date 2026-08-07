@@ -1,21 +1,38 @@
+from app.backtesting.backtest_broker import (
+    BacktestBroker,
+)
 from app.backtesting.historical_feed import (
     HistoricalFeed,
 )
+from app.backtesting.market_provider import (
+    MarketProvider,
+)
 from app.core.logger import logger
-from app.indicators.indicator_engine import (
-    IndicatorEngine,
+from app.risk.risk_manager import (
+    RiskManager,
 )
 from app.services.historical_data_service import (
     HistoricalDataService,
 )
+from app.services.statistics_printer import (
+    StatisticsPrinter,
+)
+from app.services.statistics_service import (
+    StatisticsService,
+)
 from app.strategy.signal_engine import (
     SignalEngine,
+)
+from app.trading.portfolio import (
+    Portfolio,
 )
 
 
 class BacktestEngine:
 
     def __init__(self):
+
+        self.symbol = "BTC/USDC"
 
         self.history = (
             HistoricalDataService()
@@ -25,12 +42,32 @@ class BacktestEngine:
             HistoricalFeed()
         )
 
-        self.indicators = (
-            IndicatorEngine()
+        self.portfolio = (
+            Portfolio()
         )
+
+        self.market_provider = None
 
         self.signal_engine = (
             SignalEngine()
+        )
+
+        self.risk_manager = (
+            RiskManager()
+        )
+
+        self.broker = (
+            BacktestBroker(
+                self.portfolio
+            )
+        )
+
+        self.statistics = (
+            StatisticsService()
+        )
+
+        self.printer = (
+            StatisticsPrinter()
         )
 
     def run(self):
@@ -44,7 +81,7 @@ class BacktestEngine:
 
         data = (
             self.history.load_multiple(
-                symbol="BTC/USDC",
+                symbol=self.symbol,
                 timeframes=[
                     "4h",
                     "1h",
@@ -58,23 +95,34 @@ class BacktestEngine:
             data
         )
 
-        logger.info(
-            "Historical feed loaded."
+        self.market_provider = (
+            MarketProvider(
+                self.feed
+            )
         )
 
-        while self.feed.has_next():
+        while self.market_provider.has_next():
 
-            self.feed.next()
+            market, _snapshot = (
+                self.market_provider.next()
+            )
 
-            #
-            # TODO
-            #
-            # IndicatorEngine
-            # SignalEngine
-            # RiskManager
-            # Broker
-            #
+            entry = market[
+                "entry"
+            ]
 
+            signal = (
+                self.signal_engine.evaluate(
+                    self.symbol,
+                    market,
+                )
+            )
+
+            logger.info(
+                f"{entry['close']:.2f} | "
+                f"Score={signal.score} | "
+                f"Action={signal.action}"
+            )
 
         logger.info("")
         logger.info(
