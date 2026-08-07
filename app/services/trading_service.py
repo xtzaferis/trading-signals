@@ -8,6 +8,11 @@ from app.core.logger import logger
 from app.models.trade_candidate import TradeCandidate
 from app.trading.paper_trader import PaperTrader
 from app.trading.position_monitor import PositionMonitor
+from app.trading.rules.cash_rule import CashRule
+from app.trading.rules.duplicate_rule import DuplicateRule
+from app.trading.rules.max_positions_rule import (
+    MaxPositionsRule,
+)
 
 
 class TradingService:
@@ -15,7 +20,14 @@ class TradingService:
     def __init__(self):
 
         self.paper_trader = PaperTrader()
+
         self.monitor = PositionMonitor()
+
+        self.rules = [
+            MaxPositionsRule(),
+            DuplicateRule(),
+            CashRule(),
+        ]
 
     def execute(
         self,
@@ -37,19 +49,30 @@ class TradingService:
 
         portfolio = self.paper_trader.portfolio
 
+        # ----------------------------------
+        # Trading Rules
+        # ----------------------------------
+
         for candidate in candidates:
 
-            symbol = candidate.signal.symbol
+            allowed = True
 
-            if portfolio.has_open_position(
-                symbol
-            ):
+            for rule in self.rules:
 
-                logger.info(
-                    f"Skipping {symbol} "
-                    f"(already open)."
+                ok, reason = rule.validate(
+                    portfolio,
+                    candidate,
                 )
 
+                if not ok:
+
+                    logger.info(reason)
+
+                    allowed = False
+
+                    break
+
+            if not allowed:
                 continue
 
             self.paper_trader.execute_buy(
@@ -57,6 +80,10 @@ class TradingService:
             )
 
         self.paper_trader.print_portfolio()
+
+        # ----------------------------------
+        # Development Mode
+        # ----------------------------------
 
         if not PAPER_MONITOR_CONTINUOUS:
 
@@ -74,6 +101,10 @@ class TradingService:
             )
 
             return
+
+        # ----------------------------------
+        # Production Mode
+        # ----------------------------------
 
         logger.info("")
         logger.info(

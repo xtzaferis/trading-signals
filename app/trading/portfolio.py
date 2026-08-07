@@ -32,6 +32,18 @@ class Portfolio:
             for position in self.closed_positions
         )
 
+    @property
+    def open_positions_count(self) -> int:
+
+        return len(
+            self.open_positions
+        )
+
+    @property
+    def available_cash(self) -> float:
+
+        return self.cash
+
     def has_open_position(
         self,
         symbol: str,
