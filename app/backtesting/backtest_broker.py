@@ -23,7 +23,6 @@ class BacktestBroker:
         if self.portfolio.has_open_position(
             trade_plan.symbol,
         ):
-
             return None
 
         quantity = (
@@ -63,30 +62,20 @@ class BacktestBroker:
             close
         )
 
-        #
-        # Stop Loss
-        #
-
         if low <= position.stop_loss:
 
             self.close(
                 position,
                 position.stop_loss,
-                timestamp,
             )
 
             return True
-
-        #
-        # Take Profit
-        #
 
         if high >= position.take_profit:
 
             self.close(
                 position,
                 position.take_profit,
-                timestamp,
             )
 
             return True
@@ -97,13 +86,7 @@ class BacktestBroker:
         self,
         position: Position,
         price: float,
-        closed_at: datetime,
     ):
-
-        position.close(
-            price,
-            closed_at,
-        )
 
         self.portfolio.close_position(
             position,
