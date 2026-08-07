@@ -1,60 +1,63 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
-from app.backtesting.backtest_broker import (
-    BacktestBroker,
-)
-from app.risk.risk_manager import (
-    RiskManager,
-)
-from app.strategy.scoring import (
-    SignalResult,
-)
-from app.trading.portfolio import (
-    Portfolio,
+from app.backtesting.backtest_engine import (
+    BacktestEngine,
 )
 
 
-def test_buy_signal_opens_position():
+def test_engine_opens_position_on_buy_signal():
 
-    portfolio = Portfolio()
+    engine = BacktestEngine()
 
-    broker = BacktestBroker(
-        portfolio
-    )
-
-    risk = RiskManager()
-
-    signal = SignalResult(
-        symbol="BTC/USDC",
-        action="BUY",
-    )
-
-    indicators = {
-        "close": 100.0,
-        "atr": 5.0,
+    market = {
+        "entry": {
+            "close": 100.0,
+            "atr": 5.0,
+        },
     }
 
-    trade_plan = (
-        risk.create_trade_plan(
-            signal,
-            indicators,
-        )
+    mock_signal = Mock()
+
+    mock_signal.symbol = (
+        "BTC/USDC"
     )
 
-    position = broker.open(
-        trade_plan,
-        opened_at=Mock(),
+    mock_signal.action = (
+        "BUY"
     )
 
-    assert position is not None
+    mock_signal.score = 80
+
+    mock_provider = Mock()
+
+    mock_provider.has_next.side_effect = [
+        True,
+        False,
+    ]
+
+    mock_provider.next.return_value = (
+        market,
+        {},
+    )
+
+    with patch.object(
+        engine.signal_engine,
+        "evaluate",
+        return_value=mock_signal,
+    ), patch(
+        "app.backtesting.backtest_engine.MarketProvider",
+        return_value=mock_provider,
+    ):
+
+        engine.run()
 
     assert (
-        portfolio.open_positions_count
+        engine.portfolio.open_positions_count
         == 1
     )
 
     assert (
-        portfolio.has_open_position(
+        engine.portfolio.has_open_position(
             "BTC/USDC"
         )
     )

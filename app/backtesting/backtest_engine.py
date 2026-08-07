@@ -124,6 +124,23 @@ class BacktestEngine:
                 f"Action={signal.action}"
             )
 
+            if signal.action != "BUY":
+                continue
+
+            trade_plan = (
+                self.risk_manager.create_trade_plan(
+                    signal,
+                    entry,
+                )
+            )
+
+            self.broker.open(
+                trade_plan,
+                opened_at=_snapshot.get(
+                    "timestamp"
+                ),
+            )
+
         logger.info("")
         logger.info(
             "Backtest finished."
