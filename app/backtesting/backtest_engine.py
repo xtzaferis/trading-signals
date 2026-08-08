@@ -90,7 +90,7 @@ class BacktestEngine:
                     "1h",
                     "15m",
                 ],
-                limit=300,
+                limit=2000,
             )
         )
 
@@ -151,6 +151,16 @@ class BacktestEngine:
                         "Position closed."
                     )
 
+                    logger.info(
+                        f"OPEN POSITIONS AFTER CLOSE: "
+                        f"{len(self.portfolio.open_positions)}"
+                    )
+
+                    logger.info(
+                        f"CLOSED POSITIONS: "
+                        f"{len(self.portfolio.closed_positions)}"
+)
+
 
             #
             # 2. Evaluate new signal
@@ -162,6 +172,12 @@ class BacktestEngine:
                     market,
                 )
             )
+
+            if signal.action == "BUY":
+                logger.info(
+                    f"BUY SIGNAL FOUND AT INDEX "
+                    f"{self.feed.timeline.current_index}"
+                )
 
 
             logger.info(

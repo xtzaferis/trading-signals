@@ -75,7 +75,7 @@ CONFIRM_TIMEFRAME = "1h"
 
 ENTRY_TIMEFRAME = "15m"
 
-MIN_SCORE = 90
+MIN_SCORE = 85
 
 
 # =====================================

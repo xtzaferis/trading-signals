@@ -41,6 +41,7 @@ class Position:
 
     exit_reason: str | None = None
 
+
     @property
     def market_value(self) -> float:
 
@@ -56,6 +57,7 @@ class Position:
             * self.quantity
         )
 
+
     @property
     def unrealized_pnl(self) -> float:
 
@@ -68,6 +70,7 @@ class Position:
             - self.entry_price
         ) * self.quantity
 
+
     @property
     def risk(self) -> float:
 
@@ -75,6 +78,7 @@ class Position:
             self.entry_price
             - self.stop_loss
         )
+
 
     def update_price(
         self,
@@ -90,6 +94,7 @@ class Position:
 
             self.highest_price = price
 
+
     def move_to_break_even(
         self,
     ):
@@ -99,6 +104,7 @@ class Position:
         )
 
         self.break_even = True
+
 
     def update_trailing_stop(
         self,
@@ -111,25 +117,26 @@ class Position:
 
             self.trailing_stop = stop_price
 
+
     def close(
         self,
         price: float,
         closed_at: datetime | None = None,
-        realized_pnl: float | None = None,
     ):
+
         self.current_price = price
 
-        if realized_pnl is not None:
 
-            self.realized_pnl = realized_pnl
+        # Μην αντικαθιστάς PNL που έχει ήδη
+        # υπολογιστεί από Broker με fees/slippage
 
-        else:
+        if self.realized_pnl == 0.0:
 
             self.realized_pnl = (
                 price
-                -
-                self.entry_price
+                - self.entry_price
             ) * self.quantity
+
 
         self.closed_at = (
             closed_at

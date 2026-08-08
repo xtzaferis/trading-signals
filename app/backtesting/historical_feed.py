@@ -1,21 +1,13 @@
-from app.backtesting.data_feed import (
-    DataFeed,
-)
-from app.backtesting.timeline import (
-    Timeline,
-)
-from app.models.market_snapshot import (
-    MarketSnapshot,
-)
+from app.backtesting.data_feed import DataFeed
 
 
 class HistoricalFeed(DataFeed):
 
     def __init__(self):
 
-        self.timeline = Timeline()
-
         self.data = {}
+        self.timeline = None
+
 
     def load(
         self,
@@ -24,15 +16,21 @@ class HistoricalFeed(DataFeed):
 
         self.data = data
 
+        from app.backtesting.timeline import Timeline
+
+        self.timeline = Timeline()
+
         self.timeline.load(
             data
         )
+
 
     def has_next(
         self,
     ) -> bool:
 
         return self.timeline.has_next()
+
 
     def next(
         self,
@@ -56,17 +54,10 @@ class HistoricalFeed(DataFeed):
             )
         )
 
-        current = self.data[
-            "15m"
-        ][
-            entry_index
-        ]
 
         snapshot = {
 
             "trend": {
-
-                "timeframe": "4h",
 
                 "candles": self.data[
                     "4h"
@@ -75,9 +66,8 @@ class HistoricalFeed(DataFeed):
                 ],
             },
 
-            "confirm": {
 
-                "timeframe": "1h",
+            "confirm": {
 
                 "candles": self.data[
                     "1h"
@@ -86,27 +76,30 @@ class HistoricalFeed(DataFeed):
                 ],
             },
 
-            "entry": {
 
-                "timeframe": "15m",
+            "entry": {
 
                 "candles": self.data[
                     "15m"
                 ][
                     : entry_index + 1
                 ],
-
-                "current": MarketSnapshot(
-                    timestamp=current[0],
-                    open=current[1],
-                    high=current[2],
-                    low=current[3],
-                    close=current[4],
-                    volume=current[5],
-                ),
             },
+
+
+            "timestamp": self.data[
+                "15m"
+            ][
+                entry_index
+            ][0],
         }
 
+
+        # IMPORTANT:
+        # HistoricalFeed owns timeline movement.
+        # Tests expect next() to advance.
+
         self.timeline.step()
+
 
         return snapshot

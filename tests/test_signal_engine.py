@@ -1,3 +1,4 @@
+from app.config.settings import MIN_SCORE
 from app.config.weights import (
     ADX_WEIGHT,
     EMA_WEIGHT,
@@ -42,6 +43,7 @@ def test_buy_signal():
         + ADX_WEIGHT
     )
 
+    assert result.score >= MIN_SCORE
     assert result.action == "BUY"
     assert result.score == expected_score
     assert result.confidence == (

@@ -19,6 +19,7 @@ class PaperBroker(Broker):
 
         self.portfolio = portfolio
 
+
     def open(
         self,
         trade_plan: TradePlan,
@@ -30,15 +31,19 @@ class PaperBroker(Broker):
         ):
             return None
 
+
         execution_price = (
             trade_plan.entry
             * (1 + SLIPPAGE)
         )
 
+
         quantity = (
             trade_plan.position_size
-            / execution_price
+            /
+            execution_price
         )
+
 
         position = Position(
             symbol=trade_plan.symbol,
@@ -49,27 +54,37 @@ class PaperBroker(Broker):
             opened_at=opened_at,
         )
 
+
         position.update_price(
             execution_price
         )
 
+
         position.entry_fee = (
             trade_plan.position_size
-            * TRADING_FEE
+            *
+            TRADING_FEE
         )
+
 
         added = self.portfolio.add_position(
             position
         )
 
+
         if not added:
+
             return None
+
 
         self.portfolio.cash -= (
             position.entry_fee
         )
 
+
         return position
+
+
 
     def update(
         self,
@@ -80,9 +95,11 @@ class PaperBroker(Broker):
         timestamp: datetime,
     ) -> bool:
 
+
         position.update_price(
             close
         )
+
 
         if low <= position.stop_loss:
 
@@ -94,6 +111,8 @@ class PaperBroker(Broker):
 
             return True
 
+
+
         if high >= position.take_profit:
 
             self.close(
@@ -104,7 +123,10 @@ class PaperBroker(Broker):
 
             return True
 
+
         return False
+
+
 
     def close(
         self,
@@ -113,20 +135,27 @@ class PaperBroker(Broker):
         reason: str = "MANUAL",
     ):
 
+
         execution_price = (
             price
-            * (1 - SLIPPAGE)
+            *
+            (1 - SLIPPAGE)
         )
+
 
         exit_value = (
             execution_price
-            * position.quantity
+            *
+            position.quantity
         )
+
 
         exit_fee = (
             exit_value
-            * TRADING_FEE
+            *
+            TRADING_FEE
         )
+
 
         entry_fee = getattr(
             position,
@@ -134,16 +163,26 @@ class PaperBroker(Broker):
             0.0,
         )
 
+
         gross_pnl = (
-            execution_price
-            - position.entry_price
-        ) * position.quantity
+            (
+                execution_price
+                -
+                position.entry_price
+            )
+            *
+            position.quantity
+        )
+
 
         net_pnl = (
             gross_pnl
-            - entry_fee
-            - exit_fee
+            -
+            entry_fee
+            -
+            exit_fee
         )
+
 
         self.portfolio.close_position(
             position,
@@ -151,9 +190,18 @@ class PaperBroker(Broker):
             reason,
         )
 
+
         position.realized_pnl = (
             net_pnl
         )
+
+
+        if self.portfolio.trade_history:
+
+            self.portfolio.trade_history[-1].pnl = (
+                net_pnl
+            )
+
 
         self.portfolio.cash -= (
             exit_fee

@@ -37,7 +37,8 @@ class BacktestBroker(Broker):
 
         execution_price = (
             trade_plan.entry
-            * (1 + SLIPPAGE)
+            *
+            (1 + SLIPPAGE)
         )
 
 
@@ -58,11 +59,10 @@ class BacktestBroker(Broker):
         )
 
 
-        position.initial_risk = (
-            abs(
-                execution_price
-                - trade_plan.stop_loss
-            )
+        position.initial_risk = abs(
+            execution_price
+            -
+            trade_plan.stop_loss
         )
 
 
@@ -71,15 +71,10 @@ class BacktestBroker(Broker):
         )
 
 
-        entry_fee = (
+        position.entry_fee = (
             trade_plan.position_size
             *
             TRADING_FEE
-        )
-
-
-        position.entry_fee = (
-            entry_fee
         )
 
 
@@ -89,7 +84,7 @@ class BacktestBroker(Broker):
 
 
         self.portfolio.cash -= (
-            entry_fee
+            position.entry_fee
         )
 
 
@@ -107,10 +102,9 @@ class BacktestBroker(Broker):
     ) -> bool:
 
 
-        position.update_price(
-            high
-        )
-
+        # -------------------------------
+        # Exit checks
+        # -------------------------------
 
         if low <= position.stop_loss:
 
@@ -123,7 +117,6 @@ class BacktestBroker(Broker):
             return True
 
 
-
         if high >= position.take_profit:
 
             self.close(
@@ -134,6 +127,15 @@ class BacktestBroker(Broker):
 
             return True
 
+
+
+        # -------------------------------
+        # Position management
+        # -------------------------------
+
+        position.update_price(
+            high
+        )
 
 
         self.manage_position(
@@ -157,7 +159,6 @@ class BacktestBroker(Broker):
 
 
         if position.initial_risk <= 0:
-
             return
 
 
@@ -242,14 +243,10 @@ class BacktestBroker(Broker):
 
 
         gross_pnl = (
-            (
-                execution_price
-                -
-                position.entry_price
-            )
-            *
-            position.quantity
-        )
+            execution_price
+            -
+            position.entry_price
+        ) * position.quantity
 
 
         net_pnl = (
@@ -261,10 +258,12 @@ class BacktestBroker(Broker):
         )
 
 
-        # Save the final pnl BEFORE Portfolio creates TradeRecord
-        position.realized_pnl = (
-            net_pnl
-        )
+        # IMPORTANT:
+        # Set pnl BEFORE portfolio persistence
+
+        position.realized_pnl = net_pnl
+
+        position.exit_reason = reason
 
 
         self.portfolio.close_position(

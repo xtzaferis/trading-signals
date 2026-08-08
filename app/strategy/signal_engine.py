@@ -1,3 +1,4 @@
+from app.config.settings import MIN_SCORE
 from app.strategy.filters import (
     adx_filter,
     confirmation_filter,
@@ -68,6 +69,16 @@ class SignalEngine:
                 result.reasons.append(reason)
 
         result.confidence = result.score / 100
+
+        if result.score < MIN_SCORE:
+
+            result.action = "HOLD"
+
+            result.reasons.append(
+                "Score below minimum"
+            )
+
+            return result
 
         result.action = "BUY"
 

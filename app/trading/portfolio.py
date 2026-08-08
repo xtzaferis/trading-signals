@@ -1,26 +1,20 @@
+from datetime import datetime, timezone
+
 from app.config.settings import (
     ACCOUNT_SIZE,
     MAX_OPEN_POSITIONS,
 )
-from app.models.position import (
-    Position,
-)
-from app.models.trade_record import (
-    TradeRecord,
-)
+from app.models.position import Position
+from app.models.trade_record import TradeRecord
 
 
 class Portfolio:
 
     def __init__(self):
 
-        self.initial_balance = (
-            ACCOUNT_SIZE
-        )
+        self.initial_balance = ACCOUNT_SIZE
 
-        self.cash = (
-            ACCOUNT_SIZE
-        )
+        self.cash = ACCOUNT_SIZE
 
         self.open_positions: list[Position] = []
 
@@ -97,6 +91,7 @@ class Portfolio:
             position.quantity
         )
 
+
         return (
             required_cash
             <= self.cash
@@ -120,13 +115,17 @@ class Portfolio:
             position.quantity
         )
 
+
         self.cash -= cost
+
 
         self.open_positions.append(
             position
         )
 
+
         return True
+
 
 
     def close_position(
@@ -136,9 +135,44 @@ class Portfolio:
         exit_reason: str = "UNKNOWN",
     ):
 
-        position.close(
-            exit_price
+
+        position.current_price = exit_price
+
+
+        position.closed_at = datetime.now(
+            timezone.utc
         )
+
+
+        position.status = "CLOSED"
+
+
+        position.exit_reason = (
+            exit_reason
+        )
+
+
+        # ==================================
+        # PNL FIX
+        # ==================================
+        #
+        # Αν ο Broker έχει ήδη υπολογίσει
+        # net pnl με fees/slippage,
+        # το κρατάμε.
+        #
+        # Αν όχι, υπολόγισε απλό pnl
+        # για Portfolio tests.
+        #
+
+        if position.realized_pnl == 0.0:
+
+            position.realized_pnl = (
+                exit_price
+                -
+                position.entry_price
+            ) * position.quantity
+
+
 
         proceeds = (
             exit_price
@@ -146,7 +180,9 @@ class Portfolio:
             position.quantity
         )
 
+
         self.cash += proceeds
+
 
 
         self.open_positions.remove(
@@ -157,6 +193,7 @@ class Portfolio:
         self.closed_positions.append(
             position
         )
+
 
 
         record = TradeRecord(
@@ -179,9 +216,11 @@ class Portfolio:
         )
 
 
+
         self.trade_history.append(
             record
         )
+
 
 
         if self.trade_repository:
