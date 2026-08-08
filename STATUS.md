@@ -62,4 +62,22 @@
 - Δεν υπάρχουν εγγυήσεις κερδών. Απαραίτητο: εκτενές backtesting + live paper trading πριν παραγωγή.
 - Μην αποθηκεύετε tokens/κλειδιά σε repo. Χρησιμοποιήστε secret store (DO secrets, GitHub Secrets, or env manager).
 
+Συμπεράσματα από το πρόσφατο backtest (debug run)
+- Βρέθηκαν αιτίες για τα συστηματικά losses:
+  1. app/execution/paper_broker.py: δεν θέτει position.initial_risk κατά το άνοιγμα — επομένως οι κανόνες διαχείρισης θέσης (break-even / trailing stop) δεν ενεργοποιούνται.
+  2. Risk sizing vs cap: το app/risk/risk_manager.py υπολογίζει cash position_value και εφαρμόζεται cap (MAX_POSITION_SIZE) — αυτό άλλαξε το πραγματικό capital_at_risk σε μικρότερο από το αναμενόμενο και επηρεάζει exposure.
+  3. Trading costs (slippage + fees) αφαιρούν σημαντικό μέρος του μικρού trade (εδώ ~0.4 USDC), φέρνοντας μικρές θέσεις σε ζημία παρότι σήμα ήταν σωστό.
+  4. Μικρό δείγμα: στο run υπήρξε μόλις 1 trade — στατιστικά μη αντιπροσωπευτικό.
+
+Προτεινόμενες διορθώσεις (actionable)
+- Fix 1 (blocker): Set position.initial_risk στο PaperBroker.open (και στο BacktestBroker.open) — αρχείο: app/execution/paper_broker.py, app/backtesting/backtest_broker.py.
+- Fix 2: Επανεξέτασε cap εφαρμογής σε RiskManager: είτε cap σε cash (position_value) με αναπροσαρμογή units, είτε cap σε units — αποφάσισε και κάνε το logic σαφές (αρχείο: app/risk/risk_manager.py).
+- Fix 3: Διατήρησε ξεχωριστές ρυθμίσεις simulation costs vs live costs. Για backtests, επιβεβαίωσε ότι SLIPPAGE/TRADING_FEE αντιπροσωπεύουν ρεαλιστικό σενάριο.
+- Fix 4: Εκτέλεση μακρύτερων backtests / parameter sweep (ATR_MULTIPLIER, SLIPPAGE, RISK_REWARD_RATIO) και multi-run paper trading για στατιστική επάρκεια.
+
+Action items (short term)
+1. Κώδικας: εφαρμογή Fix 1 & Fix 2 (μικρές αλλαγές) — προτείνω να τα εφαρμόσω τώρα και να τρέξω multi-run backtest.
+2. Metrics: αυξήστε sample trades (π.χ. load μεγαλύτερο ιστορικό / αλλα timeframes) και τρέξτε 100+ runs με παραλλαγές παραμέτρων.
+3. Logging: κράτησε verbose trade logs (έγινε) και αποθήκευση trade history CSV για ανάλυση.
+
 Επόμενο προτεινόμενο βήμα: Επιβεβαίωσε αν θέλεις να προσθέσω το αρχείο app/notifications/telegram_notifier.py και ένα απλό script για να τρέξουμε paper trading runs, ή αν προτιμάς να το κάνω μετά το mypy/security step.

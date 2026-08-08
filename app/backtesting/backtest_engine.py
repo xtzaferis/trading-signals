@@ -213,6 +213,13 @@ class BacktestEngine:
                 continue
 
 
+            # Log trade plan details for debugging
+            logger.info(
+                f"TRADE PLAN -> symbol={trade_plan.symbol} "
+                f"entry={trade_plan.entry} stop_loss={trade_plan.stop_loss} "
+                f"take_profit={trade_plan.take_profit} position_value={trade_plan.position_size}"
+            )
+
             #
             # 4. Open position
             #
@@ -232,6 +239,13 @@ class BacktestEngine:
                 logger.info(
                     f"OPENED: {position.symbol} "
                     f"@ {position.entry_price}"
+                )
+
+                # Log opened position summary
+                logger.info(
+                    f"POSITION OPENED -> qty={position.quantity:.8f} "
+                    f"entry_fee={getattr(position,'entry_fee',0.0):.6f} "
+                    f"initial_risk={getattr(position,'initial_risk',0.0):.6f}"
                 )
 
 

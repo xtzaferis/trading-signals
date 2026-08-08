@@ -7,6 +7,7 @@ from app.config.settings import (
     TRADING_FEE,
     TRAILING_STOP_ENABLED,
 )
+from app.core.logger import logger
 from app.execution.broker import Broker
 from app.models.position import Position
 from app.models.trade_plan import TradePlan
@@ -77,11 +78,20 @@ class BacktestBroker(Broker):
             TRADING_FEE
         )
 
+        # Log execution details
+        logger.info(
+            f"OPEN EXEC -> price={execution_price:.6f} qty={quantity:.8f} "
+            f"position_value={trade_plan.position_size:.6f} entry_fee={position.entry_fee:.6f}"
+        )
 
         self.portfolio.add_position(
             position
         )
 
+        # confirm addition
+        logger.info(
+            f"PORTFOLIO -> open_positions={len(self.portfolio.open_positions)} cash_after_cost={self.portfolio.cash - position.entry_fee:.6f}"
+        )
 
         self.portfolio.cash -= (
             position.entry_fee
@@ -257,6 +267,11 @@ class BacktestBroker(Broker):
             exit_fee
         )
 
+        # Log exit calculations
+        logger.info(
+            f"CLOSE EXEC -> price={execution_price:.6f} qty={position.quantity:.8f} "
+            f"exit_value={exit_value:.6f} exit_fee={exit_fee:.6f} gross_pnl={gross_pnl:.6f} net_pnl={net_pnl:.6f}"
+        )
 
         # IMPORTANT:
         # Set pnl BEFORE portfolio persistence
