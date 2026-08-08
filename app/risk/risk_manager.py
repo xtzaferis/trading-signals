@@ -39,18 +39,23 @@ class RiskManager:
             ACCOUNT_SIZE * RISK_PER_TRADE
         )
 
-        position_size = (
-            capital_at_risk / risk
-        )
+        # units implied by the capital we're willing to risk
+        units = capital_at_risk / risk
 
-        max_position = (
+        # position value (cash) = units * entry price
+        position_value = units * entry
+
+        max_position_value = (
             ACCOUNT_SIZE * MAX_POSITION_SIZE
         )
 
-        position_size = min(
-            position_size,
-            max_position,
+        # cap position value to maximum allowed position size (as cash)
+        position_value = min(
+            position_value,
+            max_position_value,
         )
+
+        position_size = position_value
 
         return TradePlan(
             symbol=signal.symbol,
