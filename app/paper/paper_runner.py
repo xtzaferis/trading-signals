@@ -1,5 +1,7 @@
 import time
 
+import ccxt
+
 from app.config.settings import (
     CANDLE_LIMIT,
     CONFIRM_TIMEFRAME,
@@ -8,6 +10,7 @@ from app.config.settings import (
     SCAN_INTERVAL,
     TREND_TIMEFRAME,
 )
+from app.core.logger import logger
 from app.market.live_market_service import (
     LiveMarketService,
 )
@@ -40,40 +43,76 @@ class PaperRunner:
             PaperEngine()
         )
 
+        self.running = True
+
     def run_once(self):
 
-        snapshot = (
-            self.market.get_snapshot(
-                symbol=MARKET_SYMBOL,
-                trend_timeframe=TREND_TIMEFRAME,
-                confirm_timeframe=CONFIRM_TIMEFRAME,
-                entry_timeframe=ENTRY_TIMEFRAME,
-                limit=CANDLE_LIMIT,
+        try:
+
+            snapshot = (
+                self.market.get_snapshot(
+                    symbol=MARKET_SYMBOL,
+                    trend_timeframe=TREND_TIMEFRAME,
+                    confirm_timeframe=CONFIRM_TIMEFRAME,
+                    entry_timeframe=ENTRY_TIMEFRAME,
+                    limit=CANDLE_LIMIT,
+                )
             )
-        )
 
-        self.okx_feed.update_candles(
-            trend_candles=snapshot["trend"]["candles"],
-            confirm_candles=snapshot["confirm"]["candles"],
-            entry_candles=snapshot["entry"]["candles"],
-        )
+            self.okx_feed.update_candles(
+                trend_candles=snapshot["trend"]["candles"],
+                confirm_candles=snapshot["confirm"]["candles"],
+                entry_candles=snapshot["entry"]["candles"],
+            )
 
-        if self.live_feed.has_next():
+            if not self.live_feed.has_next():
 
-            data = (
+                logger.warning(
+                    "No market snapshot available."
+                )
+
+                return
+
+            snapshot = (
                 self.live_feed.next()
             )
 
             self.engine.process_snapshot(
-                data
+                snapshot
+            )
+
+        except (
+            ccxt.NetworkError,
+            ccxt.ExchangeError,
+            ConnectionError,
+            TimeoutError,
+        ):
+
+            logger.exception(
+                "Paper runner cycle failed."
             )
 
     def run(self):
 
-        while True:
+        logger.info("")
+        logger.info("=" * 50)
+        logger.info(
+            "PAPER RUNNER STARTED"
+        )
+        logger.info("=" * 50)
+
+        while self.running:
 
             self.run_once()
 
             time.sleep(
                 SCAN_INTERVAL
             )
+
+    def stop(self):
+
+        self.running = False
+
+        logger.info(
+            "Paper runner stopped."
+        )

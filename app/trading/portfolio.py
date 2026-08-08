@@ -2,8 +2,12 @@ from app.config.settings import (
     ACCOUNT_SIZE,
     MAX_OPEN_POSITIONS,
 )
-from app.models.position import Position
-from app.models.trade_record import TradeRecord
+from app.models.position import (
+    Position,
+)
+from app.models.trade_record import (
+    TradeRecord,
+)
 
 
 class Portfolio:
@@ -19,6 +23,8 @@ class Portfolio:
         self.closed_positions: list[Position] = []
 
         self.trade_history: list[TradeRecord] = []
+
+        self.trade_repository = None
 
     @property
     def equity(self) -> float:
@@ -87,7 +93,7 @@ class Portfolio:
     def add_position(
         self,
         position: Position,
-    ) -> bool:
+    ):
 
         if not self.can_open_position(
             position
@@ -116,10 +122,6 @@ class Portfolio:
 
         position.close(
             exit_price
-        )
-
-        position.exit_reason = (
-            exit_reason
         )
 
         proceeds = (
@@ -151,3 +153,9 @@ class Portfolio:
         self.trade_history.append(
             record
         )
+
+        if self.trade_repository:
+
+            self.trade_repository.save(
+                record
+            )

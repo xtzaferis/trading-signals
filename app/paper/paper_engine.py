@@ -11,6 +11,9 @@ from app.paper.live_feed import (
 from app.risk.risk_manager import (
     RiskManager,
 )
+from app.services.decision_logger import (
+    DecisionLogger,
+)
 from app.services.statistics_printer import (
     StatisticsPrinter,
 )
@@ -51,6 +54,8 @@ class PaperEngine:
 
         self.printer = StatisticsPrinter()
 
+        self.decision_logger = DecisionLogger()
+
     def process_snapshot(
         self,
         snapshot: dict,
@@ -79,6 +84,13 @@ class PaperEngine:
             )
         )
 
+        self.decision_logger.log(
+            symbol=self.symbol,
+            price=entry["close"],
+            score=signal.score,
+            action=signal.action,
+        )
+
         logger.info(
             f"{entry['close']:.2f} | "
             f"Score={signal.score} | "
@@ -96,11 +108,13 @@ class PaperEngine:
             )
         )
 
-        position = self.broker.open(
-            trade_plan,
-            opened_at=data.get(
-                "timestamp"
-            ),
+        position = (
+            self.broker.open(
+                trade_plan,
+                opened_at=data.get(
+                    "timestamp"
+                ),
+            )
         )
 
         if position is None:
