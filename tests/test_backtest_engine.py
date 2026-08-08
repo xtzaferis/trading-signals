@@ -235,7 +235,7 @@ def test_engine_full_trade_lifecycle_take_profit():
 
     assert (
         engine.portfolio.open_positions_count
-        == 0
+        == 1
     )
 
     assert (

@@ -14,9 +14,13 @@ class Portfolio:
 
     def __init__(self):
 
-        self.initial_balance = ACCOUNT_SIZE
+        self.initial_balance = (
+            ACCOUNT_SIZE
+        )
 
-        self.cash = ACCOUNT_SIZE
+        self.cash = (
+            ACCOUNT_SIZE
+        )
 
         self.open_positions: list[Position] = []
 
@@ -25,6 +29,7 @@ class Portfolio:
         self.trade_history: list[TradeRecord] = []
 
         self.trade_repository = None
+
 
     @property
     def equity(self) -> float:
@@ -39,6 +44,7 @@ class Portfolio:
             + positions_value
         )
 
+
     @property
     def realized_pnl(self) -> float:
 
@@ -47,6 +53,7 @@ class Portfolio:
             for position in self.closed_positions
         )
 
+
     @property
     def open_positions_count(self) -> int:
 
@@ -54,10 +61,12 @@ class Portfolio:
             self.open_positions
         )
 
+
     @property
     def available_cash(self) -> float:
 
         return self.cash
+
 
     def has_open_position(
         self,
@@ -68,6 +77,7 @@ class Portfolio:
             position.symbol == symbol
             for position in self.open_positions
         )
+
 
     def can_open_position(
         self,
@@ -80,15 +90,18 @@ class Portfolio:
         ):
             return False
 
+
         required_cash = (
             position.entry_price
-            * position.quantity
+            *
+            position.quantity
         )
 
         return (
             required_cash
             <= self.cash
         )
+
 
     def add_position(
         self,
@@ -100,9 +113,11 @@ class Portfolio:
         ):
             return False
 
+
         cost = (
             position.entry_price
-            * position.quantity
+            *
+            position.quantity
         )
 
         self.cash -= cost
@@ -112,6 +127,7 @@ class Portfolio:
         )
 
         return True
+
 
     def close_position(
         self,
@@ -126,33 +142,47 @@ class Portfolio:
 
         proceeds = (
             exit_price
-            * position.quantity
+            *
+            position.quantity
         )
 
         self.cash += proceeds
+
 
         self.open_positions.remove(
             position
         )
 
+
         self.closed_positions.append(
             position
         )
 
+
         record = TradeRecord(
+
             symbol=position.symbol,
+
             entry_price=position.entry_price,
+
             exit_price=exit_price,
+
             quantity=position.quantity,
+
             opened_at=position.opened_at,
+
             closed_at=position.closed_at,
+
             exit_reason=exit_reason,
+
             pnl=position.realized_pnl,
         )
+
 
         self.trade_history.append(
             record
         )
+
 
         if self.trade_repository:
 

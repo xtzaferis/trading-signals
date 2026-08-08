@@ -4,6 +4,9 @@ from app.backtesting.historical_feed import (
 from app.backtesting.market_provider import (
     MarketProvider,
 )
+from app.config.settings import (
+    MARKET_SYMBOL,
+)
 from app.core.logger import logger
 from app.execution.broker_factory import (
     create_broker,
@@ -32,7 +35,7 @@ class BacktestEngine:
 
     def __init__(self):
 
-        self.symbol = "BTC/USDC"
+        self.symbol = MARKET_SYMBOL
 
         self.history = (
             HistoricalDataService()
@@ -68,6 +71,7 @@ class BacktestEngine:
             StatisticsPrinter()
         )
 
+
     def run(self):
 
         logger.info("")
@@ -76,6 +80,7 @@ class BacktestEngine:
             "BACKTEST ENGINE"
         )
         logger.info("=" * 50)
+
 
         data = (
             self.history.load_multiple(
@@ -89,15 +94,18 @@ class BacktestEngine:
             )
         )
 
+
         self.feed.load(
             data
         )
+
 
         self.market_provider = (
             MarketProvider(
                 self.feed
             )
         )
+
 
         while self.market_provider.has_next():
 
@@ -109,6 +117,45 @@ class BacktestEngine:
                 "entry"
             ]
 
+
+            #
+            # 1. Manage existing positions
+            #
+
+            for position in list(
+                self.portfolio.open_positions
+            ):
+
+                closed = (
+                    self.broker.update(
+                        position,
+                        high=entry.get(
+                            "high",
+                            entry["close"],
+                        ),
+                        low=entry.get(
+                            "low",
+                            entry["close"],
+                        ),
+                        close=entry["close"],
+                        timestamp=snapshot.get(
+                            "timestamp"
+                        ),
+                    )
+                )
+
+
+                if closed:
+
+                    logger.info(
+                        "Position closed."
+                    )
+
+
+            #
+            # 2. Evaluate new signal
+            #
+
             signal = (
                 self.signal_engine.evaluate(
                     self.symbol,
@@ -116,14 +163,22 @@ class BacktestEngine:
                 )
             )
 
+
             logger.info(
                 f"{entry['close']:.2f} | "
                 f"Score={signal.score} | "
                 f"Action={signal.action}"
             )
 
+
             if signal.action != "BUY":
+
                 continue
+
+
+            #
+            # 3. Create trade plan
+            #
 
             trade_plan = (
                 self.risk_manager.create_trade_plan(
@@ -132,35 +187,41 @@ class BacktestEngine:
                 )
             )
 
-            self.broker.open(
-                trade_plan,
-                opened_at=snapshot.get(
-                    "timestamp"
-                ),
-            )
 
-            for position in list(
-                self.portfolio.open_positions
-            ):
+            if trade_plan is None:
 
-                closed = self.broker.update(
-                    position,
-                    high=entry.get(
-                        "high",
-                        entry["close"],
-                    ),
-                    low=entry.get(
-                        "low",
-                        entry["close"],
-                    ),
-                    close=entry["close"],
-                    timestamp=snapshot.get(
+                logger.warning(
+                    "Trade plan rejected."
+                )
+
+                continue
+
+
+            #
+            # 4. Open position
+            #
+
+            position = (
+                self.broker.open(
+                    trade_plan,
+                    opened_at=snapshot.get(
                         "timestamp"
                     ),
                 )
+            )
 
-                if closed:
-                    break
+
+            if position:
+
+                logger.info(
+                    f"OPENED: {position.symbol} "
+                    f"@ {position.entry_price}"
+                )
+
+
+        #
+        # Statistics
+        #
 
         report = (
             self.statistics.generate(
@@ -168,11 +229,19 @@ class BacktestEngine:
             )
         )
 
+
         self.printer.print(
             report
         )
 
+
         logger.info("")
+
+        logger.info(
+            "Closed positions: "
+            f"{len(self.portfolio.closed_positions)}"
+        )
+
 
         logger.info(
             "Backtest finished."

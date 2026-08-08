@@ -43,3 +43,25 @@ class TradeRepository:
                 trade.pnl,
             ),
         )
+
+    def get_all(self):
+
+        cursor = self.database.execute(
+            """
+            SELECT
+                symbol,
+                entry_price,
+                exit_price,
+                quantity,
+                opened_at,
+                closed_at,
+                exit_reason,
+                pnl
+
+            FROM trades
+
+            ORDER BY id ASC
+            """
+        )
+
+        return cursor.fetchall()

@@ -115,14 +115,21 @@ class Position:
         self,
         price: float,
         closed_at: datetime | None = None,
+        realized_pnl: float | None = None,
     ):
-
         self.current_price = price
 
-        self.realized_pnl = (
-            price
-            - self.entry_price
-        ) * self.quantity
+        if realized_pnl is not None:
+
+            self.realized_pnl = realized_pnl
+
+        else:
+
+            self.realized_pnl = (
+                price
+                -
+                self.entry_price
+            ) * self.quantity
 
         self.closed_at = (
             closed_at
