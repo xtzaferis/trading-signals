@@ -1,5 +1,5 @@
-from app.backtesting.historical_feed import (
-    HistoricalFeed,
+from app.backtesting.data_feed import (
+    DataFeed,
 )
 from app.indicators.candle_dataframe_builder import (
     CandleDataFrameBuilder,
@@ -13,7 +13,7 @@ class MarketProvider:
 
     def __init__(
         self,
-        feed: HistoricalFeed,
+        feed: DataFeed,
     ):
 
         self.feed = feed
