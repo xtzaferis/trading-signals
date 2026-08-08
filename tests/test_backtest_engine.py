@@ -108,8 +108,8 @@ def test_engine_closes_position_on_take_profit():
     )
 
     assert (
-        position.realized_pnl
-        == 100.0
+        round(position.realized_pnl, 6)
+        == 96.801649
     )
 
 
@@ -155,8 +155,8 @@ def test_engine_closes_position_on_stop_loss():
     )
 
     assert (
-        position.realized_pnl
-        == -50.0
+        round(position.realized_pnl, 6)
+        == -52.898576
     )
 
 

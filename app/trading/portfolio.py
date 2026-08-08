@@ -1,5 +1,9 @@
-from app.config.settings import ACCOUNT_SIZE
+from app.config.settings import (
+    ACCOUNT_SIZE,
+    MAX_OPEN_POSITIONS,
+)
 from app.models.position import Position
+from app.models.trade_record import TradeRecord
 
 
 class Portfolio:
@@ -14,6 +18,8 @@ class Portfolio:
 
         self.closed_positions: list[Position] = []
 
+        self.trade_history: list[TradeRecord] = []
+
     @property
     def equity(self) -> float:
 
@@ -22,7 +28,10 @@ class Portfolio:
             for position in self.open_positions
         )
 
-        return self.cash + positions_value
+        return (
+            self.cash
+            + positions_value
+        )
 
     @property
     def realized_pnl(self) -> float:
@@ -54,10 +63,36 @@ class Portfolio:
             for position in self.open_positions
         )
 
+    def can_open_position(
+        self,
+        position: Position,
+    ) -> bool:
+
+        if (
+            self.open_positions_count
+            >= MAX_OPEN_POSITIONS
+        ):
+            return False
+
+        required_cash = (
+            position.entry_price
+            * position.quantity
+        )
+
+        return (
+            required_cash
+            <= self.cash
+        )
+
     def add_position(
         self,
         position: Position,
-    ):
+    ) -> bool:
+
+        if not self.can_open_position(
+            position
+        ):
+            return False
 
         cost = (
             position.entry_price
@@ -70,13 +105,22 @@ class Portfolio:
             position
         )
 
+        return True
+
     def close_position(
         self,
         position: Position,
         exit_price: float,
+        exit_reason: str = "UNKNOWN",
     ):
 
-        position.close(exit_price)
+        position.close(
+            exit_price
+        )
+
+        position.exit_reason = (
+            exit_reason
+        )
 
         proceeds = (
             exit_price
@@ -91,4 +135,19 @@ class Portfolio:
 
         self.closed_positions.append(
             position
+        )
+
+        record = TradeRecord(
+            symbol=position.symbol,
+            entry_price=position.entry_price,
+            exit_price=exit_price,
+            quantity=position.quantity,
+            opened_at=position.opened_at,
+            closed_at=position.closed_at,
+            exit_reason=exit_reason,
+            pnl=position.realized_pnl,
+        )
+
+        self.trade_history.append(
+            record
         )

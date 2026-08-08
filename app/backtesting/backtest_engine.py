@@ -1,6 +1,3 @@
-from app.backtesting.backtest_broker import (
-    BacktestBroker,
-)
 from app.backtesting.historical_feed import (
     HistoricalFeed,
 )
@@ -8,6 +5,9 @@ from app.backtesting.market_provider import (
     MarketProvider,
 )
 from app.core.logger import logger
+from app.execution.broker_factory import (
+    create_broker,
+)
 from app.risk.risk_manager import (
     RiskManager,
 )
@@ -56,10 +56,8 @@ class BacktestEngine:
             RiskManager()
         )
 
-        self.broker = (
-            BacktestBroker(
-                self.portfolio
-            )
+        self.broker = create_broker(
+            self.portfolio
         )
 
         self.statistics = (
@@ -111,48 +109,6 @@ class BacktestEngine:
                 "entry"
             ]
 
-            current_price = float(
-                entry["close"]
-            )
-
-            high = float(
-                entry.get(
-                    "high",
-                    current_price,
-                )
-            )
-
-            low = float(
-                entry.get(
-                    "low",
-                    current_price,
-                )
-            )
-
-            position_closed = False
-
-            for position in list(
-                self.portfolio.open_positions
-            ):
-
-                closed = (
-                    self.broker.update(
-                        position,
-                        high=high,
-                        low=low,
-                        close=current_price,
-                        timestamp=snapshot.get(
-                            "timestamp"
-                        ),
-                    )
-                )
-
-                if closed:
-                    position_closed = True
-
-            if position_closed:
-                continue
-
             signal = (
                 self.signal_engine.evaluate(
                     self.symbol,
@@ -161,7 +117,7 @@ class BacktestEngine:
             )
 
             logger.info(
-                f"{current_price:.2f} | "
+                f"{entry['close']:.2f} | "
                 f"Score={signal.score} | "
                 f"Action={signal.action}"
             )
@@ -183,6 +139,29 @@ class BacktestEngine:
                 ),
             )
 
+            for position in list(
+                self.portfolio.open_positions
+            ):
+
+                closed = self.broker.update(
+                    position,
+                    high=entry.get(
+                        "high",
+                        entry["close"],
+                    ),
+                    low=entry.get(
+                        "low",
+                        entry["close"],
+                    ),
+                    close=entry["close"],
+                    timestamp=snapshot.get(
+                        "timestamp"
+                    ),
+                )
+
+                if closed:
+                    break
+
         report = (
             self.statistics.generate(
                 self.portfolio
@@ -194,6 +173,7 @@ class BacktestEngine:
         )
 
         logger.info("")
+
         logger.info(
             "Backtest finished."
         )

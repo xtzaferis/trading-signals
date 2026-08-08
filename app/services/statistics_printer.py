@@ -69,7 +69,37 @@ class StatisticsPrinter:
         logger.info("")
 
         logger.info(
+            f"Initial Equity:    {report.initial_equity:.2f} USDC"
+        )
+
+        logger.info(
             f"Current Equity:    {report.current_equity:.2f} USDC"
+        )
+
+        logger.info(
+            f"Total Return:      {report.total_return:.2f}%"
+        )
+
+        logger.info(
+            f"Peak Equity:       {report.peak_equity:.2f} USDC"
+        )
+
+        logger.info(
+            f"Max Drawdown:      {report.max_drawdown:.2f}%"
+        )
+
+        logger.info(
+            f"Current Drawdown:  {report.current_drawdown:.2f}%"
+        )
+
+        logger.info("")
+
+        logger.info(
+            f"Expectancy:        {report.expectancy:.2f} USDC"
+        )
+
+        logger.info(
+            f"Average R:         {report.average_r:.2f}"
         )
 
         logger.info("=" * 50)

@@ -29,3 +29,19 @@ class StatisticsReport:
     worst_trade: float = 0.0
 
     current_equity: float = 0.0
+
+    # Risk Metrics
+
+    initial_equity: float = 0.0
+
+    total_return: float = 0.0
+
+    peak_equity: float = 0.0
+
+    max_drawdown: float = 0.0
+
+    current_drawdown: float = 0.0
+
+    expectancy: float = 0.0
+
+    average_r: float = 0.0

@@ -1,14 +1,18 @@
-from app.config.settings import ACCOUNT_SIZE
+from app.config.settings import ACCOUNT_SIZE, MAX_OPEN_POSITIONS
 from app.models.position import Position
 from app.trading.portfolio import Portfolio
 
 
-def create_position():
+def create_position(
+    symbol="BTC/USDC",
+    entry_price=100.0,
+    quantity=2.0,
+):
 
     return Position(
-        symbol="BTC/USDC",
-        entry_price=100.0,
-        quantity=2.0,
+        symbol=symbol,
+        entry_price=entry_price,
+        quantity=quantity,
         stop_loss=95.0,
         take_profit=110.0,
     )
@@ -45,8 +49,13 @@ def test_has_open_position():
 
     portfolio.add_position(position)
 
-    assert portfolio.has_open_position("BTC/USDC")
-    assert not portfolio.has_open_position("ETH/USDC")
+    assert portfolio.has_open_position(
+        "BTC/USDC"
+    )
+
+    assert not portfolio.has_open_position(
+        "ETH/USDC"
+    )
 
 
 def test_close_position_moves_position():
@@ -107,6 +116,84 @@ def test_equity_with_open_position():
 
     portfolio.add_position(position)
 
-    position.update_price(105.0)
+    position.update_price(
+        105.0
+    )
 
     assert portfolio.equity == ACCOUNT_SIZE + 10
+
+
+def test_reject_position_without_cash():
+
+    portfolio = Portfolio()
+
+    position = create_position(
+        entry_price=2000.0,
+        quantity=1.0,
+    )
+
+    accepted = portfolio.add_position(
+        position
+    )
+
+    assert accepted is False
+
+    assert (
+        portfolio.open_positions_count
+        == 0
+    )
+
+    assert (
+        portfolio.cash
+        == ACCOUNT_SIZE
+    )
+
+
+def test_max_open_positions():
+
+    portfolio = Portfolio()
+
+    accepted_positions = []
+
+    for index in range(
+        MAX_OPEN_POSITIONS + 1
+    ):
+
+        position = create_position(
+            symbol=f"COIN{index}",
+        )
+
+        accepted_positions.append(
+            portfolio.add_position(
+                position
+            )
+        )
+
+    assert (
+        accepted_positions.count(True)
+        == MAX_OPEN_POSITIONS
+    )
+
+    assert (
+        accepted_positions[-1]
+        is False
+    )
+
+
+def test_cash_never_negative():
+
+    portfolio = Portfolio()
+
+    position = create_position(
+        entry_price=500.0,
+        quantity=1.0,
+    )
+
+    portfolio.add_position(
+        position
+    )
+
+    assert (
+        portfolio.cash
+        >= 0
+    )

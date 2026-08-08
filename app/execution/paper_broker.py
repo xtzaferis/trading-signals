@@ -1,11 +1,8 @@
 from datetime import datetime
 
 from app.config.settings import (
-    BREAK_EVEN_ENABLED,
-    BREAK_EVEN_R,
     SLIPPAGE,
     TRADING_FEE,
-    TRAILING_STOP_ENABLED,
 )
 from app.execution.broker import Broker
 from app.models.position import Position
@@ -13,7 +10,7 @@ from app.models.trade_plan import TradePlan
 from app.trading.portfolio import Portfolio
 
 
-class BacktestBroker(Broker):
+class PaperBroker(Broker):
 
     def __init__(
         self,
@@ -52,29 +49,25 @@ class BacktestBroker(Broker):
             opened_at=opened_at,
         )
 
-        position.initial_risk = (
-            abs(
-                execution_price
-                - trade_plan.stop_loss
-            )
-        )
-
         position.update_price(
             execution_price
         )
 
-        self.portfolio.add_position(
-            position
-        )
-
-        entry_fee = (
+        position.entry_fee = (
             trade_plan.position_size
             * TRADING_FEE
         )
 
-        position.entry_fee = entry_fee
+        added = self.portfolio.add_position(
+            position
+        )
 
-        self.portfolio.cash -= entry_fee
+        if not added:
+            return None
+
+        self.portfolio.cash -= (
+            position.entry_fee
+        )
 
         return position
 
@@ -88,7 +81,7 @@ class BacktestBroker(Broker):
     ) -> bool:
 
         position.update_price(
-            high
+            close
         )
 
         if low <= position.stop_loss:
@@ -111,57 +104,7 @@ class BacktestBroker(Broker):
 
             return True
 
-        self.manage_position(
-            position
-        )
-
-        position.update_price(
-            close
-        )
-
         return False
-
-    def manage_position(
-        self,
-        position: Position,
-    ):
-
-        if position.initial_risk <= 0:
-            return
-
-        profit = (
-            position.highest_price
-            - position.entry_price
-        )
-
-        r_multiple = (
-            profit
-            /
-            position.initial_risk
-        )
-
-        if (
-            BREAK_EVEN_ENABLED
-            and not position.break_even
-            and r_multiple >= BREAK_EVEN_R
-        ):
-
-            position.move_to_break_even()
-
-        if TRAILING_STOP_ENABLED:
-
-            trailing_distance = (
-                position.initial_risk
-            )
-
-            new_stop = (
-                position.highest_price
-                - trailing_distance
-            )
-
-            position.update_trailing_stop(
-                new_stop
-            )
 
     def close(
         self,
@@ -192,12 +135,9 @@ class BacktestBroker(Broker):
         )
 
         gross_pnl = (
-            (
-                execution_price
-                - position.entry_price
-            )
-            * position.quantity
-        )
+            execution_price
+            - position.entry_price
+        ) * position.quantity
 
         net_pnl = (
             gross_pnl
@@ -215,4 +155,6 @@ class BacktestBroker(Broker):
             net_pnl
         )
 
-        self.portfolio.cash -= exit_fee
+        self.portfolio.cash -= (
+            exit_fee
+        )

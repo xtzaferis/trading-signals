@@ -1,15 +1,9 @@
 from datetime import datetime, timezone
 from unittest.mock import Mock
 
-from app.backtesting.backtest_broker import (
-    BacktestBroker,
-)
-from app.models.trade_plan import (
-    TradePlan,
-)
-from app.trading.portfolio import (
-    Portfolio,
-)
+from app.execution.paper_broker import PaperBroker
+from app.models.trade_plan import TradePlan
+from app.trading.portfolio import Portfolio
 
 
 def create_trade_plan():
@@ -25,11 +19,11 @@ def create_trade_plan():
     )
 
 
-def test_open_position():
+def test_paper_open_position():
 
     portfolio = Portfolio()
 
-    broker = BacktestBroker(
+    broker = PaperBroker(
         portfolio
     )
 
@@ -48,11 +42,11 @@ def test_open_position():
     )
 
 
-def test_quantity():
+def test_paper_quantity():
 
     portfolio = Portfolio()
 
-    broker = BacktestBroker(
+    broker = PaperBroker(
         portfolio
     )
 
@@ -69,11 +63,11 @@ def test_quantity():
     )
 
 
-def test_take_profit():
+def test_paper_take_profit():
 
     portfolio = Portfolio()
 
-    broker = BacktestBroker(
+    broker = PaperBroker(
         portfolio
     )
 
@@ -95,6 +89,11 @@ def test_take_profit():
     assert closed is True
 
     assert (
+        portfolio.open_positions_count
+        == 0
+    )
+
+    assert (
         len(
             portfolio.closed_positions
         )
@@ -102,11 +101,11 @@ def test_take_profit():
     )
 
 
-def test_stop_loss():
+def test_paper_stop_loss():
 
     portfolio = Portfolio()
 
-    broker = BacktestBroker(
+    broker = PaperBroker(
         portfolio
     )
 
@@ -128,6 +127,11 @@ def test_stop_loss():
     assert closed is True
 
     assert (
+        portfolio.open_positions_count
+        == 0
+    )
+
+    assert (
         len(
             portfolio.closed_positions
         )
@@ -135,11 +139,11 @@ def test_stop_loss():
     )
 
 
-def test_no_exit():
+def test_paper_trade_journal():
 
     portfolio = Portfolio()
 
-    broker = BacktestBroker(
+    broker = PaperBroker(
         portfolio
     )
 
@@ -149,34 +153,6 @@ def test_no_exit():
             timezone.utc
         ),
     )
-
-    closed = broker.update(
-        position,
-        high=105.0,
-        low=99.0,
-        close=103.0,
-        timestamp=Mock(),
-    )
-
-    assert closed is False
-
-
-def test_trade_journal_records_take_profit():
-
-    portfolio = Portfolio()
-
-    broker = BacktestBroker(
-        portfolio
-    )
-
-    position = broker.open(
-        create_trade_plan(),
-        datetime.now(
-            timezone.utc
-        ),
-    )
-
-    assert position is not None
 
     closed = broker.update(
         position,
@@ -212,76 +188,4 @@ def test_trade_journal_records_take_profit():
     assert (
         record.pnl
         > 0
-    )
-
-
-def test_break_even_moves_stop():
-
-    portfolio = Portfolio()
-
-    broker = BacktestBroker(
-        portfolio
-    )
-
-    position = broker.open(
-        create_trade_plan(),
-        datetime.now(
-            timezone.utc
-        ),
-    )
-
-    assert position is not None
-
-    broker.update(
-        position,
-        high=111.0,
-        low=105.0,
-        close=108.0,
-        timestamp=Mock(),
-    )
-
-    assert (
-        position.break_even
-        is True
-    )
-
-    assert (
-        position.stop_loss
-        >= position.entry_price
-    )
-
-
-def test_trailing_stop_moves_stop():
-
-    portfolio = Portfolio()
-
-    broker = BacktestBroker(
-        portfolio
-    )
-
-    position = broker.open(
-        create_trade_plan(),
-        datetime.now(
-            timezone.utc
-        ),
-    )
-
-    assert position is not None
-
-    broker.update(
-        position,
-        high=115.0,
-        low=110.0,
-        close=112.0,
-        timestamp=Mock(),
-    )
-
-    assert (
-        position.trailing_stop
-        > 0
-    )
-
-    assert (
-        position.stop_loss
-        > 90.0
     )

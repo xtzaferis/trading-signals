@@ -33,6 +33,14 @@ class Position:
 
     realized_pnl: float = 0.0
 
+    initial_risk: float = 0.0
+
+    trailing_stop: float = 0.0
+
+    entry_fee: float = 0.0
+
+    exit_reason: str | None = None
+
     @property
     def market_value(self) -> float:
 
@@ -60,6 +68,14 @@ class Position:
             - self.entry_price
         ) * self.quantity
 
+    @property
+    def risk(self) -> float:
+
+        return abs(
+            self.entry_price
+            - self.stop_loss
+        )
+
     def update_price(
         self,
         price: float,
@@ -73,6 +89,27 @@ class Position:
         ):
 
             self.highest_price = price
+
+    def move_to_break_even(
+        self,
+    ):
+
+        self.stop_loss = (
+            self.entry_price
+        )
+
+        self.break_even = True
+
+    def update_trailing_stop(
+        self,
+        stop_price: float,
+    ):
+
+        if stop_price > self.stop_loss:
+
+            self.stop_loss = stop_price
+
+            self.trailing_stop = stop_price
 
     def close(
         self,

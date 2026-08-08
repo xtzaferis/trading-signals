@@ -15,6 +15,10 @@ class StatisticsService:
             portfolio.closed_positions
         )
 
+        report.initial_equity = (
+            portfolio.initial_balance
+        )
+
         report.trades = len(
             closed
         )
@@ -101,5 +105,95 @@ class StatisticsService:
         report.current_equity = (
             portfolio.equity
         )
+
+        if report.initial_equity > 0:
+
+            report.total_return = (
+                (
+                    report.current_equity
+                    - report.initial_equity
+                )
+                / report.initial_equity
+            ) * 100
+
+        equity = (
+            report.initial_equity
+        )
+
+        peak = equity
+
+        max_drawdown = 0.0
+
+        for position in closed:
+
+            equity += (
+                position.realized_pnl
+            )
+
+            peak = max(peak, equity)
+
+            drawdown = (
+                (equity - peak)
+                / peak
+            ) * 100
+
+            max_drawdown = min(max_drawdown, drawdown)
+
+        report.peak_equity = peak
+
+        report.max_drawdown = (
+            max_drawdown
+        )
+
+        if peak > 0:
+
+            report.current_drawdown = (
+                (
+                    report.current_equity
+                    - peak
+                )
+                / peak
+            ) * 100
+
+        if report.trades > 0:
+
+            report.expectancy = (
+                (
+                    report.win_rate / 100
+                )
+                * report.average_winner
+                +
+                (
+                    1
+                    - report.win_rate / 100
+                )
+                * report.average_loser
+            )
+
+        if closed:
+
+            r_values = [
+                (
+                    position.realized_pnl
+                    /
+                    abs(
+                        position.entry_price
+                        - position.stop_loss
+                    )
+                )
+                for position in closed
+                if (
+                    position.entry_price
+                    != position.stop_loss
+                )
+            ]
+
+            if r_values:
+
+                report.average_r = (
+                    sum(r_values)
+                    /
+                    len(r_values)
+                )
 
         return report
