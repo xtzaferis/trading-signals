@@ -14,9 +14,11 @@ def trend_filter(trend):
     4H Trend Gate
     """
 
+    # Allow early bullish trends while keeping 200 EMA protection.
+    # Full alignment (EMA20 > EMA50 > EMA200) remains the strongest case.
     return (
         trend["ema20"] > trend["ema50"]
-        and trend["ema50"] > trend["ema200"]
+        and trend["ema50"] >= trend["ema200"]
     )
 
 

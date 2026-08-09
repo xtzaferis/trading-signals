@@ -36,6 +36,19 @@ class SignalEngine:
         entry = data["entry"]
 
 
+        logger.info(
+            f"SIGNAL INPUT | "
+            f"symbol={symbol} | "
+            f"EMA20={trend.get('ema20')} | "
+            f"EMA50={trend.get('ema50')} | "
+            f"EMA200={trend.get('ema200')} | "
+            f"MACD={confirm.get('macd')} | "
+            f"MACD_SIGNAL={confirm.get('macd_signal')} | "
+            f"RSI={entry.get('rsi')} | "
+            f"ADX={entry.get('adx')}"
+        )
+
+
         # ---------------------------------
         # Gate Strategy
         # ---------------------------------
