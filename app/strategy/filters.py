@@ -24,13 +24,16 @@ def confirmation_filter(confirm):
     """
     1H Confirmation Gate
 
-    MACD must be above signal line.
+    Accept bullish momentum:
+    - MACD above signal
+    - OR MACD close to signal with positive momentum
     """
 
+    macd = confirm["macd"]
+    signal = confirm["macd_signal"]
+
     return (
-        confirm["macd"]
-        >
-        confirm["macd_signal"]
+        macd >= signal * 0.995
     )
 
 
@@ -40,8 +43,8 @@ def entry_filter(entry):
     """
 
     return (
-        50 <= entry["rsi"] <= 65
-        and entry["adx"] > 25
+        50 <= entry["rsi"] <= 70
+        and entry["adx"] > 20
     )
 
 

@@ -49,7 +49,10 @@ class SignalEngine:
             )
 
             logger.info(
-                "SIGNAL BLOCKED: TREND"
+                f"SIGNAL BLOCKED: TREND | "
+                f"EMA20={trend.get('ema20')} | "
+                f"EMA50={trend.get('ema50')} | "
+                f"EMA200={trend.get('ema200')}"
             )
 
             return result
@@ -66,8 +69,8 @@ class SignalEngine:
 
             logger.info(
                 f"SIGNAL BLOCKED: CONFIRMATION | "
-                f"MACD={confirm['macd']} | "
-                f"SIGNAL={confirm['macd_signal']}"
+                f"MACD={confirm.get('macd')} | "
+                f"SIGNAL={confirm.get('macd_signal')}"
             )
 
             return result
@@ -83,7 +86,9 @@ class SignalEngine:
             )
 
             logger.info(
-                "SIGNAL BLOCKED: ENTRY"
+                f"SIGNAL BLOCKED: ENTRY | "
+                f"RSI={entry.get('rsi')} | "
+                f"ADX={entry.get('adx')}"
             )
 
             return result
@@ -128,8 +133,9 @@ class SignalEngine:
 
         logger.info(
             f"SCORE DEBUG | "
-            f"score={result.score} | "
-            f"confidence={result.confidence} | "
+            f"symbol={symbol} | "
+            f"score={result.score}/100 | "
+            f"confidence={result.confidence:.2f} | "
             f"reasons={result.reasons}"
         )
 
@@ -142,11 +148,25 @@ class SignalEngine:
                 "Score below minimum"
             )
 
+
+            logger.info(
+                f"SIGNAL BLOCKED: SCORE | "
+                f"score={result.score} | "
+                f"minimum={MIN_SCORE}"
+            )
+
             return result
 
 
 
         result.action = "BUY"
+
+
+        logger.info(
+            f"SIGNAL APPROVED: BUY | "
+            f"symbol={symbol} | "
+            f"score={result.score}"
+        )
 
 
         return result
