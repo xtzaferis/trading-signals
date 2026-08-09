@@ -17,7 +17,6 @@ class PaperBroker(Broker):
         self,
         portfolio: Portfolio,
     ):
-
         self.portfolio = portfolio
 
 
@@ -88,6 +87,11 @@ class PaperBroker(Broker):
         )
 
 
+        position.original_entry_price = (
+            trade_plan.entry
+        )
+
+
         position.update_price(
             execution_price
         )
@@ -101,7 +105,8 @@ class PaperBroker(Broker):
 
 
         logger.info(
-            f"OPEN EXEC -> price={execution_price:.6f} qty={quantity:.8f} "
+            f"OPEN EXEC -> price={execution_price:.6f} "
+            f"qty={quantity:.8f} "
             f"position_value={trade_plan.position_size:.6f} "
             f"entry_fee={position.entry_fee:.6f}"
         )
@@ -113,7 +118,6 @@ class PaperBroker(Broker):
 
 
         if not added:
-
             logger.info(
                 "PORTFOLIO rejected the position (insufficient cash or max positions)."
             )
@@ -162,7 +166,6 @@ class PaperBroker(Broker):
     ) -> bool:
 
 
-        # Exit checks
         if low <= position.stop_loss:
 
             self.close(
@@ -187,7 +190,6 @@ class PaperBroker(Broker):
 
 
 
-        # Position management (break-even / trailing stop)
         position.update_price(
             high
         )
@@ -206,15 +208,18 @@ class PaperBroker(Broker):
         return False
 
 
+
     def manage_position(
         self,
         position: Position,
     ):
+
         from app.config.settings import (
             BREAK_EVEN_ENABLED,
             BREAK_EVEN_R,
             TRAILING_STOP_ENABLED,
         )
+
 
         if position.initial_risk <= 0:
             return
@@ -239,7 +244,6 @@ class PaperBroker(Broker):
             and not position.break_even
             and r_multiple >= BREAK_EVEN_R
         ):
-
             position.move_to_break_even()
 
 
@@ -319,11 +323,17 @@ class PaperBroker(Broker):
             exit_fee
         )
 
-        # Log exit calculations
+
         logger.info(
-            f"CLOSE EXEC -> price={execution_price:.6f} qty={position.quantity:.8f} "
-            f"exit_value={exit_value:.6f} exit_fee={exit_fee:.6f} gross_pnl={gross_pnl:.6f} net_pnl={net_pnl:.6f}"
+            f"CLOSE EXEC -> "
+            f"price={execution_price:.6f} "
+            f"qty={position.quantity:.8f} "
+            f"exit_value={exit_value:.6f} "
+            f"exit_fee={exit_fee:.6f} "
+            f"gross_pnl={gross_pnl:.6f} "
+            f"net_pnl={net_pnl:.6f}"
         )
+
 
         self.portfolio.close_position(
             position,
@@ -331,9 +341,11 @@ class PaperBroker(Broker):
             reason,
         )
 
+
         position.realized_pnl = (
             net_pnl
         )
+
 
         if self.portfolio.trade_history:
 
@@ -346,16 +358,19 @@ class PaperBroker(Broker):
             exit_fee
         )
 
+
         if self.portfolio.cash < -0.01:
+
             logger.warning(
                 f"WARNING: Cash close to negative after exit fee! "
                 f"cash={self.portfolio.cash}, exit_fee={exit_fee}"
             )
 
+
         logger.info(
             f"POSITION CLOSE VALIDATED -> "
             f"symbol={position.symbol} "
-            f"pnl={net_pnl:.2f} "
+            f"pnl={net_pnl:.6f} "
             f"reason={reason} "
             f"cash_remaining={self.portfolio.cash:.2f}"
         )

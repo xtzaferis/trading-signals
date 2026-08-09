@@ -178,9 +178,6 @@ class BacktestEngine:
                     logger.info(
                         "Position closed."
                     )
-
-
-
             #
             # Evaluate signal
             #

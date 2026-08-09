@@ -109,7 +109,7 @@ def test_engine_closes_position_on_take_profit():
 
     assert (
         round(position.realized_pnl, 6)
-        == 96.801649
+        == 97.300650
     )
 
 
@@ -156,7 +156,7 @@ def test_engine_closes_position_on_stop_loss():
 
     assert (
         round(position.realized_pnl, 6)
-        == -52.898576
+        == -52.399575
     )
 
 
@@ -174,7 +174,7 @@ def test_engine_full_trade_lifecycle_take_profit():
     second_market = {
     "entry": {
         "close": 120.0,
-        "high": 120.0,
+        "high": 120.10,
         "low": 119.0,
         "atr": 5.0,
     },

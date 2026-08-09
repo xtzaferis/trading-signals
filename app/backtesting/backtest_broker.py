@@ -38,32 +38,8 @@ class BacktestBroker(Broker):
 
         execution_price = (
             trade_plan.entry
-            * (1 + SLIPPAGE)
-        )
-
-
-        original_risk = (
-            trade_plan.entry
-            -
-            trade_plan.stop_loss
-        )
-
-
-        stop_loss = (
-            execution_price
-            -
-            original_risk
-        )
-
-
-        take_profit = (
-            execution_price
-            +
-            (
-                original_risk
-                *
-                trade_plan.risk_reward
-            )
+            *
+            (1 + SLIPPAGE)
         )
 
 
@@ -78,8 +54,8 @@ class BacktestBroker(Broker):
             symbol=trade_plan.symbol,
             entry_price=execution_price,
             quantity=quantity,
-            stop_loss=stop_loss,
-            take_profit=take_profit,
+            stop_loss=trade_plan.stop_loss,
+            take_profit=trade_plan.take_profit,
             opened_at=opened_at,
         )
 
@@ -87,12 +63,7 @@ class BacktestBroker(Broker):
         position.initial_risk = abs(
             execution_price
             -
-            stop_loss
-        )
-
-
-        position.update_price(
-            execution_price
+            trade_plan.stop_loss
         )
 
 
@@ -103,8 +74,14 @@ class BacktestBroker(Broker):
         )
 
 
+        position.update_price(
+            execution_price
+        )
+
+
         logger.info(
-            f"OPEN EXEC -> price={execution_price:.6f} qty={quantity:.8f} "
+            f"OPEN EXEC -> price={execution_price:.6f} "
+            f"qty={quantity:.8f} "
             f"position_value={trade_plan.position_size:.6f} "
             f"entry_fee={position.entry_fee:.6f}"
         )
@@ -112,33 +89,6 @@ class BacktestBroker(Broker):
 
         self.portfolio.add_position(
             position
-        )
-
-
-        logger.info(
-            f"PORTFOLIO -> open_positions={len(self.portfolio.open_positions)} "
-            f"cash_after_cost={self.portfolio.cash - position.entry_fee:.6f}"
-        )
-
-
-        self.portfolio.cash -= (
-            position.entry_fee
-        )
-
-
-        if self.portfolio.cash < 0:
-            self.portfolio.cash = 0.0
-
-
-        logger.info(
-            f"POSITION OPEN VALIDATED -> "
-            f"symbol={position.symbol} "
-            f"entry={position.entry_price:.6f} "
-            f"qty={position.quantity:.8f} "
-            f"initial_risk={position.initial_risk:.6f} "
-            f"stop_loss={position.stop_loss:.6f} "
-            f"take_profit={position.take_profit:.6f} "
-            f"cash_remaining={self.portfolio.cash:.2f}"
         )
 
 
@@ -155,10 +105,6 @@ class BacktestBroker(Broker):
         timestamp: datetime,
     ) -> bool:
 
-
-        # -------------------------------
-        # Exit checks
-        # -------------------------------
 
         if low <= position.stop_loss:
 
@@ -181,11 +127,6 @@ class BacktestBroker(Broker):
 
             return True
 
-
-
-        # -------------------------------
-        # Position management
-        # -------------------------------
 
         position.update_price(
             high
@@ -210,7 +151,6 @@ class BacktestBroker(Broker):
         self,
         position: Position,
     ):
-
 
         if position.initial_risk <= 0:
             return
@@ -239,7 +179,6 @@ class BacktestBroker(Broker):
             position.move_to_break_even()
 
 
-
         if TRAILING_STOP_ENABLED:
 
             trailing_distance = (
@@ -266,7 +205,6 @@ class BacktestBroker(Broker):
         price: float,
         reason: str = "MANUAL",
     ):
-
 
         execution_price = (
             price
@@ -303,26 +241,45 @@ class BacktestBroker(Broker):
         ) * position.quantity
 
 
+        entry_slippage_cost = (
+            position.entry_price
+            *
+            position.quantity
+            *
+            SLIPPAGE
+        )
+
+
         net_pnl = (
             gross_pnl
             -
             entry_fee
             -
             exit_fee
+            -
+            entry_slippage_cost
         )
 
-        # Log exit calculations
+
         logger.info(
-            f"CLOSE EXEC -> price={execution_price:.6f} qty={position.quantity:.8f} "
-            f"exit_value={exit_value:.6f} exit_fee={exit_fee:.6f} gross_pnl={gross_pnl:.6f} net_pnl={net_pnl:.6f}"
+            f"CLOSE EXEC -> "
+            f"price={execution_price:.6f} "
+            f"qty={position.quantity:.8f} "
+            f"exit_value={exit_value:.6f} "
+            f"exit_fee={exit_fee:.6f} "
+            f"entry_slippage_cost={entry_slippage_cost:.6f} "
+            f"gross_pnl={gross_pnl:.6f} "
+            f"net_pnl={net_pnl:.6f}"
         )
 
-        # IMPORTANT:
-        # Set pnl BEFORE portfolio persistence
 
-        position.realized_pnl = net_pnl
+        position.realized_pnl = (
+            net_pnl
+        )
 
-        position.exit_reason = reason
+        position.exit_reason = (
+            reason
+        )
 
 
         self.portfolio.close_position(
@@ -332,20 +289,9 @@ class BacktestBroker(Broker):
         )
 
 
-        self.portfolio.cash -= (
-            exit_fee
-        )
-
-        if self.portfolio.cash < -0.01:
-            logger.warning(
-                f"WARNING: Cash close to negative after exit fee! "
-                f"cash={self.portfolio.cash}, exit_fee={exit_fee}"
-            )
-
         logger.info(
             f"POSITION CLOSE VALIDATED -> "
             f"symbol={position.symbol} "
-            f"pnl={net_pnl:.2f} "
-            f"reason={reason} "
-            f"cash_remaining={self.portfolio.cash:.2f}"
+            f"pnl={position.realized_pnl:.6f} "
+            f"reason={reason}"
         )
