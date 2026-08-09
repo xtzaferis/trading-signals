@@ -21,7 +21,7 @@ class Timeline:
         self,
     ) -> bool:
 
-        return (
+        return bool(
             self.current_index
             < len(self.data["15m"])
         )

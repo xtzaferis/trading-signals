@@ -86,13 +86,15 @@ MIN_SCORE = 85
 
 RISK_PER_TRADE = 0.01
 
-MAX_OPEN_POSITIONS = 3
+MAX_OPEN_POSITIONS = 2
 
-MAX_POSITION_SIZE = 0.20
+MAX_POSITION_SIZE = 0.10
 
 ATR_MULTIPLIER = 2.0
 
 RISK_REWARD_RATIO = 2.0
+
+MAX_DRAWDOWN_PCT = 0.15
 
 
 # =====================================
@@ -106,6 +108,8 @@ BREAK_EVEN_ENABLED = True
 BREAK_EVEN_R = 1.0
 
 TRAILING_STOP_ENABLED = True
+
+MAX_POSITION_HOLD_HOURS = 24
 
 
 # =====================================

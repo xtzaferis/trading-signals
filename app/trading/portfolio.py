@@ -1,20 +1,22 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from app.config.settings import (
     ACCOUNT_SIZE,
     MAX_OPEN_POSITIONS,
 )
+from app.core.logger import logger
 from app.models.position import Position
 from app.models.trade_record import TradeRecord
 
 
 class Portfolio:
 
-    def __init__(self):
+    def __init__(self) -> None:
 
-        self.initial_balance = ACCOUNT_SIZE
+        self.initial_balance: float = float(ACCOUNT_SIZE)
 
-        self.cash = ACCOUNT_SIZE
+        self.cash: float = float(ACCOUNT_SIZE)
 
         self.open_positions: list[Position] = []
 
@@ -22,15 +24,21 @@ class Portfolio:
 
         self.trade_history: list[TradeRecord] = []
 
-        self.trade_repository = None
+        self.trade_repository: Any = None
+
+        self.peak_equity: float = float(ACCOUNT_SIZE)
+
+        self.max_drawdown: float = 0.0
 
 
     @property
     def equity(self) -> float:
 
-        positions_value = sum(
-            position.market_value
-            for position in self.open_positions
+        positions_value = float(
+            sum(
+                position.market_value
+                for position in self.open_positions
+            )
         )
 
         return (
@@ -42,9 +50,11 @@ class Portfolio:
     @property
     def realized_pnl(self) -> float:
 
-        return sum(
-            position.realized_pnl
-            for position in self.closed_positions
+        return float(
+            sum(
+                position.realized_pnl
+                for position in self.closed_positions
+            )
         )
 
 
@@ -60,6 +70,38 @@ class Portfolio:
     def available_cash(self) -> float:
 
         return self.cash
+
+
+    def update_peak_equity(self) -> None:
+        self.peak_equity = max(
+            self.peak_equity,
+            self.equity,
+        )
+
+        current_drawdown = (
+            (self.peak_equity - self.equity)
+            / self.peak_equity
+        )
+        self.max_drawdown = max(
+            self.max_drawdown,
+            current_drawdown,
+        )
+
+
+    def get_drawdown_percent(self) -> float:
+        if self.peak_equity <= 0:
+            return 0.0
+        return (
+            (self.peak_equity - self.equity)
+            / self.peak_equity
+        ) * 100
+
+
+    def is_max_drawdown_exceeded(
+        self,
+        max_drawdown_pct: float,
+    ) -> bool:
+        return self.get_drawdown_percent() > max_drawdown_pct
 
 
     def has_open_position(
@@ -92,7 +134,7 @@ class Portfolio:
         )
 
 
-        return (
+        return bool(
             required_cash
             <= self.cash
         )
@@ -183,6 +225,11 @@ class Portfolio:
 
         self.cash += proceeds
 
+        if self.cash < -0.01:
+            logger.warning(
+                f"WARNING: Cash close to negative! "
+                f"cash={self.cash}, proceeds={proceeds}"
+            )
 
 
         self.open_positions.remove(

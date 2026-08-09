@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.backtesting.data_feed import DataFeed
 
 
@@ -5,13 +7,13 @@ class HistoricalFeed(DataFeed):
 
     def __init__(self):
 
-        self.data = {}
-        self.timeline = None
+        self.data: dict[str, Any] = {}
+        self.timeline: Any = None
 
 
     def load(
         self,
-        data: dict,
+        data: dict[str, Any],
     ):
 
         self.data = data
@@ -29,7 +31,7 @@ class HistoricalFeed(DataFeed):
         self,
     ) -> bool:
 
-        return self.timeline.has_next()
+        return bool(self.timeline.has_next())
 
 
     def next(

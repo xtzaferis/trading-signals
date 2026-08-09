@@ -97,6 +97,22 @@ class BacktestBroker(Broker):
             position.entry_fee
         )
 
+        if self.portfolio.cash < -0.01:
+            logger.warning(
+                f"WARNING: Cash close to negative after entry fee! "
+                f"cash={self.portfolio.cash}, entry_fee={position.entry_fee}"
+            )
+
+        logger.info(
+            f"POSITION OPEN VALIDATED -> "
+            f"symbol={position.symbol} "
+            f"entry={position.entry_price:.6f} "
+            f"qty={position.quantity:.8f} "
+            f"initial_risk={position.initial_risk:.6f} "
+            f"stop_loss={position.stop_loss:.6f} "
+            f"take_profit={position.take_profit:.6f} "
+            f"cash_remaining={self.portfolio.cash:.2f}"
+        )
 
         return position
 
@@ -290,4 +306,18 @@ class BacktestBroker(Broker):
 
         self.portfolio.cash -= (
             exit_fee
+        )
+
+        if self.portfolio.cash < -0.01:
+            logger.warning(
+                f"WARNING: Cash close to negative after exit fee! "
+                f"cash={self.portfolio.cash}, exit_fee={exit_fee}"
+            )
+
+        logger.info(
+            f"POSITION CLOSE VALIDATED -> "
+            f"symbol={position.symbol} "
+            f"pnl={net_pnl:.2f} "
+            f"reason={reason} "
+            f"cash_remaining={self.portfolio.cash:.2f}"
         )

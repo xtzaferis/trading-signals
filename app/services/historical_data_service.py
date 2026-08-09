@@ -1,4 +1,6 @@
 
+from typing import Any
+
 from app.core.logger import logger
 from app.exchange.okx_client import OKXClient
 
@@ -18,14 +20,14 @@ class HistoricalDataService:
         symbol: str,
         timeframe: str,
         limit: int = 1000,
-    ) -> list:
+    ) -> list[Any]:
 
         logger.info(
             f"Loading {symbol} "
             f"{timeframe} candles..."
         )
 
-        candles = (
+        candles: list[Any] = list(
             self.exchange.fetch_ohlcv(
                 symbol=symbol,
                 timeframe=timeframe,
@@ -44,9 +46,9 @@ class HistoricalDataService:
         symbol: str,
         timeframes: list[str],
         limit: int = 1000,
-    ) -> dict:
+    ) -> dict[str, list[Any]]:
 
-        data = {}
+        data: dict[str, list[Any]] = {}
 
         for timeframe in timeframes:
 

@@ -19,7 +19,7 @@ class PortfolioRepository:
                 "SELECT COUNT(*) FROM portfolio"
             )
 
-            count = cursor.fetchone()[0]
+            count: int = cursor.fetchone()[0]
 
             return count > 0
 

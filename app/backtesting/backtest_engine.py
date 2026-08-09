@@ -6,6 +6,7 @@ from app.backtesting.market_provider import (
 )
 from app.config.settings import (
     MARKET_SYMBOL,
+    MAX_DRAWDOWN_PCT,
 )
 from app.core.logger import logger
 from app.execution.broker_factory import (
@@ -160,6 +161,30 @@ class BacktestEngine:
                         f"CLOSED POSITIONS: "
                         f"{len(self.portfolio.closed_positions)}"
 )
+
+                    # Update peak equity and check drawdown
+                    self.portfolio.update_peak_equity()
+                    
+                    drawdown_pct = (
+                        self.portfolio.get_drawdown_percent()
+                    )
+                    
+                    logger.info(
+                        f"EQUITY: {self.portfolio.equity:.2f} "
+                        f"PEAK: {self.portfolio.peak_equity:.2f} "
+                        f"DRAWDOWN: {drawdown_pct:.2f}%"
+                    )
+                    
+                    if (
+                        self.portfolio.is_max_drawdown_exceeded(
+                            MAX_DRAWDOWN_PCT * 100
+                        )
+                    ):
+                        logger.warning(
+                            f"MAX DRAWDOWN EXCEEDED ({drawdown_pct:.2f}% > {MAX_DRAWDOWN_PCT * 100:.2f}%). "
+                            f"HALTING TRADING."
+                        )
+                        return
 
 
             #

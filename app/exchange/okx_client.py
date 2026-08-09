@@ -58,3 +58,68 @@ class OKXClient:
             timeframe=timeframe,
             limit=limit,
         )
+
+    def create_order(
+        self,
+        symbol: str,
+        order_type: str,
+        side: str,
+        amount: float,
+        price: float | None = None,
+    ):
+        """Create a spot trading order on OKX."""
+        try:
+            order = self.exchange.create_order(
+                symbol=symbol,
+                type=order_type,
+                side=side,
+                amount=amount,
+                price=price,
+            )
+            return order
+        except ccxt.ExchangeError as e:
+            msg = f"Failed to create {side} order for {symbol}: {e!s}"
+            raise ccxt.ExchangeError(msg) from e
+
+    def cancel_order(
+        self,
+        symbol: str,
+        order_id: str,
+    ):
+        """Cancel an open order on OKX."""
+        try:
+            return self.exchange.cancel_order(
+                id=order_id,
+                symbol=symbol,
+            )
+        except ccxt.ExchangeError as e:
+            msg = f"Failed to cancel order {order_id}: {e!s}"
+            raise ccxt.ExchangeError(msg) from e
+
+    def fetch_open_orders(
+        self,
+        symbol: str | None = None,
+    ):
+        """Fetch open orders from OKX."""
+        try:
+            return self.exchange.fetch_open_orders(
+                symbol=symbol
+            )
+        except ccxt.ExchangeError as e:
+            msg = f"Failed to fetch open orders: {e!s}"
+            raise ccxt.ExchangeError(msg) from e
+
+    def fetch_order(
+        self,
+        order_id: str,
+        symbol: str | None = None,
+    ):
+        """Fetch a specific order status from OKX."""
+        try:
+            return self.exchange.fetch_order(
+                id=order_id,
+                symbol=symbol,
+            )
+        except ccxt.ExchangeError as e:
+            msg = f"Failed to fetch order {order_id}: {e!s}"
+            raise ccxt.ExchangeError(msg) from e

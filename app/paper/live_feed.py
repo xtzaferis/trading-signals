@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.backtesting.data_feed import DataFeed
 
 
@@ -5,11 +7,11 @@ class LiveFeed(DataFeed):
 
     def __init__(self):
 
-        self.current_snapshot = None
+        self.current_snapshot: dict[str, Any] | None = None
 
     def update(
         self,
-        snapshot: dict,
+        snapshot: dict[str, Any],
     ):
 
         self.current_snapshot = snapshot
@@ -21,7 +23,7 @@ class LiveFeed(DataFeed):
             is not None
         )
 
-    def next(self) -> dict:
+    def next(self) -> dict[str, Any]:
 
         snapshot = (
             self.current_snapshot
@@ -29,4 +31,4 @@ class LiveFeed(DataFeed):
 
         self.current_snapshot = None
 
-        return snapshot
+        return snapshot if snapshot is not None else {}

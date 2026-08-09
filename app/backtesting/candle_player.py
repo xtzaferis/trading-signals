@@ -21,7 +21,7 @@ class CandlePlayer:
 
     def has_next(self) -> bool:
 
-        return (
+        return bool(
             self.index
             < len(self.candles)
         )
@@ -55,7 +55,9 @@ class CandlePlayer:
         if not self.candles:
             return 0.0
 
-        return (
-            self.index
-            / len(self.candles)
-        ) * 100
+        return float(
+            (
+                self.index
+                / len(self.candles)
+            ) * 100
+        )

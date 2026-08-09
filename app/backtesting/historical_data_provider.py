@@ -24,7 +24,7 @@ class HistoricalDataProvider(DataProvider):
 
     def has_next(self) -> bool:
 
-        return (
+        return bool(
             self.index
             < len(self.data["15m"])
         )

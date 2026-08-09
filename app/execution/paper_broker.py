@@ -56,6 +56,13 @@ class PaperBroker(Broker):
         )
 
 
+        position.initial_risk = abs(
+            execution_price
+            -
+            trade_plan.stop_loss
+        )
+
+
         position.update_price(
             execution_price
         )
@@ -92,6 +99,22 @@ class PaperBroker(Broker):
             position.entry_fee
         )
 
+        if self.portfolio.cash < -0.01:
+            logger.warning(
+                f"WARNING: Cash close to negative after entry fee! "
+                f"cash={self.portfolio.cash}, entry_fee={position.entry_fee}"
+            )
+
+        logger.info(
+            f"POSITION OPEN VALIDATED -> "
+            f"symbol={position.symbol} "
+            f"entry={position.entry_price:.6f} "
+            f"qty={position.quantity:.8f} "
+            f"initial_risk={position.initial_risk:.6f} "
+            f"stop_loss={position.stop_loss:.6f} "
+            f"take_profit={position.take_profit:.6f} "
+            f"cash_remaining={self.portfolio.cash:.2f}"
+        )
 
         return position
 
@@ -107,11 +130,7 @@ class PaperBroker(Broker):
     ) -> bool:
 
 
-        position.update_price(
-            close
-        )
-
-
+        # Exit checks
         if low <= position.stop_loss:
 
             self.close(
@@ -135,7 +154,81 @@ class PaperBroker(Broker):
             return True
 
 
+
+        # Position management (break-even / trailing stop)
+        position.update_price(
+            high
+        )
+
+
+        self.manage_position(
+            position
+        )
+
+
+        position.update_price(
+            close
+        )
+
+
         return False
+
+
+    def manage_position(
+        self,
+        position: Position,
+    ):
+        from app.config.settings import (
+            BREAK_EVEN_ENABLED,
+            BREAK_EVEN_R,
+            TRAILING_STOP_ENABLED,
+        )
+
+        if position.initial_risk <= 0:
+            return
+
+
+        profit = (
+            position.highest_price
+            -
+            position.entry_price
+        )
+
+
+        r_multiple = (
+            profit
+            /
+            position.initial_risk
+        )
+
+
+        if (
+            BREAK_EVEN_ENABLED
+            and not position.break_even
+            and r_multiple >= BREAK_EVEN_R
+        ):
+
+            position.move_to_break_even()
+
+
+
+        if TRAILING_STOP_ENABLED:
+
+            trailing_distance = (
+                position.initial_risk
+            )
+
+
+            new_stop = (
+                position.highest_price
+                -
+                trailing_distance
+            )
+
+
+            position.update_trailing_stop(
+                new_stop
+            )
 
 
 
@@ -218,4 +311,18 @@ class PaperBroker(Broker):
 
         self.portfolio.cash -= (
             exit_fee
+        )
+
+        if self.portfolio.cash < -0.01:
+            logger.warning(
+                f"WARNING: Cash close to negative after exit fee! "
+                f"cash={self.portfolio.cash}, exit_fee={exit_fee}"
+            )
+
+        logger.info(
+            f"POSITION CLOSE VALIDATED -> "
+            f"symbol={position.symbol} "
+            f"pnl={net_pnl:.2f} "
+            f"reason={reason} "
+            f"cash_remaining={self.portfolio.cash:.2f}"
         )
