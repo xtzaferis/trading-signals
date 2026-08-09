@@ -5,7 +5,9 @@ from app.config.settings import (
     RISK_PER_TRADE,
     RISK_REWARD_RATIO,
 )
-from app.models.trade_plan import TradePlan
+from app.models.trade_plan import (
+    TradePlan,
+)
 
 
 class RiskManager:
@@ -14,55 +16,148 @@ class RiskManager:
         self,
         signal,
         indicators,
+        available_cash: float | None = None,
     ):
 
-        entry = float(indicators["close"])
-
-        atr = float(indicators["atr"])
-
-        stop_loss = entry - (
-            atr * ATR_MULTIPLIER
+        entry = float(
+            indicators["close"]
         )
 
-        risk = entry - stop_loss
+        atr = float(
+            indicators.get(
+                "atr",
+                0.0,
+            )
+        )
+
+
+        if atr <= 0:
+
+            raise ValueError(
+                "Invalid ATR value."
+            )
+
+
+        stop_loss = (
+            entry
+            -
+            (
+                atr
+                *
+                ATR_MULTIPLIER
+            )
+        )
+
+
+        risk = (
+            entry
+            -
+            stop_loss
+        )
+
 
         if risk <= 0:
+
             raise ValueError(
                 "Invalid risk calculation."
             )
 
-        take_profit = entry + (
-            risk * RISK_REWARD_RATIO
+
+        take_profit = (
+            entry
+            +
+            (
+                risk
+                *
+                RISK_REWARD_RATIO
+            )
         )
+
+
+        capital = (
+            available_cash
+            if available_cash is not None
+            else ACCOUNT_SIZE
+        )
+
 
         capital_at_risk = (
-            ACCOUNT_SIZE * RISK_PER_TRADE
+            capital
+            *
+            RISK_PER_TRADE
         )
 
-        # units implied by the capital we're willing to risk
-        units = capital_at_risk / risk
 
-        # position value (cash) = units * entry price
-        position_value = units * entry
+        units = (
+            capital_at_risk
+            /
+            risk
+        )
+
+
+        position_value = (
+            units
+            *
+            entry
+        )
+
 
         max_position_value = (
-            ACCOUNT_SIZE * MAX_POSITION_SIZE
+            capital
+            *
+            MAX_POSITION_SIZE
         )
 
-        # cap position value to maximum allowed position size (as cash)
+
         position_value = min(
             position_value,
             max_position_value,
         )
 
-        position_size = position_value
+
+        position_size = (
+            position_value
+        )
+
+
+        print(
+            "RISK DEBUG |",
+            f"ENTRY={entry}",
+            f"ATR={atr}",
+            f"SL={stop_loss}",
+            f"TP={take_profit}",
+            f"RISK={risk}",
+            f"POSITION={position_size}",
+        )
+
 
         return TradePlan(
+
             symbol=signal.symbol,
+
             action=signal.action,
-            entry=round(entry, 6),
-            stop_loss=round(stop_loss, 6),
-            take_profit=round(take_profit, 6),
-            position_size=round(position_size, 2),
-            risk_reward=RISK_REWARD_RATIO,
+
+            entry=round(
+                entry,
+                6,
+            ),
+
+            stop_loss=round(
+                stop_loss,
+                6,
+            ),
+
+            take_profit=round(
+                take_profit,
+                6,
+            ),
+
+            position_size=round(
+                position_size,
+                2,
+            ),
+
+            risk_reward=(
+                RISK_REWARD_RATIO
+            ),
         )

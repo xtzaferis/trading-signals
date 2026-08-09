@@ -1,3 +1,4 @@
+import pandas as pd
 import ta
 
 
@@ -7,10 +8,47 @@ class IndicatorCalculator:
 
     def calculate(
         self,
-        df,
-    ):
+        df: pd.DataFrame,
+    ) -> pd.DataFrame:
 
         df = df.copy()
+
+        # Important:
+        # HistoricalFeed creates dataframe slices.
+        # Reset index before ta indicators.
+        df = (
+            df.reset_index(
+                drop=True
+            )
+        )
+
+        required = (
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        )
+
+        for column in required:
+
+            if column not in df.columns:
+
+                df[column] = 0.0
+
+
+        # Ensure numeric data
+
+        for column in required:
+
+            df[column] = pd.to_numeric(
+                df[column],
+                errors="coerce",
+            )
+
+
+        df = df.fillna(0.0)
+
 
         if len(df) < self.MIN_CANDLES:
 
@@ -24,6 +62,11 @@ class IndicatorCalculator:
             df["atr"] = 0.0
 
             return df
+
+
+        # -------------------------
+        # EMA
+        # -------------------------
 
         df["ema20"] = ta.trend.ema_indicator(
             df["close"],
@@ -40,35 +83,121 @@ class IndicatorCalculator:
             window=200,
         )
 
+
+        # -------------------------
+        # RSI
+        # -------------------------
+
         df["rsi"] = ta.momentum.rsi(
             df["close"],
             window=14,
         )
 
+
+        # -------------------------
+        # MACD
+        # -------------------------
+
         macd = ta.trend.MACD(
-            df["close"]
+            df["close"],
         )
 
-        df["macd"] = (
-            macd.macd()
-        )
+        df["macd"] = macd.macd()
 
         df["macd_signal"] = (
             macd.macd_signal()
         )
 
-        df["adx"] = ta.trend.adx(
-            df["high"],
-            df["low"],
-            df["close"],
+
+        # -------------------------
+        # ADX
+        # -------------------------
+
+        try:
+
+            df["adx"] = ta.trend.adx(
+                high=df["high"],
+                low=df["low"],
+                close=df["close"],
+                window=14,
+            )
+
+        except (
+            ValueError,
+            KeyError,
+            TypeError,
+        ):
+
+            df["adx"] = 0.0
+
+
+        # -------------------------
+        # ATR
+        # -------------------------
+
+        df["atr"] = self._calculate_atr(
+            df
         )
 
-        df["atr"] = (
-            ta.volatility.average_true_range(
-                df["high"],
-                df["low"],
-                df["close"],
-            )
-        )
+
+        # -------------------------
+        # Final cleanup
+        # -------------------------
+
+        df = df.fillna(0.0)
+
 
         return df
+
+
+
+    def _calculate_atr(
+        self,
+        df: pd.DataFrame,
+        period: int = 14,
+    ) -> pd.Series:
+
+
+        high_low = (
+            df["high"]
+            -
+            df["low"]
+        )
+
+
+        high_close = (
+            df["high"]
+            -
+            df["close"].shift()
+        ).abs()
+
+
+        low_close = (
+            df["low"]
+            -
+            df["close"].shift()
+        ).abs()
+
+
+        true_range = pd.concat(
+            [
+                high_low,
+                high_close,
+                low_close,
+            ],
+            axis=1,
+        ).max(
+            axis=1
+        )
+
+
+        atr = (
+            true_range
+            .rolling(
+                period
+            )
+            .mean()
+        )
+
+
+        return atr.fillna(0.0)

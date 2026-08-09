@@ -1,4 +1,3 @@
-
 from typing import Any
 
 from app.core.logger import logger
@@ -35,9 +34,27 @@ class HistoricalDataService:
             )
         )
 
+        #
+        # Indicators require chronological order:
+        # oldest candle -> newest candle
+        #
+        candles.sort(
+            key=lambda candle: candle[0]
+        )
+
         logger.info(
             f"Loaded {len(candles)} candles."
         )
+
+        if candles:
+
+            logger.info(
+                f"First candle timestamp: {candles[0][0]}"
+            )
+
+            logger.info(
+                f"Last candle timestamp: {candles[-1][0]}"
+            )
 
         return candles
 

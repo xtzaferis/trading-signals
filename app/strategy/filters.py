@@ -23,10 +23,14 @@ def trend_filter(trend):
 def confirmation_filter(confirm):
     """
     1H Confirmation Gate
+
+    MACD must be above signal line.
     """
 
     return (
-        confirm["macd"] > confirm["macd_signal"]
+        confirm["macd"]
+        >
+        confirm["macd_signal"]
     )
 
 
@@ -52,9 +56,14 @@ def ema_filter(
 ):
 
     if trend_filter(trend):
-        return EMA_WEIGHT, "4H EMA Trend"
+
+        return (
+            EMA_WEIGHT,
+            "4H EMA Trend"
+        )
 
     return 0, None
+
 
 
 def rsi_filter(
@@ -64,9 +73,14 @@ def rsi_filter(
 ):
 
     if 50 <= entry["rsi"] <= 65:
-        return RSI_WEIGHT, "15m Healthy RSI"
+
+        return (
+            RSI_WEIGHT,
+            "15m Healthy RSI"
+        )
 
     return 0, None
+
 
 
 def macd_filter(
@@ -76,9 +90,14 @@ def macd_filter(
 ):
 
     if confirmation_filter(confirm):
-        return MACD_WEIGHT, "1H Bullish MACD"
+
+        return (
+            MACD_WEIGHT,
+            "1H Bullish MACD"
+        )
 
     return 0, None
+
 
 
 def adx_filter(
@@ -88,6 +107,10 @@ def adx_filter(
 ):
 
     if entry["adx"] > 25:
-        return ADX_WEIGHT, "15m Strong Trend"
+
+        return (
+            ADX_WEIGHT,
+            "15m Strong Trend"
+        )
 
     return 0, None

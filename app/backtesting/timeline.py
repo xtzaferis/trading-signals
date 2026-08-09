@@ -1,12 +1,10 @@
-
-
 class Timeline:
 
     def __init__(self):
 
         self.data = {}
-
         self.current_index = 0
+
 
     def load(
         self,
@@ -14,8 +12,8 @@ class Timeline:
     ):
 
         self.data = data
-
         self.current_index = 0
+
 
     def has_next(
         self,
@@ -26,11 +24,13 @@ class Timeline:
             < len(self.data["15m"])
         )
 
+
     def step(
         self,
     ):
 
         self.current_index += 1
+
 
     def current_timestamp(
         self,
@@ -44,20 +44,20 @@ class Timeline:
 
         return candle[0]
 
+
     def latest_index(
         self,
         timeframe: str,
     ) -> int:
 
-        target = (
-            self.current_timestamp()
-        )
+        target = self.current_timestamp()
 
         candles = self.data[
             timeframe
         ]
 
         latest = 0
+
 
         for index, candle in enumerate(
             candles
@@ -70,5 +70,6 @@ class Timeline:
             else:
 
                 break
+
 
         return latest

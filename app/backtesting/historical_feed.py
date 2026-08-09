@@ -8,6 +8,7 @@ class HistoricalFeed(DataFeed):
     def __init__(self):
 
         self.data: dict[str, Any] = {}
+
         self.timeline: Any = None
 
 
@@ -31,12 +32,34 @@ class HistoricalFeed(DataFeed):
         self,
     ) -> bool:
 
-        return bool(self.timeline.has_next())
+        return bool(
+            self.timeline.has_next()
+        )
+
+
+    def validate_candles(
+        self,
+        candles: list,
+        timeframe: str,
+    ):
+
+        for candle in candles:
+
+            if (
+                not isinstance(candle, list)
+                or len(candle) != 6
+            ):
+
+                raise ValueError(
+                    f"Invalid candle format "
+                    f"in {timeframe}: {candle}"
+                )
 
 
     def next(
         self,
     ) -> dict:
+
 
         trend_index = (
             self.timeline.latest_index(
@@ -44,11 +67,13 @@ class HistoricalFeed(DataFeed):
             )
         )
 
+
         confirm_index = (
             self.timeline.latest_index(
                 "1h"
             )
         )
+
 
         entry_index = (
             self.timeline.latest_index(
@@ -57,35 +82,70 @@ class HistoricalFeed(DataFeed):
         )
 
 
+        trend_candles = (
+            self.data["4h"]
+            [
+                : trend_index + 1
+            ]
+        )
+
+
+        confirm_candles = (
+            self.data["1h"]
+            [
+                : confirm_index + 1
+            ]
+        )
+
+
+        entry_candles = (
+            self.data["15m"]
+            [
+                : entry_index + 1
+            ]
+        )
+
+
+        #
+        # Validate before sending downstream
+        #
+
+        self.validate_candles(
+            trend_candles,
+            "4h",
+        )
+
+        self.validate_candles(
+            confirm_candles,
+            "1h",
+        )
+
+        self.validate_candles(
+            entry_candles,
+            "15m",
+        )
+
+
         snapshot = {
 
             "trend": {
 
-                "candles": self.data[
-                    "4h"
-                ][
-                    : trend_index + 1
-                ],
+                "candles": trend_candles,
+
             },
 
 
             "confirm": {
 
-                "candles": self.data[
-                    "1h"
-                ][
-                    : confirm_index + 1
-                ],
+                "candles": confirm_candles,
+
             },
 
 
             "entry": {
 
-                "candles": self.data[
-                    "15m"
-                ][
-                    : entry_index + 1
-                ],
+                "candles": entry_candles,
+
             },
 
 
@@ -97,9 +157,9 @@ class HistoricalFeed(DataFeed):
         }
 
 
-        # IMPORTANT:
-        # HistoricalFeed owns timeline movement.
-        # Tests expect next() to advance.
+        #
+        # HistoricalFeed owns movement
+        #
 
         self.timeline.step()
 

@@ -38,8 +38,32 @@ class BacktestBroker(Broker):
 
         execution_price = (
             trade_plan.entry
-            *
-            (1 + SLIPPAGE)
+            * (1 + SLIPPAGE)
+        )
+
+
+        original_risk = (
+            trade_plan.entry
+            -
+            trade_plan.stop_loss
+        )
+
+
+        stop_loss = (
+            execution_price
+            -
+            original_risk
+        )
+
+
+        take_profit = (
+            execution_price
+            +
+            (
+                original_risk
+                *
+                trade_plan.risk_reward
+            )
         )
 
 
@@ -54,8 +78,8 @@ class BacktestBroker(Broker):
             symbol=trade_plan.symbol,
             entry_price=execution_price,
             quantity=quantity,
-            stop_loss=trade_plan.stop_loss,
-            take_profit=trade_plan.take_profit,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             opened_at=opened_at,
         )
 
@@ -63,7 +87,7 @@ class BacktestBroker(Broker):
         position.initial_risk = abs(
             execution_price
             -
-            trade_plan.stop_loss
+            stop_loss
         )
 
 
@@ -78,30 +102,33 @@ class BacktestBroker(Broker):
             TRADING_FEE
         )
 
-        # Log execution details
+
         logger.info(
             f"OPEN EXEC -> price={execution_price:.6f} qty={quantity:.8f} "
-            f"position_value={trade_plan.position_size:.6f} entry_fee={position.entry_fee:.6f}"
+            f"position_value={trade_plan.position_size:.6f} "
+            f"entry_fee={position.entry_fee:.6f}"
         )
+
 
         self.portfolio.add_position(
             position
         )
 
-        # confirm addition
+
         logger.info(
-            f"PORTFOLIO -> open_positions={len(self.portfolio.open_positions)} cash_after_cost={self.portfolio.cash - position.entry_fee:.6f}"
+            f"PORTFOLIO -> open_positions={len(self.portfolio.open_positions)} "
+            f"cash_after_cost={self.portfolio.cash - position.entry_fee:.6f}"
         )
+
 
         self.portfolio.cash -= (
             position.entry_fee
         )
 
-        if self.portfolio.cash < -0.01:
-            logger.warning(
-                f"WARNING: Cash close to negative after entry fee! "
-                f"cash={self.portfolio.cash}, entry_fee={position.entry_fee}"
-            )
+
+        if self.portfolio.cash < 0:
+            self.portfolio.cash = 0.0
+
 
         logger.info(
             f"POSITION OPEN VALIDATED -> "
@@ -113,6 +140,7 @@ class BacktestBroker(Broker):
             f"take_profit={position.take_profit:.6f} "
             f"cash_remaining={self.portfolio.cash:.2f}"
         )
+
 
         return position
 

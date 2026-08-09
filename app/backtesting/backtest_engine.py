@@ -6,7 +6,6 @@ from app.backtesting.market_provider import (
 )
 from app.config.settings import (
     MARKET_SYMBOL,
-    MAX_DRAWDOWN_PCT,
 )
 from app.core.logger import logger
 from app.execution.broker_factory import (
@@ -83,16 +82,38 @@ class BacktestEngine:
         logger.info("=" * 50)
 
 
-        data = (
-            self.history.load_multiple(
+        data = {
+
+            "4h": self.history.load(
                 symbol=self.symbol,
-                timeframes=[
-                    "4h",
-                    "1h",
-                    "15m",
-                ],
-                limit=2000,
-            )
+                timeframe="4h",
+                limit=300,
+            ),
+
+            "1h": self.history.load(
+                symbol=self.symbol,
+                timeframe="1h",
+                limit=600,
+            ),
+
+            "15m": self.history.load(
+                symbol=self.symbol,
+                timeframe="15m",
+                limit=1200,
+            ),
+        }
+
+
+        logger.info(
+            f"4H candles: {len(data['4h'])}"
+        )
+
+        logger.info(
+            f"1H candles: {len(data['1h'])}"
+        )
+
+        logger.info(
+            f"15M candles: {len(data['15m'])}"
         )
 
 
@@ -114,13 +135,19 @@ class BacktestEngine:
                 self.market_provider.next()
             )
 
-            entry = market[
+
+            entry = market.get(
                 "entry"
-            ]
+            )
+
+
+            if entry is None:
+
+                continue
 
 
             #
-            # 1. Manage existing positions
+            # Manage existing positions
             #
 
             for position in list(
@@ -152,43 +179,10 @@ class BacktestEngine:
                         "Position closed."
                     )
 
-                    logger.info(
-                        f"OPEN POSITIONS AFTER CLOSE: "
-                        f"{len(self.portfolio.open_positions)}"
-                    )
-
-                    logger.info(
-                        f"CLOSED POSITIONS: "
-                        f"{len(self.portfolio.closed_positions)}"
-)
-
-                    # Update peak equity and check drawdown
-                    self.portfolio.update_peak_equity()
-                    
-                    drawdown_pct = (
-                        self.portfolio.get_drawdown_percent()
-                    )
-                    
-                    logger.info(
-                        f"EQUITY: {self.portfolio.equity:.2f} "
-                        f"PEAK: {self.portfolio.peak_equity:.2f} "
-                        f"DRAWDOWN: {drawdown_pct:.2f}%"
-                    )
-                    
-                    if (
-                        self.portfolio.is_max_drawdown_exceeded(
-                            MAX_DRAWDOWN_PCT * 100
-                        )
-                    ):
-                        logger.warning(
-                            f"MAX DRAWDOWN EXCEEDED ({drawdown_pct:.2f}% > {MAX_DRAWDOWN_PCT * 100:.2f}%). "
-                            f"HALTING TRADING."
-                        )
-                        return
 
 
             #
-            # 2. Evaluate new signal
+            # Evaluate signal
             #
 
             signal = (
@@ -197,12 +191,6 @@ class BacktestEngine:
                     market,
                 )
             )
-
-            if signal.action == "BUY":
-                logger.info(
-                    f"BUY SIGNAL FOUND AT INDEX "
-                    f"{self.feed.timeline.current_index}"
-                )
 
 
             logger.info(
@@ -214,11 +202,15 @@ class BacktestEngine:
 
             if signal.action != "BUY":
 
+                logger.info(
+                    "BUY REJECTED"
+                )
+
                 continue
 
 
             #
-            # 3. Create trade plan
+            # Create trade plan
             #
 
             trade_plan = (
@@ -238,15 +230,8 @@ class BacktestEngine:
                 continue
 
 
-            # Log trade plan details for debugging
-            logger.info(
-                f"TRADE PLAN -> symbol={trade_plan.symbol} "
-                f"entry={trade_plan.entry} stop_loss={trade_plan.stop_loss} "
-                f"take_profit={trade_plan.take_profit} position_value={trade_plan.position_size}"
-            )
-
             #
-            # 4. Open position
+            # Open position
             #
 
             position = (
@@ -264,13 +249,6 @@ class BacktestEngine:
                 logger.info(
                     f"OPENED: {position.symbol} "
                     f"@ {position.entry_price}"
-                )
-
-                # Log opened position summary
-                logger.info(
-                    f"POSITION OPENED -> qty={position.quantity:.8f} "
-                    f"entry_fee={getattr(position,'entry_fee',0.0):.6f} "
-                    f"initial_risk={getattr(position,'initial_risk',0.0):.6f}"
                 )
 
 

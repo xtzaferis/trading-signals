@@ -39,6 +39,31 @@ class PaperBroker(Broker):
         )
 
 
+        original_risk = (
+            trade_plan.entry
+            -
+            trade_plan.stop_loss
+        )
+
+
+        stop_loss = (
+            execution_price
+            -
+            original_risk
+        )
+
+
+        take_profit = (
+            execution_price
+            +
+            (
+                original_risk
+                *
+                trade_plan.risk_reward
+            )
+        )
+
+
         quantity = (
             trade_plan.position_size
             /
@@ -50,8 +75,8 @@ class PaperBroker(Broker):
             symbol=trade_plan.symbol,
             entry_price=execution_price,
             quantity=quantity,
-            stop_loss=trade_plan.stop_loss,
-            take_profit=trade_plan.take_profit,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             opened_at=opened_at,
         )
 
@@ -59,7 +84,7 @@ class PaperBroker(Broker):
         position.initial_risk = abs(
             execution_price
             -
-            trade_plan.stop_loss
+            stop_loss
         )
 
 
@@ -74,36 +99,42 @@ class PaperBroker(Broker):
             TRADING_FEE
         )
 
-        # Log execution details
+
         logger.info(
             f"OPEN EXEC -> price={execution_price:.6f} qty={quantity:.8f} "
-            f"position_value={trade_plan.position_size:.6f} entry_fee={position.entry_fee:.6f}"
+            f"position_value={trade_plan.position_size:.6f} "
+            f"entry_fee={position.entry_fee:.6f}"
         )
+
 
         added = self.portfolio.add_position(
             position
         )
 
+
         if not added:
-            logger.info(
+
+            logger.info(
                 "PORTFOLIO rejected the position (insufficient cash or max positions)."
             )
+
             return None
 
-        # confirm addition
+
         logger.info(
-            f"PORTFOLIO -> open_positions={len(self.portfolio.open_positions)} cash_before_fee={self.portfolio.cash:.6f}"
+            f"PORTFOLIO -> open_positions={len(self.portfolio.open_positions)} "
+            f"cash_before_fee={self.portfolio.cash:.6f}"
         )
+
 
         self.portfolio.cash -= (
             position.entry_fee
         )
 
-        if self.portfolio.cash < -0.01:
-            logger.warning(
-                f"WARNING: Cash close to negative after entry fee! "
-                f"cash={self.portfolio.cash}, entry_fee={position.entry_fee}"
-            )
+
+        if self.portfolio.cash < 0:
+            self.portfolio.cash = 0.0
+
 
         logger.info(
             f"POSITION OPEN VALIDATED -> "
@@ -115,6 +146,7 @@ class PaperBroker(Broker):
             f"take_profit={position.take_profit:.6f} "
             f"cash_remaining={self.portfolio.cash:.2f}"
         )
+
 
         return position
 
@@ -304,7 +336,8 @@ class PaperBroker(Broker):
         )
 
         if self.portfolio.trade_history:
-            self.portfolio.trade_history[-1].pnl = (
+
+            self.portfolio.trade_history[-1].pnl = (
                 net_pnl
             )
 
