@@ -4,7 +4,10 @@ from app.config.settings import (
     MAX_POSITION_SIZE,
     RISK_PER_TRADE,
     RISK_REWARD_RATIO,
+    SLIPPAGE,
+    TRADING_FEE,
 )
+from app.core.logger import logger
 from app.models.trade_plan import (
     TradePlan,
 )
@@ -120,14 +123,52 @@ class RiskManager:
         )
 
 
-        print(
-            "RISK DEBUG |",
-            f"ENTRY={entry}",
-            f"ATR={atr}",
-            f"SL={stop_loss}",
-            f"TP={take_profit}",
-            f"RISK={risk}",
-            f"POSITION={position_size}",
+        # Small ATR targets can be nominally profitable while losing money
+        # after round-trip fees and slippage. Reject them before entry.
+        execution_entry = (
+            entry
+            * (1 + SLIPPAGE)
+        )
+
+        execution_target = (
+            execution_entry
+            + risk * RISK_REWARD_RATIO
+        ) * (1 - SLIPPAGE)
+
+        quantity = (
+            position_size
+            / execution_entry
+        )
+
+        expected_net_profit = (
+            (
+                execution_target
+                - execution_entry
+            )
+            * quantity
+            - position_size * TRADING_FEE
+            - execution_target
+            * quantity
+            * TRADING_FEE
+        )
+
+        if expected_net_profit <= 0:
+            logger.debug(
+                "Trade rejected: target does not cover "
+                "fees and slippage (expected net=%s)",
+                expected_net_profit,
+            )
+            return None
+
+
+        logger.debug(
+            "RISK | ENTRY=%s ATR=%s SL=%s TP=%s RISK=%s POSITION=%s",
+            entry,
+            atr,
+            stop_loss,
+            take_profit,
+            risk,
+            position_size,
         )
 
 

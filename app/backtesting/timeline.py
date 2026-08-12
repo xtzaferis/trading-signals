@@ -1,4 +1,13 @@
+from typing import ClassVar
+
+
 class Timeline:
+
+    TIMEFRAME_MS: ClassVar[dict[str, int]] = {
+        "15m": 15 * 60 * 1000,
+        "1h": 60 * 60 * 1000,
+        "4h": 4 * 60 * 60 * 1000,
+    }
 
     def __init__(self):
 
@@ -42,7 +51,12 @@ class Timeline:
             self.current_index
         ]
 
-        return candle[0]
+        # OHLCV timestamps identify the candle's opening time. Its final OHLC
+        # values only become available when the candle closes.
+        return (
+            candle[0]
+            + self.TIMEFRAME_MS["15m"]
+        )
 
 
     def latest_index(
@@ -56,14 +70,23 @@ class Timeline:
             timeframe
         ]
 
-        latest = 0
+        timeframe_ms = self.TIMEFRAME_MS[
+            timeframe
+        ]
+
+        latest = -1
 
 
         for index, candle in enumerate(
             candles
         ):
 
-            if candle[0] <= target:
+            candle_close = (
+                candle[0]
+                + timeframe_ms
+            )
+
+            if candle_close <= target:
 
                 latest = index
 

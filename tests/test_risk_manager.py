@@ -160,3 +160,18 @@ def test_capital_at_risk():
     assert plan.position_size > 0
     assert plan.position_size <= max_position
     assert capital_at_risk > 0
+
+
+def test_rejects_target_that_cannot_cover_trading_costs():
+
+    manager = RiskManager()
+
+    plan = manager.create_trade_plan(
+        create_signal(),
+        {
+            "close": 100.0,
+            "atr": 0.01,
+        },
+    )
+
+    assert plan is None

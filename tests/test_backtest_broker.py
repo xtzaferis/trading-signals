@@ -20,7 +20,7 @@ def create_trade_plan():
         entry=100.0,
         stop_loss=90.0,
         take_profit=120.0,
-        position_size=1000.0,
+        position_size=100.0,
         risk_reward=2.0,
     )
 
@@ -65,7 +65,7 @@ def test_quantity():
 
     assert (
         round(position.quantity, 6)
-        == 9.995002
+        == 0.9995
     )
 
 
@@ -268,7 +268,7 @@ def test_trailing_stop_moves_stop():
 
     assert position is not None
 
-    broker.update(
+    closed = broker.update(
         position,
         high=115.0,
         low=110.0,
@@ -285,3 +285,64 @@ def test_trailing_stop_moves_stop():
         position.stop_loss
         > 90.0
     )
+
+    # The stop derived from this candle's high must not be applied
+    # retroactively to this same candle's low.
+    assert closed is False
+
+
+def test_trailing_stop_becomes_active_on_next_candle():
+
+    portfolio = Portfolio()
+    broker = BacktestBroker(portfolio)
+    position = broker.open(
+        create_trade_plan(),
+        datetime.now(timezone.utc),
+    )
+
+    assert position is not None
+    assert broker.update(
+        position,
+        high=115.0,
+        low=99.0,
+        close=112.0,
+        timestamp=datetime.now(timezone.utc),
+    ) is False
+
+    assert broker.update(
+        position,
+        high=106.0,
+        low=104.0,
+        close=105.0,
+        timestamp=datetime.now(timezone.utc),
+    ) is True
+    assert position.exit_reason == "STOP_LOSS"
+
+
+def test_break_even_stop_covers_fees_and_slippage():
+
+    portfolio = Portfolio()
+    broker = BacktestBroker(portfolio)
+    position = broker.open(
+        create_trade_plan(),
+        datetime.now(timezone.utc),
+    )
+
+    assert position is not None
+    assert broker.update(
+        position,
+        high=111.0,
+        low=105.0,
+        close=108.0,
+        timestamp=datetime.now(timezone.utc),
+    ) is False
+    assert position.stop_loss > position.entry_price
+
+    assert broker.update(
+        position,
+        high=position.stop_loss + 1.0,
+        low=position.stop_loss - 1.0,
+        close=position.stop_loss,
+        timestamp=datetime.now(timezone.utc),
+    ) is True
+    assert position.realized_pnl >= -1e-9

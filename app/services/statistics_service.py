@@ -133,11 +133,11 @@ class StatisticsService:
             peak = max(peak, equity)
 
             drawdown = (
-                (equity - peak)
+                (peak - equity)
                 / peak
             ) * 100
 
-            max_drawdown = min(max_drawdown, drawdown)
+            max_drawdown = max(max_drawdown, drawdown)
 
         report.peak_equity = peak
 
@@ -149,8 +149,8 @@ class StatisticsService:
 
             report.current_drawdown = (
                 (
-                    report.current_equity
-                    - peak
+                    peak
+                    - report.current_equity
                 )
                 / peak
             ) * 100
@@ -176,15 +176,15 @@ class StatisticsService:
                 (
                     position.realized_pnl
                     /
-                    abs(
-                        position.entry_price
-                        - position.stop_loss
+                    (
+                        position.initial_risk
+                        * position.quantity
                     )
                 )
                 for position in closed
                 if (
-                    position.entry_price
-                    != position.stop_loss
+                    position.initial_risk > 0
+                    and position.quantity > 0
                 )
             ]
 

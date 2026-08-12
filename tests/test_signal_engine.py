@@ -124,3 +124,17 @@ def test_reasons_are_recorded():
     assert "15m Healthy RSI" in result.reasons
     assert "1H Bullish MACD" in result.reasons
     assert "15m Strong Trend" in result.reasons
+
+
+def test_negative_macd_tolerance_is_symmetric():
+
+    data = bullish_data()
+    data["confirm"]["macd"] = -100.4
+    data["confirm"]["macd_signal"] = -100.0
+
+    result = SignalEngine().evaluate(
+        "BTC/USDC",
+        data,
+    )
+
+    assert result.action == "BUY"

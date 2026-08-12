@@ -85,17 +85,17 @@ def test_snapshot_contains_candles():
 
     snapshot = feed.next()
 
-    assert len(
-        snapshot["trend"]["candles"]
-    ) > 0
-
-    assert len(
-        snapshot["confirm"]["candles"]
-    ) > 0
+    # At the first 15m close neither the 1h nor 4h candle has closed yet.
+    assert snapshot["trend"]["candles"] == []
+    assert snapshot["confirm"]["candles"] == []
 
     assert len(
         snapshot["entry"]["candles"]
-    ) > 0
+    ) == 1
+
+    assert snapshot["timestamp"] == (
+        15 * 60 * 1000
+    )
 
 
 def test_timeline_moves_forward():

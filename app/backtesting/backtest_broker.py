@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.config.settings import (
     BREAK_EVEN_ENABLED,
@@ -43,6 +43,25 @@ class BacktestBroker(Broker):
         )
 
 
+        original_risk = (
+            trade_plan.entry
+            - trade_plan.stop_loss
+        )
+
+
+        stop_loss = (
+            execution_price
+            - original_risk
+        )
+
+
+        take_profit = (
+            execution_price
+            + original_risk
+            * trade_plan.risk_reward
+        )
+
+
         quantity = (
             trade_plan.position_size
             /
@@ -54,16 +73,16 @@ class BacktestBroker(Broker):
             symbol=trade_plan.symbol,
             entry_price=execution_price,
             quantity=quantity,
-            stop_loss=trade_plan.stop_loss,
-            take_profit=trade_plan.take_profit,
-            opened_at=opened_at,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            opened_at=self._as_datetime(opened_at),
         )
 
 
         position.initial_risk = abs(
             execution_price
             -
-            trade_plan.stop_loss
+            stop_loss
         )
 
 
@@ -87,9 +106,20 @@ class BacktestBroker(Broker):
         )
 
 
-        self.portfolio.add_position(
+        added = self.portfolio.add_position(
             position
         )
+
+
+        if not added:
+            logger.info(
+                "PORTFOLIO rejected the position "
+                "(insufficient cash or max positions)."
+            )
+            return None
+
+
+        self.portfolio.cash -= position.entry_fee
 
 
         return position
@@ -115,24 +145,8 @@ class BacktestBroker(Broker):
             f"TP={position.take_profit:.2f}"
         )
 
-        # ---------------------------------
-        # Update position management first
-        # ---------------------------------
-
-        position.update_price(
-            high
-        )
-
-
-        self.manage_position(
-            position
-        )
-
-
-        # ---------------------------------
-        # Check exits after management
-        # ---------------------------------
-
+        # Stops moved from this candle's high only become active on the next
+        # candle; otherwise the backtest assumes an unknowable intrabar order.
         hit_stop = (
             low <= position.stop_loss
         )
@@ -145,21 +159,14 @@ class BacktestBroker(Broker):
         # Both hit inside same candle
         if hit_stop and hit_target:
 
-            if close >= position.entry_price:
-
-                self.close(
-                    position,
-                    position.take_profit,
-                    "TAKE_PROFIT",
-                )
-
-            else:
-
-                self.close(
-                    position,
-                    position.stop_loss,
-                    "STOP_LOSS",
-                )
+            # OHLC data cannot reveal which level was hit first. Use the
+            # conservative outcome instead of choosing with the final close.
+            self.close(
+                position,
+                position.stop_loss,
+                "STOP_LOSS",
+                timestamp=timestamp,
+            )
 
             return True
 
@@ -171,6 +178,7 @@ class BacktestBroker(Broker):
                 position,
                 position.stop_loss,
                 "STOP_LOSS",
+                timestamp=timestamp,
             )
 
             return True
@@ -183,15 +191,16 @@ class BacktestBroker(Broker):
                 position,
                 position.take_profit,
                 "TAKE_PROFIT",
+                timestamp=timestamp,
             )
 
             return True
 
 
 
-        position.update_price(
-            close
-        )
+        position.update_price(high)
+        self.manage_position(position)
+        position.update_price(close)
 
 
         return False
@@ -227,7 +236,11 @@ class BacktestBroker(Broker):
             and r_multiple >= BREAK_EVEN_R
         ):
 
-            position.move_to_break_even()
+            position.move_to_break_even(
+                self._net_break_even_stop(
+                    position
+                )
+            )
 
 
         if TRAILING_STOP_ENABLED:
@@ -249,12 +262,38 @@ class BacktestBroker(Broker):
             )
 
 
+    @staticmethod
+    def _net_break_even_stop(
+        position: Position,
+    ) -> float:
+
+        entry_cost = (
+            position.entry_price
+            * position.quantity
+            + position.entry_fee
+        )
+
+        net_exit_fraction = (
+            (1 - SLIPPAGE)
+            * (1 - TRADING_FEE)
+        )
+
+        return (
+            entry_cost
+            / (
+                position.quantity
+                * net_exit_fraction
+            )
+        )
+
+
 
     def close(
         self,
         position: Position,
         price: float,
         reason: str = "MANUAL",
+        timestamp: datetime | float | None = None,
     ):
 
         execution_price = (
@@ -292,23 +331,12 @@ class BacktestBroker(Broker):
         ) * position.quantity
 
 
-        entry_slippage_cost = (
-            position.entry_price
-            *
-            position.quantity
-            *
-            SLIPPAGE
-        )
-
-
         net_pnl = (
             gross_pnl
             -
             entry_fee
             -
             exit_fee
-            -
-            entry_slippage_cost
         )
 
 
@@ -318,7 +346,6 @@ class BacktestBroker(Broker):
             f"qty={position.quantity:.8f} "
             f"exit_value={exit_value:.6f} "
             f"exit_fee={exit_fee:.6f} "
-            f"entry_slippage_cost={entry_slippage_cost:.6f} "
             f"gross_pnl={gross_pnl:.6f} "
             f"net_pnl={net_pnl:.6f}"
         )
@@ -333,7 +360,11 @@ class BacktestBroker(Broker):
             position,
             execution_price,
             reason,
+            closed_at=self._as_datetime(timestamp),
         )
+
+
+        self.portfolio.cash -= exit_fee
 
 
         logger.info(
@@ -341,4 +372,28 @@ class BacktestBroker(Broker):
             f"symbol={position.symbol} "
             f"pnl={position.realized_pnl:.6f} "
             f"reason={reason}"
+        )
+
+
+    @staticmethod
+    def _as_datetime(
+        timestamp: datetime | float | None,
+    ) -> datetime:
+
+        if isinstance(timestamp, datetime):
+            return timestamp
+
+        if timestamp is None:
+            return datetime.now(timezone.utc)
+
+        try:
+            numeric = float(timestamp)
+        except (TypeError, ValueError):
+            return datetime.now(timezone.utc)
+        if numeric > 10_000_000_000:
+            numeric /= 1000
+
+        return datetime.fromtimestamp(
+            numeric,
+            tz=timezone.utc,
         )

@@ -100,14 +100,14 @@ def test_current_timestamp():
 
     assert (
         timeline.current_timestamp()
-        == 0
+        == 15 * 60 * 1000
     )
 
     timeline.step()
 
     assert (
         timeline.current_timestamp()
-        == 15 * 60 * 1000
+        == 30 * 60 * 1000
     )
 
 
@@ -153,7 +153,7 @@ def test_latest_1h():
         timeline.latest_index(
             "1h"
         )
-        == 2
+        == 1
     )
 
 
@@ -179,5 +179,5 @@ def test_latest_4h():
         timeline.latest_index(
             "4h"
         )
-        == 1
+        == 0
     )

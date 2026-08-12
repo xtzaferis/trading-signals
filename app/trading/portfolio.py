@@ -175,14 +175,16 @@ class Portfolio:
         position: Position,
         exit_price: float,
         exit_reason: str = "UNKNOWN",
+        closed_at: datetime | None = None,
     ):
 
 
         position.current_price = exit_price
 
 
-        position.closed_at = datetime.now(
-            timezone.utc
+        position.closed_at = (
+            closed_at
+            or datetime.now(timezone.utc)
         )
 
 

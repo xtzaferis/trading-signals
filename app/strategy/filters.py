@@ -29,7 +29,7 @@ def confirmation_filter(confirm):
     signal = confirm["macd_signal"]
 
     return (
-        macd >= signal * 0.995
+        macd >= signal - abs(signal) * 0.005
     )
 
 

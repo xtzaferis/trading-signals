@@ -244,7 +244,11 @@ class PaperBroker(Broker):
             and not position.break_even
             and r_multiple >= BREAK_EVEN_R
         ):
-            position.move_to_break_even()
+            position.move_to_break_even(
+                self._net_break_even_stop(
+                    position
+                )
+            )
 
 
 
@@ -265,6 +269,31 @@ class PaperBroker(Broker):
             position.update_trailing_stop(
                 new_stop
             )
+
+
+    @staticmethod
+    def _net_break_even_stop(
+        position: Position,
+    ) -> float:
+
+        entry_cost = (
+            position.entry_price
+            * position.quantity
+            + position.entry_fee
+        )
+
+        net_exit_fraction = (
+            (1 - SLIPPAGE)
+            * (1 - TRADING_FEE)
+        )
+
+        return (
+            entry_cost
+            / (
+                position.quantity
+                * net_exit_fraction
+            )
+        )
 
 
 
@@ -335,15 +364,15 @@ class PaperBroker(Broker):
         )
 
 
+        position.realized_pnl = (
+            net_pnl
+        )
+
+
         self.portfolio.close_position(
             position,
             execution_price,
             reason,
-        )
-
-
-        position.realized_pnl = (
-            net_pnl
         )
 
 

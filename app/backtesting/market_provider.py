@@ -29,6 +29,45 @@ class MarketProvider:
 
         self.cache = {}
 
+        self.precomputed = {}
+
+        self._precompute_indicators()
+
+
+    def _precompute_indicators(self):
+
+        data = getattr(
+            self.feed,
+            "data",
+            {},
+        )
+
+        if not isinstance(data, dict):
+            return
+
+        timeframe_keys = {
+            "trend": "4h",
+            "confirm": "1h",
+            "entry": "15m",
+        }
+
+        for label, data_key in timeframe_keys.items():
+            candles = data.get(data_key, [])
+            if not candles:
+                continue
+
+            df = self.builder.build(candles)
+            df = self.calculator.calculate(df)
+
+            for raw_candle, (_, row) in zip(
+                candles,
+                df.iterrows(),
+                strict=False,
+            ):
+                self.precomputed[
+                    (label, raw_candle[0])
+                ] = row
+
 
     def has_next(
         self,
@@ -51,17 +90,20 @@ class MarketProvider:
         market = {
 
             "trend": self.calculate(
-                snapshot["trend"]["candles"]
+                snapshot["trend"]["candles"],
+                "trend",
             ),
 
 
             "confirm": self.calculate(
-                snapshot["confirm"]["candles"]
+                snapshot["confirm"]["candles"],
+                "confirm",
             ),
 
 
             "entry": self.calculate(
-                snapshot["entry"]["candles"]
+                snapshot["entry"]["candles"],
+                "entry",
             ),
         }
 
@@ -76,6 +118,7 @@ class MarketProvider:
     def calculate(
         self,
         candles: list,
+        timeframe: str = "default",
     ):
 
 
@@ -99,8 +142,13 @@ class MarketProvider:
         #
 
         key = (
-            candles[-1][0]
+            timeframe,
+            candles[-1][0],
         )
+
+
+        if key in self.precomputed:
+            return self.precomputed[key]
 
 
         if key in self.cache:

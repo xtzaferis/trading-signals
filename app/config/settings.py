@@ -63,6 +63,19 @@ MIN_SCORE = 70
 
 
 # =====================================
+# Backtesting
+# =====================================
+
+# Roughly one month of evaluated candles plus enough earlier candles for
+# the longest (EMA 200) indicator to warm up on every timeframe.
+BACKTEST_CANDLE_LIMITS = {
+    "4h": 380,
+    "1h": 920,
+    "15m": 3080,
+}
+
+
+# =====================================
 # Risk Management
 # =====================================
 

@@ -149,11 +149,9 @@ class HistoricalFeed(DataFeed):
             },
 
 
-            "timestamp": self.data[
-                "15m"
-            ][
-                entry_index
-            ][0],
+            "timestamp": (
+                self.timeline.current_timestamp()
+            ),
         }
 
 

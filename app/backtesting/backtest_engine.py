@@ -1,3 +1,4 @@
+from app.backtesting.backtest_broker import BacktestBroker
 from app.backtesting.historical_feed import (
     HistoricalFeed,
 )
@@ -5,12 +6,11 @@ from app.backtesting.market_provider import (
     MarketProvider,
 )
 from app.config.settings import (
+    BACKTEST_CANDLE_LIMITS,
     MARKET_SYMBOL,
+    MIN_BARS_BETWEEN_TRADES,
 )
 from app.core.logger import logger
-from app.execution.broker_factory import (
-    create_broker,
-)
 from app.risk.risk_manager import (
     RiskManager,
 )
@@ -59,7 +59,8 @@ class BacktestEngine:
             RiskManager()
         )
 
-        self.broker = create_broker(
+        # A backtest must not depend on the global paper/live mode.
+        self.broker = BacktestBroker(
             self.portfolio
         )
 
@@ -72,7 +73,11 @@ class BacktestEngine:
         )
 
 
-    def run(self):
+    def run(
+        self,
+        data=None,
+        close_open_positions: bool = True,
+    ):
 
         logger.info("")
         logger.info("=" * 50)
@@ -82,26 +87,27 @@ class BacktestEngine:
         logger.info("=" * 50)
 
 
-        data = {
+        if data is None:
+            data = {
 
-            "4h": self.history.load(
-                symbol=self.symbol,
-                timeframe="4h",
-                limit=300,
-            ),
+                "4h": self.history.load(
+                    symbol=self.symbol,
+                    timeframe="4h",
+                    limit=BACKTEST_CANDLE_LIMITS["4h"],
+                ),
 
-            "1h": self.history.load(
-                symbol=self.symbol,
-                timeframe="1h",
-                limit=600,
-            ),
+                "1h": self.history.load(
+                    symbol=self.symbol,
+                    timeframe="1h",
+                    limit=BACKTEST_CANDLE_LIMITS["1h"],
+                ),
 
-            "15m": self.history.load(
-                symbol=self.symbol,
-                timeframe="15m",
-                limit=1200,
-            ),
-        }
+                "15m": self.history.load(
+                    symbol=self.symbol,
+                    timeframe="15m",
+                    limit=BACKTEST_CANDLE_LIMITS["15m"],
+                ),
+            }
 
 
         logger.info(
@@ -129,6 +135,11 @@ class BacktestEngine:
         )
 
 
+        last_entry = None
+        last_timestamp = None
+        entry_bar = -1
+        last_closed_bar = None
+
         while self.market_provider.has_next():
 
             market, snapshot = (
@@ -141,9 +152,22 @@ class BacktestEngine:
             )
 
 
-            if entry is None:
+            if any(
+                market.get(timeframe) is None
+                for timeframe in (
+                    "trend",
+                    "confirm",
+                    "entry",
+                )
+            ):
 
                 continue
+
+            last_entry = entry
+            last_timestamp = snapshot.get(
+                "timestamp"
+            )
+            entry_bar += 1
 
 
             #
@@ -178,6 +202,7 @@ class BacktestEngine:
                 if closed:
 
                     position_closed_this_bar = True
+                    last_closed_bar = entry_bar
 
                     logger.info(
                         "Position closed."
@@ -189,6 +214,18 @@ class BacktestEngine:
             #
             if position_closed_this_bar:
 
+                continue
+
+            if self.portfolio.has_open_position(
+                self.symbol
+            ):
+                continue
+
+            if (
+                last_closed_bar is not None
+                and entry_bar - last_closed_bar
+                <= MIN_BARS_BETWEEN_TRADES
+            ):
                 continue
 
             #
@@ -259,6 +296,19 @@ class BacktestEngine:
                 logger.info(
                     f"OPENED: {position.symbol} "
                     f"@ {position.entry_price}"
+                )
+
+        # Realize open PnL so the report includes every trade taken during the
+        # requested period instead of silently omitting the final position.
+        if close_open_positions and last_entry is not None:
+            for position in list(
+                self.portfolio.open_positions
+            ):
+                self.broker.close(
+                    position,
+                    float(last_entry["close"]),
+                    "END_OF_BACKTEST",
+                    timestamp=last_timestamp,
                 )
 
 

@@ -1,3 +1,4 @@
+import math
 from typing import Any
 
 from app.core.logger import logger
@@ -6,9 +7,9 @@ from app.exchange.okx_client import OKXClient
 
 class HistoricalDataService:
 
-    def __init__(self):
+    def __init__(self, client=None):
 
-        self.client = OKXClient()
+        self.client = client or OKXClient()
 
         self.exchange = (
             self.client.exchange
@@ -26,11 +27,26 @@ class HistoricalDataService:
             f"{timeframe} candles..."
         )
 
+        timeframe_ms = int(
+            self.exchange.parse_timeframe(timeframe)
+            * 1000
+        )
+        now = int(self.exchange.milliseconds())
+        since = now - (limit + 1) * timeframe_ms
+
+        # OKX returns at most 300 candles in one response. CCXT's deterministic
+        # pagination is required for larger, statistically useful backtests.
+        pagination_calls = max(1, math.ceil(limit / 200) + 1)
         candles: list[Any] = list(
             self.exchange.fetch_ohlcv(
                 symbol=symbol,
                 timeframe=timeframe,
+                since=since,
                 limit=limit,
+                params={
+                    "paginate": True,
+                    "paginationCalls": pagination_calls,
+                },
             )
         )
 
@@ -41,6 +57,14 @@ class HistoricalDataService:
         candles.sort(
             key=lambda candle: candle[0]
         )
+
+        # The most recent OKX candle may still be forming. Using it would leak
+        # information that was not available at the candle's open time.
+        candles = [
+            candle
+            for candle in candles
+            if candle[0] + timeframe_ms <= now
+        ][-limit:]
 
         logger.info(
             f"Loaded {len(candles)} candles."

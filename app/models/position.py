@@ -97,10 +97,13 @@ class Position:
 
     def move_to_break_even(
         self,
+        price: float | None = None,
     ):
 
         self.stop_loss = (
-            self.entry_price
+            price
+            if price is not None
+            else self.entry_price
         )
 
         self.break_even = True

@@ -42,17 +42,6 @@ class CandleDataFrameBuilder:
 
 
         # -------------------------
-        # DEBUG TIMESTAMP
-        # -------------------------
-
-        print(
-            "TIMESTAMP DEBUG:",
-            df["timestamp"].head().tolist(),
-            type(df["timestamp"].iloc[0]),
-        )
-
-
-        # -------------------------
         # TIMESTAMP NORMALIZATION
         # -------------------------
 

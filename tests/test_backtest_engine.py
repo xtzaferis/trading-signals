@@ -7,12 +7,20 @@ from app.models.trade_plan import (
     TradePlan,
 )
 
+EMPTY_DATA = {
+    "4h": [],
+    "1h": [],
+    "15m": [],
+}
+
 
 def test_engine_opens_position_on_buy_signal():
 
     engine = BacktestEngine()
 
     market = {
+        "trend": {},
+        "confirm": {},
         "entry": {
             "close": 100.0,
             "atr": 5.0,
@@ -54,7 +62,10 @@ def test_engine_opens_position_on_buy_signal():
         return_value=mock_provider,
     ):
 
-        engine.run()
+        engine.run(
+            data=EMPTY_DATA,
+            close_open_positions=False,
+        )
 
 
     assert (
@@ -82,7 +93,7 @@ def test_engine_closes_position_on_take_profit():
             entry=100.0,
             stop_loss=95.0,
             take_profit=110.0,
-            position_size=1000.0,
+            position_size=100.0,
             risk_reward=2.0,
         ),
         opened_at=Mock(),
@@ -120,7 +131,7 @@ def test_engine_closes_position_on_take_profit():
 
     assert (
         round(position.realized_pnl, 6)
-        == 97.300650
+        == 9.730065
     )
 
 
@@ -137,7 +148,7 @@ def test_engine_closes_position_on_stop_loss():
             entry=100.0,
             stop_loss=95.0,
             take_profit=110.0,
-            position_size=1000.0,
+            position_size=100.0,
             risk_reward=2.0,
         ),
         opened_at=Mock(),
@@ -175,7 +186,7 @@ def test_engine_closes_position_on_stop_loss():
 
     assert (
         round(position.realized_pnl, 6)
-        == -52.399575
+        == -5.239957
     )
 
 
@@ -186,6 +197,8 @@ def test_engine_full_trade_lifecycle_take_profit():
 
 
     first_market = {
+        "trend": {},
+        "confirm": {},
         "entry": {
             "close": 100.0,
             "atr": 5.0,
@@ -194,6 +207,8 @@ def test_engine_full_trade_lifecycle_take_profit():
 
 
     second_market = {
+        "trend": {},
+        "confirm": {},
         "entry": {
             "close": 135.0,
             "high": 135.10,
@@ -250,7 +265,7 @@ def test_engine_full_trade_lifecycle_take_profit():
         return_value=mock_provider,
     ):
 
-        engine.run()
+        engine.run(data=EMPTY_DATA)
 
 
     assert (
