@@ -52,6 +52,7 @@ def test_buy_signal():
     assert len(result.reasons) == 4
 
 
+
 def test_hold_when_trend_fails():
 
     data = bullish_data()
@@ -68,6 +69,7 @@ def test_hold_when_trend_fails():
     assert result.action == "HOLD"
     assert result.score == 0
     assert "Trend filter failed" in result.reasons
+
 
 
 def test_hold_when_confirmation_fails():
@@ -89,6 +91,7 @@ def test_hold_when_confirmation_fails():
     assert "Confirmation filter failed" in result.reasons
 
 
+
 def test_hold_when_entry_fails():
 
     data = bullish_data()
@@ -105,6 +108,7 @@ def test_hold_when_entry_fails():
     assert result.action == "HOLD"
     assert result.score == 0
     assert "Entry filter failed" in result.reasons
+
 
 
 def test_reasons_are_recorded():

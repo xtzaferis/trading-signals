@@ -14,8 +14,6 @@ def trend_filter(trend):
     4H Trend Gate
     """
 
-    # Allow early bullish trends while keeping 200 EMA protection.
-    # Full alignment (EMA20 > EMA50 > EMA200) remains the strongest case.
     return (
         trend["ema20"] > trend["ema50"]
         and trend["ema50"] >= trend["ema200"]
@@ -25,10 +23,6 @@ def trend_filter(trend):
 def confirmation_filter(confirm):
     """
     1H Confirmation Gate
-
-    Accept bullish momentum:
-    - MACD above signal
-    - OR MACD close to signal with positive momentum
     """
 
     macd = confirm["macd"]
@@ -45,8 +39,8 @@ def entry_filter(entry):
     """
 
     return (
-        50 <= entry["rsi"] <= 70
-        and entry["adx"] > 20
+        50 <= entry["rsi"] <= 60
+        and entry["adx"] >= 25
     )
 
 
@@ -70,14 +64,13 @@ def ema_filter(
     return 0, None
 
 
-
 def rsi_filter(
     trend,
     confirm,
     entry,
 ):
 
-    if 50 <= entry["rsi"] <= 65:
+    if 50 <= entry["rsi"] <= 60:
 
         return (
             RSI_WEIGHT,
@@ -85,7 +78,6 @@ def rsi_filter(
         )
 
     return 0, None
-
 
 
 def macd_filter(
@@ -104,14 +96,13 @@ def macd_filter(
     return 0, None
 
 
-
 def adx_filter(
     trend,
     confirm,
     entry,
 ):
 
-    if entry["adx"] > 25:
+    if entry["adx"] >= 25:
 
         return (
             ADX_WEIGHT,

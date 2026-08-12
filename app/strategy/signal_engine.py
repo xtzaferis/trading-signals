@@ -39,18 +39,18 @@ class SignalEngine:
         logger.info(
             f"SIGNAL INPUT | "
             f"symbol={symbol} | "
-            f"EMA20={trend.get('ema20')} | "
-            f"EMA50={trend.get('ema50')} | "
-            f"EMA200={trend.get('ema200')} | "
-            f"MACD={confirm.get('macd')} | "
-            f"MACD_SIGNAL={confirm.get('macd_signal')} | "
-            f"RSI={entry.get('rsi')} | "
-            f"ADX={entry.get('adx')}"
+            f"EMA20={trend['ema20']} | "
+            f"EMA50={trend['ema50']} | "
+            f"EMA200={trend['ema200']} | "
+            f"MACD={confirm['macd']} | "
+            f"MACD_SIGNAL={confirm['macd_signal']} | "
+            f"RSI={entry['rsi']} | "
+            f"ADX={entry['adx']}"
         )
 
 
         # ---------------------------------
-        # Gate Strategy
+        # Hard Market Structure Gates
         # ---------------------------------
 
         if not trend_filter(trend):
@@ -62,10 +62,7 @@ class SignalEngine:
             )
 
             logger.info(
-                f"SIGNAL BLOCKED: TREND | "
-                f"EMA20={trend.get('ema20')} | "
-                f"EMA50={trend.get('ema50')} | "
-                f"EMA200={trend.get('ema200')}"
+                f"SIGNAL BLOCKED: TREND | symbol={symbol}"
             )
 
             return result
@@ -82,13 +79,18 @@ class SignalEngine:
 
             logger.info(
                 f"SIGNAL BLOCKED: CONFIRMATION | "
-                f"MACD={confirm.get('macd')} | "
-                f"SIGNAL={confirm.get('macd_signal')}"
+                f"symbol={symbol} | "
+                f"MACD={confirm['macd']} | "
+                f"SIGNAL={confirm['macd_signal']}"
             )
 
             return result
 
 
+
+        # ---------------------------------
+        # Entry Timing Gate
+        # ---------------------------------
 
         if not entry_filter(entry):
 
@@ -100,8 +102,9 @@ class SignalEngine:
 
             logger.info(
                 f"SIGNAL BLOCKED: ENTRY | "
-                f"RSI={entry.get('rsi')} | "
-                f"ADX={entry.get('adx')}"
+                f"symbol={symbol} | "
+                f"RSI={entry['rsi']} | "
+                f"ADX={entry['adx']}"
             )
 
             return result
@@ -153,6 +156,10 @@ class SignalEngine:
         )
 
 
+        # ---------------------------------
+        # Final Decision
+        # ---------------------------------
+
         if result.score < MIN_SCORE:
 
             result.action = "HOLD"
@@ -161,11 +168,10 @@ class SignalEngine:
                 "Score below minimum"
             )
 
-
             logger.info(
-                f"SIGNAL BLOCKED: SCORE | "
-                f"score={result.score} | "
-                f"minimum={MIN_SCORE}"
+                f"SIGNAL REJECTED: SCORE | "
+                f"symbol={symbol} | "
+                f"score={result.score}"
             )
 
             return result

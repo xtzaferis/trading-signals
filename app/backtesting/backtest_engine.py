@@ -150,6 +150,8 @@ class BacktestEngine:
             # Manage existing positions
             #
 
+            position_closed_this_bar = False
+
             for position in list(
                 self.portfolio.open_positions
             ):
@@ -175,9 +177,20 @@ class BacktestEngine:
 
                 if closed:
 
+                    position_closed_this_bar = True
+
                     logger.info(
                         "Position closed."
                     )
+
+            #
+            # Do not reopen immediately on the same candle
+            # after a stop-loss/take-profit event.
+            #
+            if position_closed_this_bar:
+
+                continue
+
             #
             # Evaluate signal
             #

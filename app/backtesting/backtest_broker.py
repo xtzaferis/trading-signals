@@ -105,8 +105,67 @@ class BacktestBroker(Broker):
         timestamp: datetime,
     ) -> bool:
 
+        logger.info(
+            f"POSITION UPDATE | "
+            f"entry={position.entry_price:.2f} | "
+            f"high={high:.2f} | "
+            f"low={low:.2f} | "
+            f"close={close:.2f} | "
+            f"SL={position.stop_loss:.2f} | "
+            f"TP={position.take_profit:.2f}"
+        )
 
-        if low <= position.stop_loss:
+        # ---------------------------------
+        # Update position management first
+        # ---------------------------------
+
+        position.update_price(
+            high
+        )
+
+
+        self.manage_position(
+            position
+        )
+
+
+        # ---------------------------------
+        # Check exits after management
+        # ---------------------------------
+
+        hit_stop = (
+            low <= position.stop_loss
+        )
+
+        hit_target = (
+            high >= position.take_profit
+        )
+
+
+        # Both hit inside same candle
+        if hit_stop and hit_target:
+
+            if close >= position.entry_price:
+
+                self.close(
+                    position,
+                    position.take_profit,
+                    "TAKE_PROFIT",
+                )
+
+            else:
+
+                self.close(
+                    position,
+                    position.stop_loss,
+                    "STOP_LOSS",
+                )
+
+            return True
+
+
+
+        if hit_stop:
 
             self.close(
                 position,
@@ -117,7 +176,8 @@ class BacktestBroker(Broker):
             return True
 
 
-        if high >= position.take_profit:
+
+        if hit_target:
 
             self.close(
                 position,
@@ -127,15 +187,6 @@ class BacktestBroker(Broker):
 
             return True
 
-
-        position.update_price(
-            high
-        )
-
-
-        self.manage_position(
-            position
-        )
 
 
         position.update_price(
@@ -273,13 +324,9 @@ class BacktestBroker(Broker):
         )
 
 
-        position.realized_pnl = (
-            net_pnl
-        )
+        position.realized_pnl = net_pnl
 
-        position.exit_reason = (
-            reason
-        )
+        position.exit_reason = reason
 
 
         self.portfolio.close_position(

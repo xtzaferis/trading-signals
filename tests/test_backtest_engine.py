@@ -31,6 +31,7 @@ def test_engine_opens_position_on_buy_signal():
 
     mock_signal.score = 80
 
+
     mock_provider = Mock()
 
     mock_provider.has_next.side_effect = [
@@ -43,6 +44,7 @@ def test_engine_opens_position_on_buy_signal():
         {},
     )
 
+
     with patch.object(
         engine.signal_engine,
         "evaluate",
@@ -53,6 +55,7 @@ def test_engine_opens_position_on_buy_signal():
     ):
 
         engine.run()
+
 
     assert (
         engine.portfolio.open_positions_count
@@ -66,9 +69,11 @@ def test_engine_opens_position_on_buy_signal():
     )
 
 
+
 def test_engine_closes_position_on_take_profit():
 
     engine = BacktestEngine()
+
 
     position = engine.broker.open(
         trade_plan=TradePlan(
@@ -83,7 +88,9 @@ def test_engine_closes_position_on_take_profit():
         opened_at=Mock(),
     )
 
+
     assert position is not None
+
 
     closed = engine.broker.update(
         position,
@@ -93,12 +100,15 @@ def test_engine_closes_position_on_take_profit():
         timestamp=Mock(),
     )
 
+
     assert closed is True
+
 
     assert (
         engine.portfolio.open_positions_count
         == 0
     )
+
 
     assert (
         len(
@@ -107,15 +117,18 @@ def test_engine_closes_position_on_take_profit():
         == 1
     )
 
+
     assert (
         round(position.realized_pnl, 6)
         == 97.300650
     )
 
 
+
 def test_engine_closes_position_on_stop_loss():
 
     engine = BacktestEngine()
+
 
     position = engine.broker.open(
         trade_plan=TradePlan(
@@ -130,7 +143,9 @@ def test_engine_closes_position_on_stop_loss():
         opened_at=Mock(),
     )
 
+
     assert position is not None
+
 
     closed = engine.broker.update(
         position,
@@ -140,12 +155,15 @@ def test_engine_closes_position_on_stop_loss():
         timestamp=Mock(),
     )
 
+
     assert closed is True
+
 
     assert (
         engine.portfolio.open_positions_count
         == 0
     )
+
 
     assert (
         len(
@@ -154,15 +172,18 @@ def test_engine_closes_position_on_stop_loss():
         == 1
     )
 
+
     assert (
         round(position.realized_pnl, 6)
         == -52.399575
     )
 
 
+
 def test_engine_full_trade_lifecycle_take_profit():
 
     engine = BacktestEngine()
+
 
     first_market = {
         "entry": {
@@ -171,14 +192,16 @@ def test_engine_full_trade_lifecycle_take_profit():
         },
     }
 
+
     second_market = {
-    "entry": {
-        "close": 120.0,
-        "high": 120.10,
-        "low": 119.0,
-        "atr": 5.0,
-    },
-}
+        "entry": {
+            "close": 135.0,
+            "high": 135.10,
+            "low": 129.0,
+            "atr": 5.0,
+        },
+    }
+
 
     mock_signal = Mock()
 
@@ -192,6 +215,7 @@ def test_engine_full_trade_lifecycle_take_profit():
 
     mock_signal.score = 80
 
+
     mock_provider = Mock()
 
     mock_provider.has_next.side_effect = [
@@ -199,6 +223,7 @@ def test_engine_full_trade_lifecycle_take_profit():
         True,
         False,
     ]
+
 
     mock_provider.next.side_effect = [
         (
@@ -215,6 +240,7 @@ def test_engine_full_trade_lifecycle_take_profit():
         ),
     ]
 
+
     with patch.object(
         engine.signal_engine,
         "evaluate",
@@ -226,6 +252,7 @@ def test_engine_full_trade_lifecycle_take_profit():
 
         engine.run()
 
+
     assert (
         len(
             engine.portfolio.closed_positions
@@ -233,10 +260,6 @@ def test_engine_full_trade_lifecycle_take_profit():
         == 1
     )
 
-    assert (
-        engine.portfolio.open_positions_count
-        == 1
-    )
 
     assert (
         engine.portfolio.closed_positions[0]
