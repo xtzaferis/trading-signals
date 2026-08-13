@@ -1,7 +1,13 @@
+import os
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
+
+# Unit tests must never inherit operational exchange mode or safety switches
+# from the developer's real .env file.
+os.environ["TRADING_MODE"] = "paper"
+os.environ["EMERGENCY_STOP"] = "false"
 
 from app.storage import database as storage_database
 

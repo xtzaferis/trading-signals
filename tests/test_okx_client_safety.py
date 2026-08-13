@@ -30,6 +30,18 @@ def test_demo_mode_enables_okx_sandbox():
     exchange.set_sandbox_mode.assert_called_once_with(True)
 
 
+def test_client_passes_regional_hostname_to_ccxt(monkeypatch):
+    exchange_factory = Mock(return_value=Mock())
+    monkeypatch.setattr("app.exchange.okx_client.ccxt.okx", exchange_factory)
+
+    OKXClient(
+        trading_mode="paper",
+        hostname="eea.okx.com",
+    )
+
+    assert exchange_factory.call_args.args[0]["hostname"] == "eea.okx.com"
+
+
 def test_paper_mode_rejects_exchange_order():
     client, exchange = create_client(mode="paper")
 

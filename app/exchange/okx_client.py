@@ -2,6 +2,7 @@ import ccxt
 
 from app.config.settings import (
     LIVE_TRADING_ENABLED,
+    OKX_API_HOSTNAME,
     OKX_API_KEY,
     OKX_PASSPHRASE,
     OKX_SECRET,
@@ -25,6 +26,7 @@ class OKXClient:
         api_key: str | None = OKX_API_KEY,
         secret: str | None = OKX_SECRET,
         passphrase: str | None = OKX_PASSPHRASE,
+        hostname: str = OKX_API_HOSTNAME,
         exchange=None,
     ):
 
@@ -39,6 +41,7 @@ class OKXClient:
 
         config = {
             "enableRateLimit": True,
+            "hostname": hostname,
         }
 
         if (

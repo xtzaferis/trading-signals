@@ -13,6 +13,22 @@ OKX_API_KEY = os.getenv("OKX_API_KEY")
 OKX_SECRET = os.getenv("OKX_SECRET")
 OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE")
 
+OKX_API_HOSTNAME = os.getenv(
+    "OKX_API_HOSTNAME",
+    "www.okx.com",
+).strip().lower()
+
+VALID_OKX_API_HOSTNAMES = {
+    "www.okx.com",
+    "openapi.okx.com",
+    "eea.okx.com",
+    "us.okx.com",
+    "tr.okx.com",
+}
+
+if OKX_API_HOSTNAME not in VALID_OKX_API_HOSTNAMES:
+    raise ValueError("OKX_API_HOSTNAME is not an approved OKX API domain.")
+
 
 # =====================================
 # Trading Mode
