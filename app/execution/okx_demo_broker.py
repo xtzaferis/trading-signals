@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import ccxt
 
+from app.config.settings import QUOTE_CURRENCY
 from app.core.logger import logger
 from app.exceptions import OrderValidationError
 from app.execution.broker import Broker
@@ -32,6 +33,15 @@ class OKXDemoBroker(Broker):
         )
         self.id_factory = id_factory or self._new_client_order_id
         self._restore_positions()
+
+    def sync_balance(self) -> float:
+        """Use free demo quote balance as the next trade's cash ceiling."""
+        balance = self.gateway.client.get_balance()
+        free = (balance.get("free") or {}).get(QUOTE_CURRENCY)
+        if free is None:
+            free = (balance.get(QUOTE_CURRENCY) or {}).get("free", 0.0)
+        self.portfolio.cash = max(0.0, float(free or 0.0))
+        return self.portfolio.cash
 
     def open(
         self,

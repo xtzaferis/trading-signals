@@ -244,3 +244,68 @@ def test_paper_engine_blocks_buy_after_maximum_drawdown():
     engine.process_snapshot(create_snapshot())
 
     engine.broker.open.assert_not_called()
+
+
+def test_demo_reconciliation_disables_entries_when_unresolved():
+    broker = Mock()
+    broker.reconcile.return_value = {
+        "safe": False,
+        "unresolved_client_order_ids": ["entry1"],
+    }
+    engine = PaperEngine(
+        persist_state=False,
+        trading_mode="okx_demo",
+        broker=broker,
+    )
+
+    result = engine.reconcile_execution()
+
+    assert result["safe"] is False
+    assert engine.entries_enabled is False
+    broker.sync_balance.assert_not_called()
+
+
+def test_demo_reconciliation_refreshes_cash_when_safe():
+    broker = Mock()
+    broker.reconcile.return_value = {"safe": True}
+    broker.sync_balance.return_value = 750.0
+    engine = PaperEngine(
+        persist_state=False,
+        trading_mode="okx_demo",
+        broker=broker,
+    )
+
+    result = engine.reconcile_execution()
+
+    assert engine.entries_enabled is True
+    assert result["available_cash"] == 750.0
+    broker.sync_balance.assert_called_once()
+
+
+def test_unresolved_demo_reconciliation_blocks_buy_order():
+    broker = Mock()
+    engine = PaperEngine(
+        persist_state=False,
+        trading_mode="okx_demo",
+        broker=broker,
+    )
+    engine.entries_enabled = False
+    engine.shadow_tracker = Mock()
+    market = {
+        "entry": {
+            "close": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "atr": 5.0,
+        }
+    }
+    engine.market_provider.next = Mock(
+        return_value=(market, create_snapshot())
+    )
+    engine.signal_engine.evaluate = Mock(
+        return_value=Mock(action="BUY", score=100)
+    )
+
+    engine.process_snapshot(create_snapshot())
+
+    broker.open.assert_not_called()

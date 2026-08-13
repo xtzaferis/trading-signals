@@ -9,11 +9,10 @@ from app.config.settings import (
     MAX_DRAWDOWN_PCT,
     MAX_ENTRY_CANDLE_AGE_SECONDS,
     PAPER_STATE_PERSISTENCE_ENABLED,
+    TRADING_MODE,
 )
 from app.core.logger import logger
-from app.execution.paper_broker import (
-    PaperBroker,
-)
+from app.execution.broker_factory import create_broker
 from app.paper.live_feed import (
     LiveFeed,
 )
@@ -49,9 +48,14 @@ class PaperEngine:
         self,
         state_repository=None,
         persist_state: bool = PAPER_STATE_PERSISTENCE_ENABLED,
+        trading_mode: str = TRADING_MODE,
+        broker=None,
+        client=None,
     ):
 
         self.symbol = MARKET_SYMBOL
+        self.trading_mode = trading_mode
+        self.entries_enabled = True
 
         self.feed = LiveFeed()
 
@@ -59,7 +63,11 @@ class PaperEngine:
 
         self.state_repository = (
             state_repository
-            or (PaperStateRepository() if persist_state else None)
+            or (
+                PaperStateRepository()
+                if persist_state and trading_mode == "paper"
+                else None
+            )
         )
 
         self.portfolio = (
@@ -86,8 +94,10 @@ class PaperEngine:
 
         self.risk_manager = RiskManager()
 
-        self.broker = PaperBroker(
-            self.portfolio
+        self.broker = broker or create_broker(
+            self.portfolio,
+            trading_mode=trading_mode,
+            client=client,
         )
 
         self.statistics = StatisticsService()
@@ -232,6 +242,12 @@ class PaperEngine:
 
             return
 
+        if not self.entries_enabled:
+            logger.warning(
+                "New entry blocked: exchange reconciliation is unresolved."
+            )
+            return
+
         trade_plan = (
             self.risk_manager.create_trade_plan(
                 signal,
@@ -289,6 +305,21 @@ class PaperEngine:
     def save_state(self) -> None:
         """Persist the latest portfolio and per-symbol processing state."""
         self._save_state()
+
+    def reconcile_execution(self) -> dict:
+        if self.trading_mode == "paper":
+            self.entries_enabled = True
+            return {"safe": True}
+
+        result = self.broker.reconcile()
+        self.entries_enabled = bool(result.get("safe"))
+        if self.entries_enabled:
+            result["available_cash"] = self.broker.sync_balance()
+        else:
+            logger.error(
+                "OKX demo reconciliation unresolved; new entries disabled."
+            )
+        return result
 
     @staticmethod
     def _is_stale_entry(value) -> bool:

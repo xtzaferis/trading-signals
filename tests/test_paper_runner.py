@@ -111,3 +111,48 @@ def test_stop_interrupts_runner_wait():
 
     assert runner.running is False
     stop_event.set.assert_called_once()
+
+
+def test_runner_reconciles_before_scanning():
+    health = Mock()
+    engine = Mock()
+    engine.reconcile_execution.return_value = {"safe": True}
+    runner = PaperRunner(health_repository=health, engine=engine)
+    runner.scanner = Mock()
+    runner.scanner.get_top_spot_pairs.return_value = []
+
+    runner.run_once()
+
+    engine.reconcile_execution.assert_called_once()
+    runner.scanner.get_top_spot_pairs.assert_called_once()
+
+
+def test_runner_keeps_monitoring_when_new_entries_are_blocked():
+    health = Mock()
+    engine = Mock()
+    engine.reconcile_execution.return_value = {"safe": False}
+    runner = PaperRunner(health_repository=health, engine=engine)
+    runner.scanner = Mock()
+    runner.scanner.get_top_spot_pairs.return_value = ["BTC/USDC"]
+    runner._process_symbol = Mock()
+
+    runner.run_once()
+
+    runner._process_symbol.assert_called_once_with("BTC/USDC")
+
+
+def test_runner_stops_cycle_when_reconciliation_request_fails():
+    health = Mock()
+    engine = Mock()
+    engine.reconcile_execution.side_effect = TimeoutError(
+        "reconciliation timed out"
+    )
+    runner = PaperRunner(health_repository=health, engine=engine)
+    runner.scanner = Mock()
+
+    runner.run_once()
+
+    runner.scanner.get_top_spot_pairs.assert_not_called()
+    health.record_scan_failure.assert_called_once_with(
+        "reconciliation timed out"
+    )

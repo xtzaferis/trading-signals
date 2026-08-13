@@ -186,3 +186,15 @@ def test_rejected_exit_returns_position_to_open_for_next_retry():
     stored = broker.positions.find_active("BTC/USDC")
     assert stored["status"] == "OPEN"
     assert stored["exit_client_order_id"] is None
+
+
+def test_demo_balance_sets_available_cash_ceiling():
+    broker, gateway = create_broker()
+    gateway.client.get_balance.return_value = {
+        "free": {"USDC": 432.10}
+    }
+
+    available = broker.sync_balance()
+
+    assert available == 432.10
+    assert broker.portfolio.available_cash == 432.10

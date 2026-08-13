@@ -1,7 +1,7 @@
 import sys
 
 from app.config.settings import (
-    PAPER_TRADING,
+    TRADING_MODE,
 )
 from app.core.logger import logger
 from app.paper.paper_runner import (
@@ -11,10 +11,10 @@ from app.paper.paper_runner import (
 
 def main():
 
-    if not PAPER_TRADING:
+    if TRADING_MODE not in {"paper", "okx_demo"}:
 
         logger.error(
-            "Paper trading is disabled."
+            "This runner supports only paper and okx_demo modes."
         )
 
         sys.exit(1)
@@ -22,11 +22,11 @@ def main():
     logger.info("")
     logger.info("=" * 50)
     logger.info(
-        "PAPER TRADING STARTED"
+        f"TRADING STARTED | mode={TRADING_MODE}"
     )
     logger.info("=" * 50)
 
-    runner = PaperRunner()
+    runner = PaperRunner(trading_mode=TRADING_MODE)
 
     try:
 

@@ -8,6 +8,7 @@ from app.config.settings import (
     ENTRY_TIMEFRAME,
     REGIME_TIMEFRAME,
     SCAN_INTERVAL,
+    TRADING_MODE,
     TREND_TIMEFRAME,
 )
 from app.core.logger import logger
@@ -29,7 +30,15 @@ from app.storage.paper_health_repository import PaperHealthRepository
 
 class PaperRunner:
 
-    def __init__(self, health_repository=None, stop_event=None):
+    def __init__(
+        self,
+        health_repository=None,
+        stop_event=None,
+        engine=None,
+        trading_mode: str = TRADING_MODE,
+    ):
+
+        self.trading_mode = trading_mode
 
         self.live_feed = LiveFeed()
 
@@ -41,9 +50,7 @@ class PaperRunner:
             LiveMarketService()
         )
 
-        self.engine = (
-            PaperEngine()
-        )
+        self.engine = engine or PaperEngine(trading_mode=trading_mode)
 
         self.scanner = MarketScanner()
 
@@ -54,6 +61,23 @@ class PaperRunner:
         self.running = True
 
     def run_once(self):
+
+        try:
+            reconciliation = self.engine.reconcile_execution()
+        except (
+            ccxt.NetworkError,
+            ccxt.ExchangeError,
+            ConnectionError,
+            TimeoutError,
+        ) as error:
+            logger.exception("Execution reconciliation failed.")
+            self.health.record_scan_failure(str(error))
+            return
+
+        if not reconciliation.get("safe", False):
+            logger.warning(
+                "Runner continuing exit monitoring with new entries disabled."
+            )
 
         try:
 
@@ -146,7 +170,7 @@ class PaperRunner:
         logger.info("")
         logger.info("=" * 50)
         logger.info(
-            "PAPER RUNNER STARTED"
+            f"TRADING RUNNER STARTED | mode={self.trading_mode}"
         )
         logger.info("=" * 50)
 
