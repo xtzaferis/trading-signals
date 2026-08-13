@@ -18,7 +18,32 @@ OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE")
 # Trading Mode
 # =====================================
 
-PAPER_TRADING = True
+TRADING_MODE = os.getenv(
+    "TRADING_MODE",
+    "paper",
+).strip().lower()
+
+VALID_TRADING_MODES = {
+    "paper",
+    "okx_demo",
+    "live",
+}
+
+if TRADING_MODE not in VALID_TRADING_MODES:
+    raise ValueError(
+        "TRADING_MODE must be one of: paper, okx_demo, live."
+    )
+
+# Compatibility flag for the existing paper entry point. New execution code
+# must use TRADING_MODE so demo and live modes cannot be confused.
+PAPER_TRADING = TRADING_MODE == "paper"
+
+# Live orders require both TRADING_MODE=live and this separate opt-in. Keeping
+# the second switch off makes an accidental environment change fail closed.
+LIVE_TRADING_ENABLED = (
+    os.getenv("LIVE_TRADING_ENABLED", "false").strip().lower() == "true"
+)
+
 TEST_MODE = False
 
 
@@ -121,6 +146,12 @@ RISK_REWARD_RATIO = 3.0
 MIN_STOP_DISTANCE_PCT = 0.0075
 
 MAX_DRAWDOWN_PCT = 0.15
+
+# Absolute safety ceiling for a single exchange order. Risk sizing may choose
+# a smaller value, but exchange execution must never exceed this amount.
+MAX_EXCHANGE_ORDER_VALUE = float(
+    os.getenv("MAX_EXCHANGE_ORDER_VALUE", "500.0")
+)
 
 
 # =====================================

@@ -1,8 +1,6 @@
-from unittest.mock import patch
+import pytest
 
-from app.backtesting.backtest_broker import (
-    BacktestBroker,
-)
+from app.exceptions import TradingModeError
 from app.execution.broker_factory import (
     create_broker,
 )
@@ -14,37 +12,25 @@ from app.trading.portfolio import (
 )
 
 
-def test_factory_returns_backtest_broker():
+def test_factory_fails_closed_for_exchange_mode():
 
     portfolio = Portfolio()
 
-    with patch(
-        "app.execution.broker_factory.PAPER_TRADING",
-        False,
-    ):
-
-        broker = create_broker(
-            portfolio
+    with pytest.raises(TradingModeError, match="not connected"):
+        create_broker(
+            portfolio,
+            trading_mode="okx_demo",
         )
-
-    assert isinstance(
-        broker,
-        BacktestBroker,
-    )
 
 
 def test_factory_returns_paper_broker():
 
     portfolio = Portfolio()
 
-    with patch(
-        "app.execution.broker_factory.PAPER_TRADING",
-        True,
-    ):
-
-        broker = create_broker(
-            portfolio
-        )
+    broker = create_broker(
+        portfolio,
+        trading_mode="paper",
+    )
 
     assert isinstance(
         broker,
