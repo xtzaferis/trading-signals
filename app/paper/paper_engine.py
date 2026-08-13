@@ -230,6 +230,7 @@ class PaperEngine:
             price=entry["close"],
             score=signal.score,
             action=signal.action,
+            reasons=signal.reasons,
         )
 
         logger.info(

@@ -67,7 +67,10 @@ TEST_MODE = False
 # Account
 # =====================================
 
-ACCOUNT_SIZE = 1000.0
+ACCOUNT_SIZE = float(os.getenv("ACCOUNT_SIZE", "1000.0"))
+
+if ACCOUNT_SIZE <= 0:
+    raise ValueError("ACCOUNT_SIZE must be greater than zero.")
 
 
 # =====================================

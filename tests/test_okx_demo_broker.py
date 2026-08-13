@@ -216,6 +216,29 @@ def test_demo_balance_sets_available_cash_ceiling():
     assert broker.portfolio.available_cash == 432.10
 
 
+def test_demo_balance_is_capped_at_configured_bot_allocation():
+    broker, gateway = create_broker()
+    gateway.client.get_balance.return_value = {
+        "free": {"USDC": 100_000.0}
+    }
+
+    available = broker.sync_balance()
+
+    assert available == broker.portfolio.initial_balance
+
+
+def test_demo_balance_cap_accounts_for_committed_position_cash():
+    broker, gateway = create_broker(filled_order("order-entry", 101.0))
+    broker.open(trade_plan(), NOW)
+    gateway.client.get_balance.return_value = {
+        "free": {"USDC": 100_000.0}
+    }
+
+    available = broker.sync_balance()
+
+    assert available == pytest.approx(898.9)
+
+
 def test_live_native_protection_keeps_reconciliation_safe():
     broker, gateway = create_broker(filled_order("order-entry", 101.0))
     broker.open(trade_plan(), NOW)

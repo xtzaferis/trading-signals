@@ -54,3 +54,25 @@ def test_decision_logger_logs_trade_decision():
             logger.info.assert_any_call(
                 "Action: BUY"
             )
+
+
+def test_decision_logger_includes_signal_reasons():
+    with patch(
+        "app.services.decision_logger.DecisionRepository"
+    ) as repository, patch(
+        "app.services.decision_logger.logger"
+    ) as logger:
+        logger_service = DecisionLogger()
+
+        logger_service.log(
+            symbol="BTC/USDC",
+            price=100.0,
+            score=0,
+            action="HOLD",
+            reasons=["Daily regime filter failed"],
+        )
+
+        repository.return_value.save.assert_called_once()
+        logger.info.assert_any_call(
+            "Reason: Daily regime filter failed"
+        )

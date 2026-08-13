@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import ccxt
 
-from app.config.settings import QUOTE_CURRENCY
+from app.config.settings import ACCOUNT_SIZE, QUOTE_CURRENCY
 from app.core.logger import logger
 from app.exceptions import OrderValidationError
 from app.execution.broker import Broker
@@ -47,12 +47,30 @@ class OKXDemoBroker(Broker):
         )
 
     def sync_balance(self) -> float:
-        """Use free demo quote balance as the next trade's cash ceiling."""
+        """Limit usable cash to both the exchange balance and bot allocation."""
         balance = self.gateway.client.get_balance()
         free = (balance.get("free") or {}).get(QUOTE_CURRENCY)
         if free is None:
             free = (balance.get(QUOTE_CURRENCY) or {}).get("free", 0.0)
-        self.portfolio.cash = max(0.0, float(free or 0.0))
+
+        # Demo wallets commonly contain a large preset balance. Keep a virtual
+        # allocation for this bot so that synchronizing the exchange balance
+        # cannot silently increase its risk budget after each scan or restart.
+        realized_pnl = float(
+            self.positions.operational_summary().get("net_profit", 0.0)
+        )
+        committed_cash = sum(
+            position.entry_price * position.quantity + position.entry_fee
+            for position in self.portfolio.open_positions
+        )
+        allocated_cash = max(
+            0.0,
+            ACCOUNT_SIZE + realized_pnl - committed_cash,
+        )
+        self.portfolio.cash = min(
+            max(0.0, float(free or 0.0)),
+            allocated_cash,
+        )
         return self.portfolio.cash
 
     def open(

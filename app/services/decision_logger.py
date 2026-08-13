@@ -20,6 +20,7 @@ class DecisionLogger:
         price: float,
         score: int,
         action: str,
+        reasons: list[str] | None = None,
     ):
 
         timestamp = datetime.now(
@@ -61,3 +62,8 @@ class DecisionLogger:
         logger.info(
             f"Action: {action}"
         )
+
+        if isinstance(reasons, (list, tuple)) and reasons:
+            logger.info(
+                "Reason: " + "; ".join(str(reason) for reason in reasons)
+            )
