@@ -46,6 +46,10 @@ def create_broker(*orders):
         "id": "protection-order",
         "status": "open",
     }
+    gateway.client.get_balance.return_value = {
+        "free": {"USDC": 1000.0},
+        "total": {"BTC": 10.0, "USDC": 1000.0},
+    }
     identifiers = iter(("entry1", "protect1", "exit1", "extra1"))
     broker = OKXDemoBroker(
         Portfolio(),
@@ -168,6 +172,9 @@ def test_reconciliation_activates_recovered_entry_with_fee():
         "unresolved_client_order_ids": [],
         "safe": True,
     }
+    gateway.client.get_balance.return_value = {
+        "total": {"BTC": 1.0, "USDC": 1000.0}
+    }
     broker = OKXDemoBroker(Portfolio(), gateway, positions)
 
     result = broker.reconcile()
@@ -249,3 +256,52 @@ def test_rejected_native_protection_is_persisted_as_failed():
     stored = broker.positions.find_active("BTC/USDC")
     assert stored["status"] == "OPEN"
     assert stored["protection_status"] == "FAILED"
+
+
+def test_triggered_oco_closes_position_from_exact_exchange_fills():
+    broker, gateway = create_broker(filled_order("order-entry", 101.0))
+    position = broker.open(trade_plan(), NOW)
+    gateway.reconcile_intents.return_value = {"safe": True, "resolved": 0}
+    gateway.client.find_protective_oco.return_value = {
+        "id": "algo1",
+        "status": "closed",
+        "info": {
+            "state": "effective",
+            "ordId": "exit-order",
+            "actualSide": "tp",
+        },
+    }
+    gateway.client.fetch_order_execution.return_value = {
+        "order_id": "exit-order",
+        "filled": 1.0,
+        "cost": 122.0,
+        "average": 122.0,
+        "fees": [{"cost": 0.2, "currency": "USDC"}],
+    }
+
+    result = broker.reconcile()
+
+    assert result["safe"] is True
+    assert result["unprotected_symbols"] == []
+    assert broker.portfolio.open_positions == []
+    assert position.exit_reason == "TAKE_PROFIT"
+    assert position.realized_pnl == 20.7
+
+
+def test_balance_mismatch_blocks_reconciliation():
+    broker, gateway = create_broker(filled_order("order-entry", 101.0))
+    broker.open(trade_plan(), NOW)
+    gateway.reconcile_intents.return_value = {"safe": True, "resolved": 0}
+    gateway.client.find_protective_oco.return_value = {
+        "id": "algo1",
+        "status": "open",
+        "info": {"state": "live"},
+    }
+    gateway.client.get_balance.return_value = {
+        "total": {"BTC": 0.5, "USDC": 1000.0}
+    }
+
+    result = broker.reconcile()
+
+    assert result["safe"] is False
+    assert result["balance_mismatches"] == ["BTC/USDC"]

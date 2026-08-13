@@ -65,3 +65,15 @@ def test_runner_failure_is_reported_as_degraded():
     status = repository.status()
     assert status["health"] == "DEGRADED"
     assert status["last_error"] == "unexpected failure"
+
+
+def test_operational_warning_degrades_successful_cycle():
+    repository = create_repository()
+    repository.start_cycle(1)
+    repository.complete_cycle(1, 0)
+
+    repository.record_operational_warning("balance mismatch")
+
+    status = repository.status()
+    assert status["health"] == "DEGRADED"
+    assert status["last_error"] == "balance mismatch"

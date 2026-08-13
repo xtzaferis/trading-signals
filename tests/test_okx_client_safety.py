@@ -137,3 +137,31 @@ def test_protective_oco_is_found_by_algo_client_id():
     exchange.fetch_open_orders.assert_called_once_with(
         "BTC/USDC", params={"ordType": "oco"}
     )
+
+
+def test_exact_order_execution_aggregates_fills_and_fees():
+    client, exchange = create_client()
+    exchange.fetch_order_trades.return_value = [
+        {
+            "amount": 0.4,
+            "price": 100.0,
+            "cost": 40.0,
+            "fee": {"cost": 0.04, "currency": "USDC"},
+        },
+        {
+            "amount": 0.6,
+            "price": 101.0,
+            "cost": 60.6,
+            "fee": {"cost": 0.06, "currency": "USDC"},
+        },
+    ]
+
+    execution = client.fetch_order_execution("order1", "BTC/USDC")
+
+    assert execution["filled"] == 1.0
+    assert execution["cost"] == 100.6
+    assert execution["average"] == 100.6
+    assert execution["fees"] == [
+        {"cost": 0.04, "currency": "USDC"},
+        {"cost": 0.06, "currency": "USDC"},
+    ]

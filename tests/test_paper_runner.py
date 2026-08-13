@@ -139,6 +139,7 @@ def test_runner_keeps_monitoring_when_new_entries_are_blocked():
     runner.run_once()
 
     runner._process_symbol.assert_called_once_with("BTC/USDC")
+    health.record_operational_warning.assert_called_once()
 
 
 def test_runner_stops_cycle_when_reconciliation_request_fails():

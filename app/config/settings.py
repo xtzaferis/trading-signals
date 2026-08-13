@@ -153,6 +153,17 @@ MIN_STOP_DISTANCE_PCT = 0.0075
 
 MAX_DRAWDOWN_PCT = 0.15
 
+# Persistent execution circuit breakers. They block new entries only; exits
+# and exchange-native protection are always allowed to proceed.
+MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.02"))
+MAX_CONSECUTIVE_LOSSES = int(os.getenv("MAX_CONSECUTIVE_LOSSES", "3"))
+MAX_EXCHANGE_ORDERS_PER_DAY = int(
+    os.getenv("MAX_EXCHANGE_ORDERS_PER_DAY", "20")
+)
+EMERGENCY_STOP = (
+    os.getenv("EMERGENCY_STOP", "false").strip().lower() == "true"
+)
+
 # Absolute safety ceiling for a single exchange order. Risk sizing may choose
 # a smaller value, but exchange execution must never exceed this amount.
 MAX_EXCHANGE_ORDER_VALUE = float(

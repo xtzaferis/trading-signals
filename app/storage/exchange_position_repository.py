@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from app.config.settings import ACCOUNT_SIZE
 from app.storage.database import Database
 
 
@@ -160,12 +161,14 @@ class ExchangePositionRepository:
         exit_fee: float,
         realized_pnl: float,
         closed_at: datetime,
+        exit_reason: str | None = None,
     ) -> None:
         self.database.execute(
             """
             UPDATE exchange_positions SET
                 exit_exchange_order_id = ?, exit_price = ?,
                 exit_fee = ?, realized_pnl = ?, closed_at = ?, status = 'CLOSED',
+                exit_reason = COALESCE(?, exit_reason),
                 last_error = NULL, updated_at = ?
             WHERE entry_client_order_id = ?
             """,
@@ -175,10 +178,69 @@ class ExchangePositionRepository:
                 exit_fee,
                 realized_pnl,
                 closed_at.isoformat(),
+                exit_reason,
                 self._now(),
                 entry_client_order_id,
             ),
         )
+
+    def operational_summary(self) -> dict:
+        rows = self.database.connection.execute(
+            """
+            SELECT status, protection_status, realized_pnl, opened_at, closed_at
+            FROM exchange_positions ORDER BY updated_at
+            """
+        ).fetchall()
+        closed_pnl = [float(row[2]) for row in rows if row[2] is not None]
+        dated_pnl = [
+            (datetime.fromisoformat(row[4]), float(row[2]))
+            for row in rows
+            if row[2] is not None and row[4]
+        ]
+        gross_profit = sum(value for value in closed_pnl if value > 0)
+        gross_loss = abs(sum(value for value in closed_pnl if value < 0))
+        daily_pnl: dict[str, float] = {}
+        monthly_pnl: dict[str, float] = {}
+        equity = float(ACCOUNT_SIZE)
+        peak = equity
+        max_drawdown_pct = 0.0
+        for closed_at, pnl in dated_pnl:
+            day = closed_at.date().isoformat()
+            month = closed_at.strftime("%Y-%m")
+            daily_pnl[day] = daily_pnl.get(day, 0.0) + pnl
+            monthly_pnl[month] = monthly_pnl.get(month, 0.0) + pnl
+            equity += pnl
+            peak = max(peak, equity)
+            if peak > 0:
+                max_drawdown_pct = max(
+                    max_drawdown_pct,
+                    (peak - equity) / peak * 100,
+                )
+        return {
+            "positions": len(rows),
+            "open_positions": sum(row[0] == "OPEN" for row in rows),
+            "pending_positions": sum(
+                row[0] not in {"OPEN", "CLOSED", "ENTRY_REJECTED"}
+                for row in rows
+            ),
+            "unprotected_positions": sum(
+                row[0] == "OPEN" and row[1] != "ACTIVE" for row in rows
+            ),
+            "closed_trades": len(closed_pnl),
+            "wins": sum(value > 0 for value in closed_pnl),
+            "losses": sum(value < 0 for value in closed_pnl),
+            "net_profit": sum(closed_pnl),
+            "profit_factor": (
+                gross_profit / gross_loss if gross_loss > 0 else 0.0
+            ),
+            "max_drawdown_pct": max_drawdown_pct,
+            "daily_pnl": daily_pnl,
+            "monthly_pnl": monthly_pnl,
+            "first_opened_at": next((row[3] for row in rows if row[3]), None),
+            "last_closed_at": next(
+                (row[4] for row in reversed(rows) if row[4]), None
+            ),
+        }
 
     def find_active(self, symbol: str) -> dict | None:
         row = self.database.connection.execute(

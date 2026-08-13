@@ -255,6 +255,43 @@ class OKXClient:
             None,
         )
 
+    def fetch_order_execution(
+        self,
+        order_id: str,
+        symbol: str,
+    ) -> dict:
+        """Aggregate exact fills and fees for one executed OKX order."""
+        self._require_credentials()
+        trades = self.exchange.fetch_order_trades(order_id, symbol)
+        if not trades:
+            raise OrderValidationError(
+                f"No fills found for executed order {order_id}."
+            )
+        filled = sum(float(trade.get("amount") or 0.0) for trade in trades)
+        cost = sum(
+            float(trade.get("cost") or 0.0)
+            or float(trade.get("amount") or 0.0)
+            * float(trade.get("price") or 0.0)
+            for trade in trades
+        )
+        if filled <= 0 or cost <= 0:
+            raise OrderValidationError("OKX returned incomplete fill data.")
+        fees = []
+        for trade in trades:
+            fee = trade.get("fee") or {}
+            if fee.get("cost") is not None:
+                fees.append({
+                    "cost": abs(float(fee["cost"])),
+                    "currency": fee.get("currency"),
+                })
+        return {
+            "order_id": order_id,
+            "filled": filled,
+            "cost": cost,
+            "average": cost / filled,
+            "fees": fees,
+        }
+
     @staticmethod
     def _algo_client_id(order: dict) -> str | None:
         info = order.get("info") or {}

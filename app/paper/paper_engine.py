@@ -247,6 +247,11 @@ class PaperEngine:
                 "New entry blocked: exchange reconciliation is unresolved."
             )
             return
+        if hasattr(self.broker, "entries_allowed"):
+            allowed, reason = self.broker.entries_allowed()
+            if not allowed:
+                logger.warning(f"New entry blocked by circuit breaker: {reason}")
+                return
 
         trade_plan = (
             self.risk_manager.create_trade_plan(

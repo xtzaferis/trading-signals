@@ -136,6 +136,15 @@ class PaperHealthRepository:
             (now, now),
         )
 
+    def record_operational_warning(self, error: str) -> None:
+        self.database.execute(
+            """
+            UPDATE paper_health SET cycle_status = 'DEGRADED',
+                last_error = ?, cycle_completed_at = ? WHERE id = 1
+            """,
+            (error, datetime.now(timezone.utc).isoformat()),
+        )
+
     def status(self) -> dict:
         row = self.database.connection.execute(
             """

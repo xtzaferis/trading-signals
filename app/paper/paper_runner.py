@@ -74,7 +74,12 @@ class PaperRunner:
             self.health.record_scan_failure(str(error))
             return
 
+        reconciliation_warning = None
         if not reconciliation.get("safe", False):
+            reconciliation_warning = (
+                "Exchange reconciliation unsafe: "
+                f"{reconciliation}"
+            )
             logger.warning(
                 "Runner continuing exit monitoring with new entries disabled."
             )
@@ -127,6 +132,10 @@ class PaperRunner:
             failed,
             last_error,
         )
+        if reconciliation_warning:
+            self.health.record_operational_warning(
+                reconciliation_warning
+            )
 
     def _process_symbol(self, symbol: str):
 

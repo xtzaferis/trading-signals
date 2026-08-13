@@ -220,6 +220,21 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS execution_risk_state (
+                mode TEXT PRIMARY KEY,
+                trading_day TEXT NOT NULL,
+                day_start_equity REAL NOT NULL,
+                daily_pnl REAL NOT NULL,
+                consecutive_losses INTEGER NOT NULL,
+                orders_today INTEGER NOT NULL,
+                halted_reason TEXT,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
         self._ensure_column(
             cursor,
             "exchange_order_intents",

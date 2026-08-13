@@ -10,6 +10,7 @@ from app.execution.broker import Broker
 from app.execution.okx_order_gateway import OKXOrderGateway
 from app.models.position import Position
 from app.models.trade_plan import TradePlan
+from app.risk.execution_circuit_breaker import ExecutionCircuitBreaker
 from app.storage.exchange_position_repository import (
     ExchangePositionRepository,
 )
@@ -25,6 +26,7 @@ class OKXDemoBroker(Broker):
         gateway: OKXOrderGateway,
         position_repository=None,
         id_factory=None,
+        circuit_breaker=None,
     ):
         self.portfolio = portfolio
         self.gateway = gateway
@@ -32,7 +34,17 @@ class OKXDemoBroker(Broker):
             position_repository or ExchangePositionRepository()
         )
         self.id_factory = id_factory or self._new_client_order_id
+        self.circuit_breaker = circuit_breaker or ExecutionCircuitBreaker(
+            "okx_demo"
+        )
         self._restore_positions()
+
+    def entries_allowed(self) -> tuple[bool, str | None]:
+        return self.circuit_breaker.can_open(
+            self.portfolio.equity,
+            self.portfolio.get_drawdown_percent(),
+            projected_orders=2,
+        )
 
     def sync_balance(self) -> float:
         """Use free demo quote balance as the next trade's cash ceiling."""
@@ -51,6 +63,9 @@ class OKXDemoBroker(Broker):
         if self.positions.find_active(trade_plan.symbol) is not None:
             return None
         if self.portfolio.has_open_position(trade_plan.symbol):
+            return None
+        allowed, _ = self.entries_allowed()
+        if not allowed:
             return None
 
         amount = trade_plan.position_size / trade_plan.entry
@@ -74,6 +89,7 @@ class OKXDemoBroker(Broker):
                 reference_price=trade_plan.entry,
                 client_order_id=client_order_id,
             )
+            self.circuit_breaker.record_order(self.portfolio.equity)
         except OrderValidationError as error:
             self.positions.record_entry_status(
                 client_order_id,
@@ -174,6 +190,7 @@ class OKXDemoBroker(Broker):
                 reference_price=price,
                 client_order_id=client_order_id,
             )
+            self.circuit_breaker.record_order(self.portfolio.equity)
         except OrderValidationError as error:
             self.positions.reset_exit(
                 stored["entry_client_order_id"],
@@ -259,12 +276,19 @@ class OKXDemoBroker(Broker):
             if not self._reconcile_native_protection(position, stored):
                 unprotected.append(stored["symbol"])
 
+        balance_mismatches = self._balance_mismatches()
+
         return {
             **order_result,
             "restored_entries": restored_entries,
             "closed_exits": closed_exits,
             "unprotected_symbols": unprotected,
-            "safe": bool(order_result.get("safe")) and not unprotected,
+            "balance_mismatches": balance_mismatches,
+            "safe": (
+                bool(order_result.get("safe"))
+                and not unprotected
+                and not balance_mismatches
+            ),
         }
 
     def _ensure_native_protection(self, position: Position) -> bool:
@@ -286,6 +310,7 @@ class OKXDemoBroker(Broker):
                 position.stop_loss,
                 client_order_id,
             )
+            self.circuit_breaker.record_order(self.portfolio.equity)
         except OrderValidationError as error:
             self.positions.record_protection(
                 stored["entry_client_order_id"], "FAILED", error=str(error)
@@ -355,12 +380,99 @@ class OKXDemoBroker(Broker):
                 error=str(info.get("failCode") or state),
             )
             return False
-        # A completed OCO may already have sold the asset. Never submit a
-        # second exit until its fill has been reconciled.
+        if state in {"effective", "closed", "filled"}:
+            execution_order_id = self._string_value(info.get("ordId"))
+            if not execution_order_id:
+                self.positions.record_protection(
+                    stored["entry_client_order_id"],
+                    "TRIGGERED",
+                    error="Triggered OCO has no execution order ID.",
+                )
+                return False
+            try:
+                execution = self.gateway.client.fetch_order_execution(
+                    execution_order_id, position.symbol
+                )
+                self._close_native_execution(
+                    position, stored, execution, info
+                )
+            except (
+                ccxt.NetworkError,
+                ccxt.ExchangeError,
+                ConnectionError,
+                TimeoutError,
+                OrderValidationError,
+            ) as error:
+                self.positions.record_protection(
+                    stored["entry_client_order_id"],
+                    "TRIGGERED",
+                    error=str(error),
+                )
+                return False
+            return True
         self.positions.record_protection(
-            stored["entry_client_order_id"], "TRIGGERED"
+            stored["entry_client_order_id"], "UNKNOWN", error=state
         )
         return False
+
+    def _close_native_execution(
+        self,
+        position: Position,
+        stored: dict,
+        execution: dict,
+        info: dict,
+    ) -> None:
+        if execution["filled"] + 1e-12 < position.quantity:
+            raise OrderValidationError("Protective exit is only partially filled.")
+        quote = position.symbol.split("/", maxsplit=1)[1]
+        exit_fee = 0.0
+        for fee in execution["fees"]:
+            if fee["currency"] not in {None, quote}:
+                raise OrderValidationError(
+                    f"Unsupported exit fee currency: {fee['currency']}"
+                )
+            exit_fee += fee["cost"]
+        exit_price = float(execution["average"])
+        reason = (
+            "TAKE_PROFIT"
+            if str(info.get("actualSide") or "").lower() == "tp"
+            else "STOP_LOSS"
+        )
+        pnl = (
+            (exit_price - position.entry_price) * position.quantity
+            - position.entry_fee
+            - exit_fee
+        )
+        position.realized_pnl = pnl
+        closed_at = datetime.now(timezone.utc)
+        self.portfolio.close_position(
+            position, exit_price, reason, closed_at=closed_at
+        )
+        self.positions.close(
+            stored["entry_client_order_id"],
+            execution["order_id"],
+            exit_price,
+            exit_fee,
+            pnl,
+            closed_at,
+            exit_reason=reason,
+        )
+        self.circuit_breaker.record_trade(pnl, self.portfolio.equity)
+
+    def _balance_mismatches(self) -> list[str]:
+        if not self.portfolio.open_positions:
+            return []
+        balance = self.gateway.client.get_balance()
+        totals = balance.get("total") or {}
+        mismatches = []
+        for position in self.portfolio.open_positions:
+            base = position.symbol.split("/", maxsplit=1)[0]
+            total = totals.get(base)
+            if total is None:
+                total = (balance.get(base) or {}).get("total", 0.0)
+            if float(total or 0.0) + 1e-12 < position.quantity:
+                mismatches.append(position.symbol)
+        return sorted(set(mismatches))
 
     def _activate_confirmed_entry(
         self,
@@ -471,6 +583,7 @@ class OKXDemoBroker(Broker):
             pnl,
             self._as_datetime(timestamp),
         )
+        self.circuit_breaker.record_trade(pnl, self.portfolio.equity)
         logger.info(
             f"OKX DEMO EXIT FILLED | {position.symbol} | "
             f"price={exit_price:.8f} | pnl={pnl:.8f}"
