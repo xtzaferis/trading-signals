@@ -35,6 +35,7 @@ def test_record_order_preserves_exchange_fill_state():
             "filled": 0.001,
             "remaining": 0,
             "average": 99_900.0,
+            "fee": {"cost": 0.12},
         },
     )
 
@@ -43,6 +44,7 @@ def test_record_order_preserves_exchange_fill_state():
     assert intent["status"] == "FILLED"
     assert intent["filled_amount"] == 0.001
     assert intent["average_price"] == 99_900.0
+    assert intent["fee_cost"] == 0.12
     assert repository.pending() == []
 
 

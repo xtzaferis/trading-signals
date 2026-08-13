@@ -180,6 +180,7 @@ class Database:
                 status TEXT NOT NULL,
                 filled_amount REAL NOT NULL DEFAULT 0,
                 average_price REAL,
+                fee_cost REAL NOT NULL DEFAULT 0,
                 last_error TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -187,7 +188,65 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS exchange_positions (
+                entry_client_order_id TEXT PRIMARY KEY,
+                exit_client_order_id TEXT UNIQUE,
+                symbol TEXT NOT NULL,
+                requested_amount REAL NOT NULL,
+                quantity REAL NOT NULL DEFAULT 0,
+                planned_entry REAL NOT NULL,
+                entry_price REAL,
+                entry_fee REAL NOT NULL DEFAULT 0,
+                stop_loss REAL NOT NULL,
+                take_profit REAL NOT NULL,
+                status TEXT NOT NULL,
+                entry_exchange_order_id TEXT,
+                exit_exchange_order_id TEXT,
+                opened_at TEXT,
+                closed_at TEXT,
+                exit_price REAL,
+                exit_fee REAL NOT NULL DEFAULT 0,
+                exit_reason TEXT,
+                realized_pnl REAL,
+                last_error TEXT,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+        self._ensure_column(
+            cursor,
+            "exchange_order_intents",
+            "fee_cost",
+            "REAL NOT NULL DEFAULT 0",
+        )
+        self._ensure_column(
+            cursor,
+            "exchange_positions",
+            "entry_fee",
+            "REAL NOT NULL DEFAULT 0",
+        )
+        self._ensure_column(
+            cursor,
+            "exchange_positions",
+            "exit_fee",
+            "REAL NOT NULL DEFAULT 0",
+        )
+
         self.connection.commit()
+
+    @staticmethod
+    def _ensure_column(cursor, table: str, column: str, definition: str):
+        columns = {
+            row[1]
+            for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if column not in columns:
+            cursor.execute(
+                f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+            )
 
     def execute(
         self,

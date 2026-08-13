@@ -31,9 +31,11 @@ class ExchangeOrderRepository:
             INSERT OR IGNORE INTO exchange_order_intents (
                 client_order_id, exchange_order_id, symbol, side,
                 order_type, requested_amount, reference_price, status,
-                filled_amount, average_price, last_error,
+                filled_amount, average_price, fee_cost, last_error,
                 created_at, updated_at
-            ) VALUES (?, NULL, ?, ?, ?, ?, ?, 'PREPARED', 0, NULL, NULL, ?, ?)
+            ) VALUES (
+                ?, NULL, ?, ?, ?, ?, ?, 'PREPARED', 0, NULL, 0, NULL, ?, ?
+            )
             """,
             (
                 client_order_id,
@@ -55,7 +57,7 @@ class ExchangeOrderRepository:
             UPDATE exchange_order_intents SET
                 exchange_order_id = COALESCE(?, exchange_order_id),
                 status = ?, filled_amount = ?, average_price = ?,
-                last_error = NULL, updated_at = ?
+                fee_cost = ?, last_error = NULL, updated_at = ?
             WHERE client_order_id = ?
             """,
             (
@@ -63,6 +65,7 @@ class ExchangeOrderRepository:
                 status,
                 float(order.get("filled") or 0.0),
                 self._float_value(order.get("average")),
+                self._fee_cost(order),
                 datetime.now(timezone.utc).isoformat(),
                 client_order_id,
             ),
@@ -87,7 +90,7 @@ class ExchangeOrderRepository:
             """
             SELECT client_order_id, exchange_order_id, symbol, side,
                    order_type, requested_amount, reference_price, status,
-                   filled_amount, average_price, last_error,
+                   filled_amount, average_price, fee_cost, last_error,
                    created_at, updated_at
             FROM exchange_order_intents WHERE client_order_id = ?
             """,
@@ -101,7 +104,7 @@ class ExchangeOrderRepository:
             f"""
             SELECT client_order_id, exchange_order_id, symbol, side,
                    order_type, requested_amount, reference_price, status,
-                   filled_amount, average_price, last_error,
+                   filled_amount, average_price, fee_cost, last_error,
                    created_at, updated_at
             FROM exchange_order_intents
             WHERE status NOT IN ({placeholders})
@@ -143,9 +146,10 @@ class ExchangeOrderRepository:
             "average_price": (
                 float(row[9]) if row[9] is not None else None
             ),
-            "last_error": row[10],
-            "created_at": row[11],
-            "updated_at": row[12],
+            "fee_cost": float(row[10]),
+            "last_error": row[11],
+            "created_at": row[12],
+            "updated_at": row[13],
         }
 
     @staticmethod
@@ -155,3 +159,8 @@ class ExchangeOrderRepository:
     @staticmethod
     def _float_value(value) -> float | None:
         return float(value) if value is not None else None
+
+    @staticmethod
+    def _fee_cost(order: dict) -> float:
+        fee = order.get("fee") or {}
+        return abs(float(fee.get("cost") or 0.0))
