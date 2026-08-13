@@ -12,7 +12,11 @@ class PaperStateRepository:
     def __init__(self):
         self.database = Database()
 
-    def save(self, portfolio: Portfolio) -> None:
+    def save(
+        self,
+        portfolio: Portfolio,
+        symbol_state: dict[str, dict] | None = None,
+    ) -> None:
         updated_at = datetime.now(timezone.utc).isoformat()
         positions = (
             list(portfolio.open_positions)
@@ -54,6 +58,27 @@ class PaperStateRepository:
                 """,
                 [self._position_values(position) for position in positions],
             )
+            if symbol_state is not None:
+                cursor.execute("DELETE FROM paper_symbol_state")
+                cursor.executemany(
+                    """
+                    INSERT INTO paper_symbol_state (
+                        symbol, last_entry_timestamp, cooldown_until
+                    ) VALUES (?, ?, ?)
+                    """,
+                    [
+                        (
+                            symbol,
+                            self._datetime_value(
+                                state.get("last_entry_timestamp")
+                            ),
+                            self._datetime_value(
+                                state.get("cooldown_until")
+                            ),
+                        )
+                        for symbol, state in symbol_state.items()
+                    ],
+                )
 
     def load(self) -> Portfolio:
         portfolio = Portfolio()
@@ -89,6 +114,21 @@ class PaperStateRepository:
                 portfolio.closed_positions.append(position)
 
         return portfolio
+
+    def load_symbol_state(self) -> dict[str, dict]:
+        rows = self.database.connection.execute(
+            """
+            SELECT symbol, last_entry_timestamp, cooldown_until
+            FROM paper_symbol_state
+            """
+        ).fetchall()
+        return {
+            row[0]: {
+                "last_entry_timestamp": self._parse_datetime(row[1]),
+                "cooldown_until": self._parse_datetime(row[2]),
+            }
+            for row in rows
+        }
 
     def status(self) -> dict[str, str | int | float | None]:
         row = self.database.connection.execute(
@@ -137,6 +177,14 @@ class PaperStateRepository:
             position.entry_fee,
             position.exit_reason,
         )
+
+    @staticmethod
+    def _datetime_value(value) -> str | None:
+        return value.isoformat() if value is not None else None
+
+    @staticmethod
+    def _parse_datetime(value: str | None) -> datetime | None:
+        return datetime.fromisoformat(value) if value else None
 
     @staticmethod
     def _position_from_row(row: tuple) -> Position:

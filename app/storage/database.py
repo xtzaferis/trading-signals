@@ -130,6 +130,16 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_symbol_state (
+                symbol TEXT PRIMARY KEY,
+                last_entry_timestamp TEXT,
+                cooldown_until TEXT
+            )
+            """
+        )
+
         self.connection.commit()
 
     def execute(

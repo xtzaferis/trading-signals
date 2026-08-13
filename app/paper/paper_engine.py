@@ -3,8 +3,10 @@ from datetime import datetime, timedelta, timezone
 from app.backtesting.market_provider import (
     MarketProvider,
 )
+from app.backtesting.trade_cooldown import cooldown_bars_for_exit
 from app.config.settings import (
     MARKET_SYMBOL,
+    MAX_DRAWDOWN_PCT,
     MAX_ENTRY_CANDLE_AGE_SECONDS,
     PAPER_STATE_PERSISTENCE_ENABLED,
 )
@@ -96,7 +98,22 @@ class PaperEngine:
 
         self.shadow_tracker = RecoveryShadowTracker()
 
-        self.last_processed_entry = {}
+        restored_state = (
+            self.state_repository.load_symbol_state()
+            if self.state_repository is not None
+            else {}
+        )
+        if not isinstance(restored_state, dict):
+            restored_state = {}
+        self.last_processed_entry = {
+            symbol: state.get("last_entry_timestamp")
+            for symbol, state in restored_state.items()
+        }
+        self.cooldown_until = {
+            symbol: state.get("cooldown_until")
+            for symbol, state in restored_state.items()
+            if state.get("cooldown_until") is not None
+        }
 
     def process_snapshot(
         self,
@@ -133,7 +150,7 @@ class PaperEngine:
         if entry is None:
             return
 
-        entry_timestamp = entry.get("timestamp")
+        entry_timestamp = self._as_datetime(entry.get("timestamp"))
         if self._is_stale_entry(entry_timestamp):
             logger.warning(
                 f"Skipping stale completed candle for {symbol}: "
@@ -152,13 +169,22 @@ class PaperEngine:
         for position in list(self.portfolio.open_positions):
             if position.symbol != symbol:
                 continue
-            closed_this_cycle = self.broker.update(
+            closed = self.broker.update(
                 position,
                 high=entry.get("high", entry["close"]),
                 low=entry.get("low", entry["close"]),
                 close=entry["close"],
                 timestamp=data.get("timestamp"),
-            ) or closed_this_cycle
+            )
+            if closed:
+                closed_this_cycle = True
+                cooldown_bars = cooldown_bars_for_exit(
+                    position.exit_reason
+                )
+                self.cooldown_until[symbol] = (
+                    self._as_datetime(data.get("timestamp"))
+                    or datetime.now(timezone.utc)
+                ) + timedelta(minutes=15 * cooldown_bars)
 
         self._save_state()
 
@@ -169,6 +195,17 @@ class PaperEngine:
         )
 
         if closed_this_cycle:
+            return
+
+        cooldown_until = self.cooldown_until.get(symbol)
+        now = self._as_datetime(data.get("timestamp")) or datetime.now(
+            timezone.utc
+        )
+        if cooldown_until is not None and now <= cooldown_until:
+            logger.info(
+                f"Entry cooldown active for {symbol} until "
+                f"{cooldown_until.isoformat()}"
+            )
             return
 
         signal = (
@@ -206,6 +243,16 @@ class PaperEngine:
         if trade_plan is None:
             return
 
+        self.portfolio.update_peak_equity()
+        if self.portfolio.is_max_drawdown_exceeded(
+            MAX_DRAWDOWN_PCT
+        ):
+            logger.warning(
+                "Paper entry blocked: maximum drawdown exceeded."
+            )
+            self._save_state()
+            return
+
         position = (
             self.broker.open(
                 trade_plan,
@@ -222,7 +269,22 @@ class PaperEngine:
 
     def _save_state(self) -> None:
         if self.state_repository is not None:
-            self.state_repository.save(self.portfolio)
+            symbols = set(self.last_processed_entry) | set(
+                self.cooldown_until
+            )
+            symbol_state = {
+                symbol: {
+                    "last_entry_timestamp": (
+                        self.last_processed_entry.get(symbol)
+                    ),
+                    "cooldown_until": self.cooldown_until.get(symbol),
+                }
+                for symbol in symbols
+            }
+            self.state_repository.save(
+                self.portfolio,
+                symbol_state,
+            )
 
     @staticmethod
     def _is_stale_entry(value) -> bool:
@@ -237,3 +299,15 @@ class PaperEngine:
         candle_closed_at = value + timedelta(minutes=15)
         age = datetime.now(timezone.utc) - candle_closed_at
         return age.total_seconds() > MAX_ENTRY_CANDLE_AGE_SECONDS
+
+    @staticmethod
+    def _as_datetime(value) -> datetime | None:
+        if value is None:
+            return None
+        if hasattr(value, "to_pydatetime"):
+            value = value.to_pydatetime()
+        if not isinstance(value, datetime):
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
