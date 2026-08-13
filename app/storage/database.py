@@ -93,6 +93,43 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_portfolio (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                initial_balance REAL NOT NULL,
+                cash REAL NOT NULL,
+                peak_equity REAL NOT NULL,
+                max_drawdown REAL NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_positions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                entry_price REAL NOT NULL,
+                quantity REAL NOT NULL,
+                stop_loss REAL NOT NULL,
+                take_profit REAL NOT NULL,
+                opened_at TEXT NOT NULL,
+                closed_at TEXT,
+                current_price REAL NOT NULL,
+                highest_price REAL NOT NULL,
+                status TEXT NOT NULL,
+                break_even INTEGER NOT NULL,
+                realized_pnl REAL NOT NULL,
+                initial_risk REAL NOT NULL,
+                trailing_stop REAL NOT NULL,
+                entry_fee REAL NOT NULL,
+                exit_reason TEXT
+            )
+            """
+        )
+
         self.connection.commit()
 
     def execute(

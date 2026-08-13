@@ -1,7 +1,13 @@
+from datetime import datetime, timedelta, timezone
+
 from app.backtesting.market_provider import (
     MarketProvider,
 )
-from app.config.settings import MARKET_SYMBOL
+from app.config.settings import (
+    MARKET_SYMBOL,
+    MAX_ENTRY_CANDLE_AGE_SECONDS,
+    PAPER_STATE_PERSISTENCE_ENABLED,
+)
 from app.core.logger import logger
 from app.execution.paper_broker import (
     PaperBroker,
@@ -24,6 +30,9 @@ from app.services.statistics_printer import (
 from app.services.statistics_service import (
     StatisticsService,
 )
+from app.storage.paper_state_repository import (
+    PaperStateRepository,
+)
 from app.strategy.signal_engine import (
     SignalEngine,
 )
@@ -34,7 +43,11 @@ from app.trading.portfolio import (
 
 class PaperEngine:
 
-    def __init__(self):
+    def __init__(
+        self,
+        state_repository=None,
+        persist_state: bool = PAPER_STATE_PERSISTENCE_ENABLED,
+    ):
 
         self.symbol = MARKET_SYMBOL
 
@@ -42,7 +55,22 @@ class PaperEngine:
 
         self.feeds = {self.symbol: self.feed}
 
-        self.portfolio = Portfolio()
+        self.state_repository = (
+            state_repository
+            or (PaperStateRepository() if persist_state else None)
+        )
+
+        self.portfolio = (
+            self.state_repository.load()
+            if self.state_repository is not None
+            else Portfolio()
+        )
+
+        if self.portfolio.open_positions:
+            logger.info(
+                "Restored paper positions: "
+                f"{len(self.portfolio.open_positions)}"
+            )
 
         self.market_provider = MarketProvider(
             self.feed
@@ -106,6 +134,12 @@ class PaperEngine:
             return
 
         entry_timestamp = entry.get("timestamp")
+        if self._is_stale_entry(entry_timestamp):
+            logger.warning(
+                f"Skipping stale completed candle for {symbol}: "
+                f"{entry_timestamp}"
+            )
+            return
         if (
             entry_timestamp is not None
             and self.last_processed_entry.get(symbol) == entry_timestamp
@@ -125,6 +159,8 @@ class PaperEngine:
                 close=entry["close"],
                 timestamp=data.get("timestamp"),
             ) or closed_this_cycle
+
+        self._save_state()
 
         self.shadow_tracker.observe(
             symbol,
@@ -182,3 +218,22 @@ class PaperEngine:
         if position is None:
 
             return
+        self._save_state()
+
+    def _save_state(self) -> None:
+        if self.state_repository is not None:
+            self.state_repository.save(self.portfolio)
+
+    @staticmethod
+    def _is_stale_entry(value) -> bool:
+        if value is None:
+            return False
+        if hasattr(value, "to_pydatetime"):
+            value = value.to_pydatetime()
+        if not isinstance(value, datetime):
+            return False
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        candle_closed_at = value + timedelta(minutes=15)
+        age = datetime.now(timezone.utc) - candle_closed_at
+        return age.total_seconds() > MAX_ENTRY_CANDLE_AGE_SECONDS
