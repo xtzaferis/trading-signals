@@ -82,3 +82,20 @@ def test_invalid_client_order_id_is_rejected():
         )
 
     exchange.create_order.assert_not_called()
+
+
+def test_order_can_be_recovered_by_client_order_id():
+    client, exchange = create_client()
+    exchange.fetch_order.return_value = {"id": "exchange-1"}
+
+    result = client.fetch_order_by_client_id(
+        "botBTC123",
+        "BTC/USDC",
+    )
+
+    assert result == {"id": "exchange-1"}
+    exchange.fetch_order.assert_called_once_with(
+        id="",
+        symbol="BTC/USDC",
+        params={"clientOrderId": "botBTC123"},
+    )

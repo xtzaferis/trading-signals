@@ -167,6 +167,26 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS exchange_order_intents (
+                client_order_id TEXT PRIMARY KEY,
+                exchange_order_id TEXT,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL,
+                order_type TEXT NOT NULL,
+                requested_amount REAL NOT NULL,
+                reference_price REAL NOT NULL,
+                status TEXT NOT NULL,
+                filled_amount REAL NOT NULL DEFAULT 0,
+                average_price REAL,
+                last_error TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
         self.connection.commit()
 
     def execute(

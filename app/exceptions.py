@@ -16,3 +16,7 @@ class LiveTradingDisabledError(TradingModeError):
 
 class OrderValidationError(TradingBotError):
     """Raised before an unsafe or invalid order reaches the exchange."""
+
+
+class DuplicateOrderIntentError(OrderValidationError):
+    """Raised when a client order ID has already been persisted."""

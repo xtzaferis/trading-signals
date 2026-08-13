@@ -186,3 +186,22 @@ class OKXClient:
         except ccxt.ExchangeError as e:
             msg = f"Failed to fetch order {order_id}: {e!s}"
             raise ccxt.ExchangeError(msg) from e
+
+    def fetch_order_by_client_id(
+        self,
+        client_order_id: str,
+        symbol: str,
+    ):
+        """Fetch an order when a response was lost before its OKX ID saved."""
+        self._require_credentials()
+        try:
+            return self.exchange.fetch_order(
+                id="",
+                symbol=symbol,
+                params={"clientOrderId": client_order_id},
+            )
+        except ccxt.ExchangeError as e:
+            msg = (
+                f"Failed to fetch client order {client_order_id}: {e!s}"
+            )
+            raise ccxt.ExchangeError(msg) from e

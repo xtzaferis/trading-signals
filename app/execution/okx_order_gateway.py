@@ -1,17 +1,29 @@
 from collections import Counter
 from math import isfinite
 
+import ccxt
+
 from app.config.settings import MAX_EXCHANGE_ORDER_VALUE
-from app.exceptions import OrderValidationError
+from app.exceptions import (
+    DuplicateOrderIntentError,
+    OrderValidationError,
+)
+from app.storage.exchange_order_repository import ExchangeOrderRepository
 
 
 class OKXOrderGateway:
     """Validate spot orders before delegating them to the OKX client."""
 
-    def __init__(self, client, max_order_value=MAX_EXCHANGE_ORDER_VALUE):
+    def __init__(
+        self,
+        client,
+        max_order_value=MAX_EXCHANGE_ORDER_VALUE,
+        order_repository=None,
+    ):
         self.client = client
         self.max_order_value = float(max_order_value)
         self._require_positive("safety ceiling", self.max_order_value)
+        self.order_repository = order_repository or ExchangeOrderRepository()
 
     def submit_market_order(
         self,
@@ -42,13 +54,70 @@ class OKXOrderGateway:
         self._validate_market_limits(markets[symbol], amount, notional)
         self._validate_balance(symbol, side, amount, notional)
 
-        return self.client.create_order(
-            symbol=symbol,
-            order_type="market",
-            side=side,
-            amount=amount,
+        prepared = self.order_repository.prepare(
             client_order_id=client_order_id,
+            symbol=symbol,
+            side=side,
+            order_type="market",
+            amount=amount,
+            reference_price=reference_price,
         )
+        if not prepared:
+            raise DuplicateOrderIntentError(
+                f"Order intent already exists: {client_order_id}"
+            )
+
+        try:
+            order = self.client.create_order(
+                symbol=symbol,
+                order_type="market",
+                side=side,
+                amount=amount,
+                client_order_id=client_order_id,
+            )
+        except Exception as error:
+            # A timeout can happen after OKX accepted an order. UNKNOWN blocks
+            # reuse of the client ID until reconciliation resolves it.
+            self.order_repository.mark_unknown(
+                client_order_id,
+                str(error),
+            )
+            raise
+
+        self.order_repository.record_order(client_order_id, order)
+        return order
+
+    def reconcile_intents(self) -> dict:
+        resolved = 0
+        unresolved = []
+        for intent in self.order_repository.pending():
+            try:
+                order = self._find_exchange_order(intent)
+            except (
+                ccxt.NetworkError,
+                ccxt.ExchangeError,
+                ConnectionError,
+                TimeoutError,
+            ) as error:
+                self.order_repository.mark_unknown(
+                    intent["client_order_id"],
+                    str(error),
+                )
+                unresolved.append(intent["client_order_id"])
+                continue
+            if order is None:
+                unresolved.append(intent["client_order_id"])
+                continue
+            self.order_repository.record_order(
+                intent["client_order_id"],
+                order,
+            )
+            resolved += 1
+        return {
+            "resolved": resolved,
+            "unresolved_client_order_ids": unresolved,
+            "safe": not unresolved,
+        }
 
     def reconciliation_snapshot(self, symbol: str | None = None) -> dict:
         orders = self.client.fetch_open_orders(symbol)
@@ -66,6 +135,19 @@ class OKXOrderGateway:
             "duplicate_client_order_ids": duplicates,
             "safe": not duplicates,
         }
+
+    def _find_exchange_order(self, intent: dict) -> dict | None:
+        exchange_order_id = intent["exchange_order_id"]
+        if exchange_order_id:
+            return self.client.fetch_order(
+                exchange_order_id,
+                intent["symbol"],
+            )
+
+        return self.client.fetch_order_by_client_id(
+            intent["client_order_id"],
+            intent["symbol"],
+        )
 
     def _validate_market_limits(
         self,
