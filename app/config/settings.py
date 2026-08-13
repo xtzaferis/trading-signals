@@ -130,6 +130,12 @@ BACKTEST_CANDLE_LIMITS = {
 # response length.
 BACKTEST_MIN_HISTORY_RATIO = 0.90
 
+# Fresh completed candles are fetched for every backtest by default. Set this
+# to true only when faster, repeatable development runs are preferred over the
+# newest available OKX history.
+BACKTEST_USE_CACHE = (
+    os.getenv("BACKTEST_USE_CACHE", "false").strip().lower() == "true"
+)
 BACKTEST_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 

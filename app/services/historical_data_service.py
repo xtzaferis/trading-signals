@@ -4,14 +4,17 @@ import time
 from pathlib import Path
 from typing import Any
 
-from app.config.settings import BACKTEST_CACHE_TTL_SECONDS
+from app.config.settings import (
+    BACKTEST_CACHE_TTL_SECONDS,
+    BACKTEST_USE_CACHE,
+)
 from app.core.logger import logger
 from app.exchange.okx_client import OKXClient
 
 
 class HistoricalDataService:
 
-    def __init__(self, client=None):
+    def __init__(self, client=None, use_cache: bool | None = None):
 
         self.client = client or OKXClient()
 
@@ -19,7 +22,11 @@ class HistoricalDataService:
             self.client.exchange
         )
 
-        self.use_cache = client is None
+        self.use_cache = (
+            BACKTEST_USE_CACHE
+            if use_cache is None and client is None
+            else bool(use_cache)
+        )
         self.cache_dir = Path("data") / "backtest_cache"
 
     def load(

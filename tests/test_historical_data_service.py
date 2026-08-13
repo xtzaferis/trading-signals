@@ -36,3 +36,22 @@ def test_load_paginates_and_removes_incomplete_candle():
             "paginationCalls": 2,
         },
     )
+
+
+def test_cache_is_disabled_for_normal_backtests_by_default(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.historical_data_service.BACKTEST_USE_CACHE",
+        False,
+    )
+
+    service = HistoricalDataService(client=None)
+
+    assert service.use_cache is False
+
+
+def test_cache_can_be_enabled_explicitly():
+    client = Mock(exchange=Mock())
+
+    service = HistoricalDataService(client=client, use_cache=True)
+
+    assert service.use_cache is True
