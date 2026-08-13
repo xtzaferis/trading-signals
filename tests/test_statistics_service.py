@@ -89,6 +89,8 @@ def test_statistics_service_generates_report():
         == 2.5
     )
 
+    assert report.expectancy == 25.0
+
 
 def test_statistics_treats_floating_point_dust_as_breakeven():
     portfolio = Portfolio()
@@ -101,6 +103,19 @@ def test_statistics_treats_floating_point_dust_as_breakeven():
     assert report.wins == 0
     assert report.losses == 0
     assert report.breakevens == 1
+
+
+def test_expectancy_includes_breakeven_probability():
+    portfolio = Portfolio()
+    portfolio.closed_positions = [
+        create_closed_position(10.0),
+        create_closed_position(-5.0),
+        create_closed_position(0.0),
+    ]
+
+    report = StatisticsService().generate(portfolio)
+
+    assert report.expectancy == 5.0 / 3.0
 
 
 def test_statistics_includes_months_without_trades():

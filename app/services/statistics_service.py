@@ -164,18 +164,12 @@ class StatisticsService:
             ) * 100
 
         if report.trades > 0:
-
             report.expectancy = (
-                (
-                    report.win_rate / 100
+                sum(
+                    position.realized_pnl
+                    for position in closed
                 )
-                * report.average_winner
-                +
-                (
-                    1
-                    - report.win_rate / 100
-                )
-                * report.average_loser
+                / report.trades
             )
 
         if closed:

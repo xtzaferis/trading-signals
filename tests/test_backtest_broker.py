@@ -316,7 +316,7 @@ def test_trailing_stop_becomes_active_on_next_candle():
         close=106.0,
         timestamp=datetime.now(timezone.utc),
     ) is True
-    assert position.exit_reason == "STOP_LOSS"
+    assert position.exit_reason == "TRAILING_STOP"
 
 
 def test_break_even_stop_covers_fees_and_slippage():
