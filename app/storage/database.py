@@ -210,6 +210,10 @@ class Database:
                 exit_fee REAL NOT NULL DEFAULT 0,
                 exit_reason TEXT,
                 realized_pnl REAL,
+                protection_client_order_id TEXT,
+                protection_order_id TEXT,
+                protection_status TEXT,
+                protection_error TEXT,
                 last_error TEXT,
                 updated_at TEXT NOT NULL
             )
@@ -222,6 +226,18 @@ class Database:
             "fee_cost",
             "REAL NOT NULL DEFAULT 0",
         )
+        for column in (
+            "protection_client_order_id",
+            "protection_order_id",
+            "protection_status",
+            "protection_error",
+        ):
+            self._ensure_column(
+                cursor,
+                "exchange_positions",
+                column,
+                "TEXT",
+            )
         self._ensure_column(
             cursor,
             "exchange_positions",

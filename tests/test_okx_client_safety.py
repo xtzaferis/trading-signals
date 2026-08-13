@@ -99,3 +99,41 @@ def test_order_can_be_recovered_by_client_order_id():
         symbol="BTC/USDC",
         params={"clientOrderId": "botBTC123"},
     )
+
+
+def test_demo_client_places_market_exit_oco():
+    client, exchange = create_client()
+
+    client.create_protective_oco(
+        "BTC/USDC", 0.001, 110_000, 95_000, "protect123"
+    )
+
+    exchange.create_order.assert_called_once_with(
+        symbol="BTC/USDC",
+        type="oco",
+        side="sell",
+        amount=0.001,
+        price=None,
+        params={
+            "tdMode": "cash",
+            "clientOrderId": "protect123",
+            "takeProfitPrice": 110_000,
+            "stopLossPrice": 95_000,
+            "tpOrdPx": -1,
+            "slOrdPx": -1,
+        },
+    )
+
+
+def test_protective_oco_is_found_by_algo_client_id():
+    client, exchange = create_client()
+    protective = {"id": "algo-1", "info": {"algoClOrdId": "protect123"}}
+    exchange.fetch_open_orders.return_value = [protective]
+    exchange.fetch_closed_orders.return_value = []
+
+    result = client.find_protective_oco("BTC/USDC", "protect123")
+
+    assert result == protective
+    exchange.fetch_open_orders.assert_called_once_with(
+        "BTC/USDC", params={"ordType": "oco"}
+    )

@@ -118,6 +118,13 @@ class OKXDemoBroker(Broker):
         stored = self.positions.find_active(position.symbol)
         if stored is None:
             return False
+        if stored["protection_status"] in {
+            "ACTIVE", "PENDING", "UNKNOWN", "TRIGGERED"
+        }:
+            # OKX owns the exit while an OCO may exist. Sending another sell
+            # here could double-close a spot position.
+            position.update_price(close)
+            return False
         if stored["status"] in {"PENDING_EXIT", "EXIT_UNKNOWN"}:
             return self._sync_pending_exit(position, stored, timestamp)
 
@@ -242,11 +249,118 @@ class OKXDemoBroker(Broker):
                 datetime.now(timezone.utc),
             )
 
+        unprotected = []
+        for stored in self.positions.open_positions():
+            if stored["status"] != "OPEN":
+                continue
+            position = self._portfolio_position(stored["symbol"])
+            if position is None:
+                continue
+            if not self._reconcile_native_protection(position, stored):
+                unprotected.append(stored["symbol"])
+
         return {
             **order_result,
             "restored_entries": restored_entries,
             "closed_exits": closed_exits,
+            "unprotected_symbols": unprotected,
+            "safe": bool(order_result.get("safe")) and not unprotected,
         }
+
+    def _ensure_native_protection(self, position: Position) -> bool:
+        stored = self.positions.find_active(position.symbol)
+        if stored is None:
+            return False
+        client_order_id = stored["protection_client_order_id"]
+        if client_order_id is None:
+            client_order_id = self.id_factory("protect")
+            if not self.positions.prepare_protection(
+                stored["entry_client_order_id"], client_order_id
+            ):
+                return False
+        try:
+            order = self.gateway.client.create_protective_oco(
+                position.symbol,
+                position.quantity,
+                position.take_profit,
+                position.stop_loss,
+                client_order_id,
+            )
+        except OrderValidationError as error:
+            self.positions.record_protection(
+                stored["entry_client_order_id"], "FAILED", error=str(error)
+            )
+            raise
+        except (
+            ccxt.NetworkError,
+            ccxt.ExchangeError,
+            ConnectionError,
+            TimeoutError,
+        ) as error:
+            self.positions.record_protection(
+                stored["entry_client_order_id"], "UNKNOWN", error=str(error)
+            )
+            raise
+        self.positions.record_protection(
+            stored["entry_client_order_id"],
+            "ACTIVE",
+            order_id=self._string_value(order.get("id")),
+        )
+        return True
+
+    def _reconcile_native_protection(
+        self,
+        position: Position,
+        stored: dict,
+    ) -> bool:
+        client_order_id = stored["protection_client_order_id"]
+        if client_order_id is None:
+            return self._ensure_native_protection(position)
+        try:
+            order = self.gateway.client.find_protective_oco(
+                position.symbol, client_order_id
+            )
+        except (
+            ccxt.NetworkError,
+            ccxt.ExchangeError,
+            ConnectionError,
+            TimeoutError,
+        ) as error:
+            self.positions.record_protection(
+                stored["entry_client_order_id"], "UNKNOWN", error=str(error)
+            )
+            return False
+        if order is None:
+            self.positions.record_protection(
+                stored["entry_client_order_id"],
+                "UNKNOWN",
+                error="Protective OCO not found on OKX.",
+            )
+            return False
+        info = order.get("info") or {}
+        state = str(info.get("state") or order.get("status") or "").lower()
+        if state in {"live", "open"}:
+            self.positions.record_protection(
+                stored["entry_client_order_id"],
+                "ACTIVE",
+                order_id=self._string_value(
+                    info.get("algoId") or order.get("id")
+                ),
+            )
+            return True
+        if state in {"order_failed", "canceled", "cancelled"}:
+            self.positions.record_protection(
+                stored["entry_client_order_id"],
+                "FAILED",
+                error=str(info.get("failCode") or state),
+            )
+            return False
+        # A completed OCO may already have sold the asset. Never submit a
+        # second exit until its fill has been reconciled.
+        self.positions.record_protection(
+            stored["entry_client_order_id"], "TRIGGERED"
+        )
+        return False
 
     def _activate_confirmed_entry(
         self,
@@ -298,6 +412,7 @@ class OKXDemoBroker(Broker):
             f"OKX DEMO ENTRY FILLED | {position.symbol} | "
             f"qty={quantity:.8f} | price={entry_price:.8f}"
         )
+        self._ensure_native_protection(position)
         return position
 
     def _sync_pending_exit(

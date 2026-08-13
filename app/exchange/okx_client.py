@@ -205,3 +205,61 @@ class OKXClient:
                 f"Failed to fetch client order {client_order_id}: {e!s}"
             )
             raise ccxt.ExchangeError(msg) from e
+
+    def create_protective_oco(
+        self,
+        symbol: str,
+        amount: float,
+        take_profit: float,
+        stop_loss: float,
+        client_order_id: str,
+    ):
+        """Place an exchange-native spot OCO with market TP/SL exits."""
+        self._require_credentials()
+        self._require_order_mode()
+        if amount <= 0 or stop_loss <= 0 or take_profit <= stop_loss:
+            raise OrderValidationError("Invalid protective OCO levels.")
+        if not client_order_id.isalnum() or len(client_order_id) > 32:
+            raise OrderValidationError("Invalid protective client order ID.")
+        return self.exchange.create_order(
+            symbol=symbol,
+            type="oco",
+            side="sell",
+            amount=amount,
+            price=None,
+            params={
+                "tdMode": "cash",
+                "clientOrderId": client_order_id,
+                "takeProfitPrice": take_profit,
+                "stopLossPrice": stop_loss,
+                "tpOrdPx": -1,
+                "slOrdPx": -1,
+            },
+        )
+
+    def find_protective_oco(
+        self,
+        symbol: str,
+        client_order_id: str,
+    ) -> dict | None:
+        """Find a live or completed OCO by its persisted client ID."""
+        self._require_credentials()
+        params = {"ordType": "oco"}
+        orders = self.exchange.fetch_open_orders(symbol, params=params)
+        orders += self.exchange.fetch_closed_orders(symbol, params=params)
+        return next(
+            (
+                order for order in orders
+                if self._algo_client_id(order) == client_order_id
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _algo_client_id(order: dict) -> str | None:
+        info = order.get("info") or {}
+        return (
+            order.get("clientOrderId")
+            or info.get("algoClOrdId")
+            or info.get("clOrdId")
+        )

@@ -42,7 +42,11 @@ def create_broker(*orders):
     gateway = Mock()
     gateway.submit_market_order.side_effect = list(orders)
     gateway.order_repository = Mock()
-    identifiers = iter(("entry1", "exit1", "extra1"))
+    gateway.client.create_protective_oco.return_value = {
+        "id": "protection-order",
+        "status": "open",
+    }
+    identifiers = iter(("entry1", "protect1", "exit1", "extra1"))
     broker = OKXDemoBroker(
         Portfolio(),
         gateway,
@@ -86,7 +90,7 @@ def test_partial_entry_fill_does_not_invent_open_position():
     )
 
 
-def test_take_profit_submits_sell_and_closes_from_fill():
+def test_active_native_protection_prevents_duplicate_take_profit_sell():
     broker, gateway = create_broker(
         filled_order("order-entry", 101.0),
         filled_order("order-exit", 122.0),
@@ -101,20 +105,21 @@ def test_take_profit_submits_sell_and_closes_from_fill():
         timestamp=NOW,
     )
 
-    assert closed is True
-    assert len(broker.portfolio.closed_positions) == 1
-    assert position.exit_reason == "TAKE_PROFIT"
-    assert round(position.realized_pnl, 8) == 20.8
-    assert broker.positions.find_active("BTC/USDC") is None
-    assert gateway.submit_market_order.call_count == 2
+    assert closed is False
+    assert len(broker.portfolio.closed_positions) == 0
+    assert gateway.submit_market_order.call_count == 1
 
 
-def test_stop_loss_submits_sell_with_stop_reason():
+def test_failed_native_protection_uses_application_stop_fallback():
     broker, _ = create_broker(
         filled_order("order-entry", 101.0),
         filled_order("order-exit", 90.0),
     )
     position = broker.open(trade_plan(), NOW)
+    stored = broker.positions.find_active("BTC/USDC")
+    broker.positions.record_protection(
+        stored["entry_client_order_id"], "FAILED", error="order failed"
+    )
 
     closed = broker.update(
         position,
@@ -176,6 +181,10 @@ def test_reconciliation_activates_recovered_entry_with_fee():
 def test_rejected_exit_returns_position_to_open_for_next_retry():
     broker, gateway = create_broker(filled_order("order-entry", 101.0))
     position = broker.open(trade_plan(), NOW)
+    stored = broker.positions.find_active("BTC/USDC")
+    broker.positions.record_protection(
+        stored["entry_client_order_id"], "FAILED", error="order failed"
+    )
     gateway.submit_market_order.side_effect = OrderValidationError(
         "insufficient balance"
     )
@@ -198,3 +207,45 @@ def test_demo_balance_sets_available_cash_ceiling():
 
     assert available == 432.10
     assert broker.portfolio.available_cash == 432.10
+
+
+def test_live_native_protection_keeps_reconciliation_safe():
+    broker, gateway = create_broker(filled_order("order-entry", 101.0))
+    broker.open(trade_plan(), NOW)
+    gateway.reconcile_intents.return_value = {"safe": True, "resolved": 0}
+    gateway.client.find_protective_oco.return_value = {
+        "id": "algo1",
+        "status": "open",
+        "info": {"state": "live", "algoClOrdId": "protect1"},
+    }
+
+    result = broker.reconcile()
+
+    assert result["safe"] is True
+    assert result["unprotected_symbols"] == []
+
+
+def test_missing_native_protection_blocks_new_entries():
+    broker, gateway = create_broker(filled_order("order-entry", 101.0))
+    broker.open(trade_plan(), NOW)
+    gateway.reconcile_intents.return_value = {"safe": True, "resolved": 0}
+    gateway.client.find_protective_oco.return_value = None
+
+    result = broker.reconcile()
+
+    assert result["safe"] is False
+    assert result["unprotected_symbols"] == ["BTC/USDC"]
+
+
+def test_rejected_native_protection_is_persisted_as_failed():
+    broker, gateway = create_broker(filled_order("order-entry", 101.0))
+    gateway.client.create_protective_oco.side_effect = OrderValidationError(
+        "invalid protection"
+    )
+
+    with pytest.raises(OrderValidationError, match="invalid protection"):
+        broker.open(trade_plan(), NOW)
+
+    stored = broker.positions.find_active("BTC/USDC")
+    assert stored["status"] == "OPEN"
+    assert stored["protection_status"] == "FAILED"

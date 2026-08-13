@@ -69,3 +69,20 @@ def test_rejected_exit_returns_position_to_open_for_retry():
     active = repository.find_active("BTC/USDC")
     assert active["status"] == "OPEN"
     assert active["exit_client_order_id"] is None
+
+
+def test_native_protection_is_persisted_with_position():
+    repository = ExchangePositionRepository()
+    repository.prepare_entry("entry1", "BTC/USDC", 1, 100, 90, 120)
+    repository.activate(
+        "entry1", "exchange-entry", 1, 100, 0, 90, 120,
+        datetime.now(timezone.utc),
+    )
+
+    assert repository.prepare_protection("entry1", "protect1")
+    repository.record_protection("entry1", "ACTIVE", "algo1")
+
+    active = repository.find_active("BTC/USDC")
+    assert active["protection_client_order_id"] == "protect1"
+    assert active["protection_order_id"] == "algo1"
+    assert active["protection_status"] == "ACTIVE"

@@ -117,6 +117,41 @@ class ExchangePositionRepository:
             (error, self._now(), entry_client_order_id),
         )
 
+    def prepare_protection(
+        self,
+        entry_client_order_id: str,
+        client_order_id: str,
+    ) -> bool:
+        cursor = self.database.execute(
+            """
+            UPDATE exchange_positions SET
+                protection_client_order_id = ?,
+                protection_status = 'PENDING', protection_error = NULL,
+                updated_at = ?
+            WHERE entry_client_order_id = ? AND status = 'OPEN'
+              AND protection_client_order_id IS NULL
+            """,
+            (client_order_id, self._now(), entry_client_order_id),
+        )
+        return cursor.rowcount == 1
+
+    def record_protection(
+        self,
+        entry_client_order_id: str,
+        status: str,
+        order_id: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        self.database.execute(
+            """
+            UPDATE exchange_positions SET
+                protection_order_id = COALESCE(?, protection_order_id),
+                protection_status = ?, protection_error = ?, updated_at = ?
+            WHERE entry_client_order_id = ?
+            """,
+            (order_id, status, error, self._now(), entry_client_order_id),
+        )
+
     def close(
         self,
         entry_client_order_id: str,
@@ -153,6 +188,8 @@ class ExchangePositionRepository:
                    entry_fee, stop_loss, take_profit, status, entry_exchange_order_id,
                    exit_exchange_order_id, opened_at, closed_at, exit_price,
                    exit_fee, exit_reason, realized_pnl, last_error, updated_at
+                   , protection_client_order_id, protection_order_id,
+                   protection_status, protection_error
             FROM exchange_positions
             WHERE symbol = ? AND status IN (
                 'PENDING_ENTRY', 'ENTRY_UNKNOWN', 'OPEN', 'PENDING_EXIT',
@@ -179,6 +216,8 @@ class ExchangePositionRepository:
                    entry_fee, stop_loss, take_profit, status, entry_exchange_order_id,
                    exit_exchange_order_id, opened_at, closed_at, exit_price,
                    exit_fee, exit_reason, realized_pnl, last_error, updated_at
+                   , protection_client_order_id, protection_order_id,
+                   protection_status, protection_error
             FROM exchange_positions WHERE status IN ({placeholders})
             ORDER BY updated_at
             """,
@@ -194,6 +233,8 @@ class ExchangePositionRepository:
             "entry_fee", "stop_loss", "take_profit", "status", "entry_exchange_order_id",
             "exit_exchange_order_id", "opened_at", "closed_at", "exit_price",
             "exit_fee", "exit_reason", "realized_pnl", "last_error", "updated_at",
+            "protection_client_order_id", "protection_order_id",
+            "protection_status", "protection_error",
         )
         result = dict(zip(keys, row, strict=True))
         for key in (
