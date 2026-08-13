@@ -45,3 +45,23 @@ def test_old_cycle_is_stale():
     )
 
     assert repository.status()["health"] == "STALE"
+
+
+def test_clean_shutdown_is_reported_as_stopped():
+    repository = create_repository()
+    repository.start_cycle(1)
+    repository.complete_cycle(1, 0)
+
+    repository.mark_stopped()
+
+    assert repository.status()["health"] == "STOPPED"
+
+
+def test_runner_failure_is_reported_as_degraded():
+    repository = create_repository()
+
+    repository.record_runner_failure("unexpected failure")
+
+    status = repository.status()
+    assert status["health"] == "DEGRADED"
+    assert status["last_error"] == "unexpected failure"

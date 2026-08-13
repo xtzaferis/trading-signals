@@ -1,4 +1,4 @@
-import time
+from threading import Event
 
 import ccxt
 
@@ -29,7 +29,7 @@ from app.storage.paper_health_repository import PaperHealthRepository
 
 class PaperRunner:
 
-    def __init__(self, health_repository=None):
+    def __init__(self, health_repository=None, stop_event=None):
 
         self.live_feed = LiveFeed()
 
@@ -48,6 +48,8 @@ class PaperRunner:
         self.scanner = MarketScanner()
 
         self.health = health_repository or PaperHealthRepository()
+
+        self.stop_event = stop_event or Event()
 
         self.running = True
 
@@ -148,17 +150,37 @@ class PaperRunner:
         )
         logger.info("=" * 50)
 
-        while self.running:
+        clean_shutdown = False
 
-            self.run_once()
+        try:
+            while self.running:
 
-            time.sleep(
-                SCAN_INTERVAL
-            )
+                self.run_once()
+
+                if self.stop_event.wait(SCAN_INTERVAL):
+                    break
+
+            clean_shutdown = True
+
+        except KeyboardInterrupt:
+            clean_shutdown = True
+            self.stop()
+            raise
+
+        except Exception as error:
+            logger.exception("Paper runner stopped unexpectedly.")
+            self.health.record_runner_failure(str(error))
+            raise
+
+        finally:
+            self.engine.save_state()
+            if clean_shutdown:
+                self.health.mark_stopped()
 
     def stop(self):
 
         self.running = False
+        self.stop_event.set()
 
         logger.info(
             "Paper runner stopped."

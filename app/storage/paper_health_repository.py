@@ -103,6 +103,39 @@ class PaperHealthRepository:
             (now, now, error),
         )
 
+    def record_runner_failure(self, error: str) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        self.database.execute(
+            """
+            INSERT INTO paper_health (
+                id, cycle_started_at, cycle_completed_at, cycle_status,
+                expected_symbols, successful_symbols, failed_symbols,
+                last_error
+            ) VALUES (1, ?, ?, 'FAILED', 0, 0, 0, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                cycle_completed_at = excluded.cycle_completed_at,
+                cycle_status = 'FAILED',
+                last_error = excluded.last_error
+            """,
+            (now, now, error),
+        )
+
+    def mark_stopped(self) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        self.database.execute(
+            """
+            INSERT INTO paper_health (
+                id, cycle_started_at, cycle_completed_at, cycle_status,
+                expected_symbols, successful_symbols, failed_symbols,
+                last_error
+            ) VALUES (1, ?, ?, 'STOPPED', 0, 0, 0, NULL)
+            ON CONFLICT(id) DO UPDATE SET
+                cycle_completed_at = excluded.cycle_completed_at,
+                cycle_status = 'STOPPED'
+            """,
+            (now, now),
+        )
+
     def status(self) -> dict:
         row = self.database.connection.execute(
             """
@@ -123,9 +156,13 @@ class PaperHealthRepository:
             }
 
         completed_at = row[1]
-        health = "HEALTHY" if row[2] == "SUCCESS" else "DEGRADED"
+        health = {
+            "SUCCESS": "HEALTHY",
+            "RUNNING": "RUNNING",
+            "STOPPED": "STOPPED",
+        }.get(row[2], "DEGRADED")
         reference = completed_at or row[0]
-        if reference:
+        if reference and row[2] != "STOPPED":
             observed_at = datetime.fromisoformat(reference)
             age = datetime.now(timezone.utc) - observed_at
             if age.total_seconds() > PAPER_HEALTH_STALE_SECONDS:

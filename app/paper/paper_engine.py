@@ -286,6 +286,10 @@ class PaperEngine:
                 symbol_state,
             )
 
+    def save_state(self) -> None:
+        """Persist the latest portfolio and per-symbol processing state."""
+        self._save_state()
+
     @staticmethod
     def _is_stale_entry(value) -> bool:
         if value is None:
