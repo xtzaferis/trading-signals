@@ -27,6 +27,10 @@ class StatisticsPrinter:
         )
 
         logger.info(
+            f"Breakeven:         {report.breakevens}"
+        )
+
+        logger.info(
             f"Win Rate:          {report.win_rate:.2f}%"
         )
 
@@ -111,5 +115,10 @@ class StatisticsPrinter:
                 logger.info(
                     f"  {month}:          {monthly_return:.2f}%"
                 )
+            logger.info(
+                "Profitable Months: "
+                f"{report.profitable_months}/"
+                f"{report.evaluated_months}"
+            )
 
         logger.info("=" * 50)

@@ -6,6 +6,7 @@ from app.strategy.filters import (
     ema_filter,
     entry_filter,
     macd_filter,
+    regime_filter,
     rsi_filter,
     trend_filter,
 )
@@ -29,6 +30,8 @@ class SignalEngine:
         # Multi-Timeframe Data
         # ---------------------------------
 
+        regime = data["regime"]
+
         trend = data["trend"]
 
         confirm = data["confirm"]
@@ -36,7 +39,7 @@ class SignalEngine:
         entry = data["entry"]
 
 
-        logger.info(
+        logger.debug(
             f"SIGNAL INPUT | "
             f"symbol={symbol} | "
             f"EMA20={trend['ema20']} | "
@@ -53,6 +56,17 @@ class SignalEngine:
         # Hard Market Structure Gates
         # ---------------------------------
 
+        if not regime_filter(regime):
+
+            result.action = "HOLD"
+            result.reasons.append(
+                "Daily regime filter failed"
+            )
+            logger.debug(
+                f"SIGNAL BLOCKED: REGIME | symbol={symbol}"
+            )
+            return result
+
         if not trend_filter(trend):
 
             result.action = "HOLD"
@@ -61,7 +75,7 @@ class SignalEngine:
                 "Trend filter failed"
             )
 
-            logger.info(
+            logger.debug(
                 f"SIGNAL BLOCKED: TREND | symbol={symbol}"
             )
 
@@ -77,7 +91,7 @@ class SignalEngine:
                 "Confirmation filter failed"
             )
 
-            logger.info(
+            logger.debug(
                 f"SIGNAL BLOCKED: CONFIRMATION | "
                 f"symbol={symbol} | "
                 f"MACD={confirm['macd']} | "
@@ -100,7 +114,7 @@ class SignalEngine:
                 "Entry filter failed"
             )
 
-            logger.info(
+            logger.debug(
                 f"SIGNAL BLOCKED: ENTRY | "
                 f"symbol={symbol} | "
                 f"RSI={entry['rsi']} | "
@@ -147,7 +161,7 @@ class SignalEngine:
         )
 
 
-        logger.info(
+        logger.debug(
             f"SCORE DEBUG | "
             f"symbol={symbol} | "
             f"score={result.score}/100 | "
@@ -168,7 +182,7 @@ class SignalEngine:
                 "Score below minimum"
             )
 
-            logger.info(
+            logger.debug(
                 f"SIGNAL REJECTED: SCORE | "
                 f"symbol={symbol} | "
                 f"score={result.score}"
@@ -181,7 +195,7 @@ class SignalEngine:
         result.action = "BUY"
 
 
-        logger.info(
+        logger.debug(
             f"SIGNAL APPROVED: BUY | "
             f"symbol={symbol} | "
             f"score={result.score}"

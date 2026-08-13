@@ -32,6 +32,11 @@ def create_data():
 
     return {
 
+        "1d": create_candles(
+            3,
+            24 * 60 * 60 * 1000,
+        ),
+
         "15m": create_candles(
             100,
             15 * 60 * 1000,
@@ -71,6 +76,7 @@ def test_next_returns_snapshot():
     snapshot = feed.next()
 
     assert "trend" in snapshot
+    assert "regime" in snapshot
     assert "confirm" in snapshot
     assert "entry" in snapshot
 
@@ -87,6 +93,7 @@ def test_snapshot_contains_candles():
 
     # At the first 15m close neither the 1h nor 4h candle has closed yet.
     assert snapshot["trend"]["candles"] == []
+    assert snapshot["regime"]["candles"] == []
     assert snapshot["confirm"]["candles"] == []
 
     assert len(

@@ -9,6 +9,38 @@ from app.config.weights import (
 # Gates
 # =====================================
 
+def classify_regime(regime):
+    """Classify the daily market without allowing bearish long entries."""
+
+    bullish = (
+        regime["close"] > regime["ema200"]
+        and regime["ema50"] > regime["ema200"]
+        and regime["ema20_slope_pct"] > 0
+    )
+    if bullish:
+        return "BULL"
+
+    recovery = (
+        regime["close"] > regime["ema50"]
+        and regime["ema20"] > regime["ema50"]
+        and regime["ema20_slope_pct"] > 0
+        and regime["close"] >= regime["ema200"] * 0.90
+    )
+    if recovery:
+        return "RECOVERY"
+
+    return "BEAR"
+
+
+def regime_filter(regime):
+    """Permit long trades only in a bull or conservative recovery regime."""
+
+    return classify_regime(regime) in {
+        "BULL",
+        "RECOVERY",
+    }
+
+
 def trend_filter(trend):
     """
     4H Trend Gate

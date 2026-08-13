@@ -1,3 +1,5 @@
+from collections import Counter
+
 from app.backtesting.backtest_broker import BacktestBroker
 from app.backtesting.historical_feed import (
     HistoricalFeed,
@@ -5,11 +7,13 @@ from app.backtesting.historical_feed import (
 from app.backtesting.market_provider import (
     MarketProvider,
 )
+from app.backtesting.trade_cooldown import (
+    cooldown_bars_for_exit,
+)
 from app.config.settings import (
     BACKTEST_CANDLE_LIMITS,
     MARKET_SYMBOL,
     MAX_DRAWDOWN_PCT,
-    MIN_BARS_BETWEEN_TRADES,
 )
 from app.core.logger import logger
 from app.risk.risk_manager import (
@@ -92,6 +96,12 @@ class BacktestEngine:
         if data is None:
             data = {
 
+                "1d": self.history.load(
+                    symbol=self.symbol,
+                    timeframe="1d",
+                    limit=BACKTEST_CANDLE_LIMITS["1d"],
+                ),
+
                 "4h": self.history.load(
                     symbol=self.symbol,
                     timeframe="4h",
@@ -111,6 +121,10 @@ class BacktestEngine:
                 ),
             }
 
+
+        logger.info(
+            f"1D candles: {len(data['1d'])}"
+        )
 
         logger.info(
             f"4H candles: {len(data['4h'])}"
@@ -142,12 +156,27 @@ class BacktestEngine:
         last_timestamp = None
         entry_bar = -1
         last_closed_bar = None
+        required_cooldown_bars = 0
+        processed_bars = 0
+        rejection_counts = Counter()
+        total_bars = len(data["15m"])
 
         while self.market_provider.has_next():
 
             market, snapshot = (
                 self.market_provider.next()
             )
+            processed_bars += 1
+
+            if (
+                processed_bars % 1000 == 0
+                or processed_bars == total_bars
+            ):
+                logger.info(
+                    "Backtest progress: "
+                    f"{processed_bars}/{total_bars} "
+                    f"({processed_bars / total_bars:.0%})"
+                )
 
 
             entry = market.get(
@@ -158,6 +187,7 @@ class BacktestEngine:
             if any(
                 market.get(timeframe) is None
                 for timeframe in (
+                    "regime",
                     "trend",
                     "confirm",
                     "entry",
@@ -170,6 +200,12 @@ class BacktestEngine:
             last_timestamp = snapshot.get(
                 "timestamp"
             )
+            evaluated_at = self.broker._as_datetime(
+                last_timestamp
+            )
+            if self.portfolio.backtest_started_at is None:
+                self.portfolio.backtest_started_at = evaluated_at
+            self.portfolio.backtest_ended_at = evaluated_at
             entry_bar += 1
 
 
@@ -206,6 +242,11 @@ class BacktestEngine:
 
                     position_closed_this_bar = True
                     last_closed_bar = entry_bar
+                    required_cooldown_bars = (
+                        cooldown_bars_for_exit(
+                            position.exit_reason
+                        )
+                    )
 
                     logger.info(
                         "Position closed."
@@ -227,7 +268,7 @@ class BacktestEngine:
             if (
                 last_closed_bar is not None
                 and entry_bar - last_closed_bar
-                <= MIN_BARS_BETWEEN_TRADES
+                <= required_cooldown_bars
             ):
                 continue
 
@@ -253,7 +294,7 @@ class BacktestEngine:
             )
 
 
-            logger.info(
+            logger.debug(
                 f"{entry['close']:.2f} | "
                 f"Score={signal.score} | "
                 f"Action={signal.action}"
@@ -262,9 +303,12 @@ class BacktestEngine:
 
             if signal.action != "BUY":
 
-                logger.info(
-                    "BUY REJECTED"
+                reason = (
+                    signal.reasons[0]
+                    if signal.reasons
+                    else "Unspecified signal rejection"
                 )
+                rejection_counts[reason] += 1
 
                 continue
 
@@ -342,6 +386,16 @@ class BacktestEngine:
         self.printer.print(
             report
         )
+
+
+        if rejection_counts:
+            logger.info("Signal rejection summary:")
+            for reason, count in (
+                rejection_counts.most_common()
+            ):
+                logger.info(
+                    f"  {reason}: {count}"
+                )
 
 
         logger.info("")

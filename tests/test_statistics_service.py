@@ -88,3 +88,36 @@ def test_statistics_service_generates_report():
         report.profit_factor
         == 2.5
     )
+
+
+def test_statistics_treats_floating_point_dust_as_breakeven():
+    portfolio = Portfolio()
+    portfolio.closed_positions = [
+        create_closed_position(1e-14),
+    ]
+
+    report = StatisticsService().generate(portfolio)
+
+    assert report.wins == 0
+    assert report.losses == 0
+    assert report.breakevens == 1
+
+
+def test_statistics_includes_months_without_trades():
+    portfolio = Portfolio()
+    portfolio.backtest_started_at = datetime(
+        2026, 1, 15, tzinfo=timezone.utc
+    )
+    portfolio.backtest_ended_at = datetime(
+        2026, 3, 15, tzinfo=timezone.utc
+    )
+
+    report = StatisticsService().generate(portfolio)
+
+    assert report.monthly_returns == {
+        "2026-01": 0.0,
+        "2026-02": 0.0,
+        "2026-03": 0.0,
+    }
+    assert report.profitable_months == 0
+    assert report.evaluated_months == 3

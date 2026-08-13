@@ -32,6 +32,11 @@ def create_data():
 
     return {
 
+        "1d": create_candles(
+            3,
+            24 * 60 * 60 * 1000,
+        ),
+
         "15m": create_candles(
             100,
             15 * 60 * 1000,
@@ -181,3 +186,14 @@ def test_latest_4h():
         )
         == 0
     )
+
+
+def test_latest_daily_requires_candle_close():
+
+    timeline = Timeline()
+    timeline.load(create_data())
+
+    for _ in range(95):
+        timeline.step()
+
+    assert timeline.latest_index("1d") == 0

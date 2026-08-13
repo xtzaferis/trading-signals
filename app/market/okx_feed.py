@@ -14,12 +14,17 @@ class OKXFeed:
 
     def update_candles(
         self,
+        regime_candles: list,
         trend_candles: list,
         confirm_candles: list,
         entry_candles: list,
     ):
 
         snapshot = {
+
+            "regime": {
+                "candles": regime_candles,
+            },
 
             "trend": {
                 "candles": trend_candles,

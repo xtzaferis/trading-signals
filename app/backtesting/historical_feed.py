@@ -1,9 +1,12 @@
 from typing import Any
 
 from app.backtesting.data_feed import DataFeed
+from app.indicators.indicator_calculator import IndicatorCalculator
 
 
 class HistoricalFeed(DataFeed):
+
+    WINDOW_SIZE = IndicatorCalculator.MIN_CANDLES
 
     def __init__(self):
 
@@ -61,6 +64,13 @@ class HistoricalFeed(DataFeed):
     ) -> dict:
 
 
+        regime_index = (
+            self.timeline.latest_index(
+                "1d"
+            )
+        )
+
+
         trend_index = (
             self.timeline.latest_index(
                 "4h"
@@ -82,33 +92,46 @@ class HistoricalFeed(DataFeed):
         )
 
 
+        regime_candles = (
+            self._window(
+                "1d",
+                regime_index,
+            )
+        )
+
+
         trend_candles = (
-            self.data["4h"]
-            [
-                : trend_index + 1
-            ]
+            self._window(
+                "4h",
+                trend_index,
+            )
         )
 
 
         confirm_candles = (
-            self.data["1h"]
-            [
-                : confirm_index + 1
-            ]
+            self._window(
+                "1h",
+                confirm_index,
+            )
         )
 
 
         entry_candles = (
-            self.data["15m"]
-            [
-                : entry_index + 1
-            ]
+            self._window(
+                "15m",
+                entry_index,
+            )
         )
 
 
         #
         # Validate before sending downstream
         #
+
+        self.validate_candles(
+            regime_candles,
+            "1d",
+        )
 
         self.validate_candles(
             trend_candles,
@@ -127,6 +150,12 @@ class HistoricalFeed(DataFeed):
 
 
         snapshot = {
+
+            "regime": {
+
+                "candles": regime_candles,
+
+            },
 
             "trend": {
 
@@ -163,3 +192,21 @@ class HistoricalFeed(DataFeed):
 
 
         return snapshot
+
+
+    def _window(
+        self,
+        timeframe: str,
+        latest_index: int,
+    ) -> list:
+
+        if latest_index < 0:
+            return []
+
+        start = max(
+            0,
+            latest_index + 1 - self.WINDOW_SIZE,
+        )
+        return self.data[timeframe][
+            start: latest_index + 1
+        ]

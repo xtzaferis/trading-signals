@@ -1,3 +1,4 @@
+from app.backtesting.backtest_broker import BacktestBroker
 from app.config.settings import (
     ACCOUNT_SIZE,
     ATR_MULTIPLIER,
@@ -7,6 +8,7 @@ from app.config.settings import (
 )
 from app.risk.risk_manager import RiskManager
 from app.strategy.scoring import SignalResult
+from app.trading.portfolio import Portfolio
 
 
 def create_signal():
@@ -160,6 +162,22 @@ def test_capital_at_risk():
     assert plan.position_size > 0
     assert plan.position_size <= max_position
     assert capital_at_risk > 0
+
+
+def test_full_stop_includes_fees_and_slippage_in_risk_budget():
+    portfolio = Portfolio()
+    plan = RiskManager().create_trade_plan(
+        create_signal(),
+        create_indicators(),
+    )
+    broker = BacktestBroker(portfolio)
+    position = broker.open(plan, opened_at=0)
+
+    assert position is not None
+    broker.close(position, position.stop_loss, "STOP_LOSS", timestamp=1)
+
+    risk_budget = ACCOUNT_SIZE * RISK_PER_TRADE
+    assert abs(position.realized_pnl) <= risk_budget + 0.01
 
 
 def test_minimum_stop_distance_handles_low_volatility():

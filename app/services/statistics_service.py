@@ -4,6 +4,8 @@ from app.trading.portfolio import Portfolio
 
 class StatisticsService:
 
+    PNL_EPSILON = 1e-9
+
     def generate(
         self,
         portfolio: Portfolio,
@@ -26,13 +28,19 @@ class StatisticsService:
         report.wins = sum(
             1
             for position in closed
-            if position.realized_pnl > 0
+            if position.realized_pnl > self.PNL_EPSILON
         )
 
         report.losses = sum(
             1
             for position in closed
-            if position.realized_pnl <= 0
+            if position.realized_pnl < -self.PNL_EPSILON
+        )
+
+        report.breakevens = (
+            report.trades
+            - report.wins
+            - report.losses
         )
 
         if report.trades > 0:
@@ -45,13 +53,13 @@ class StatisticsService:
         winners = [
             position.realized_pnl
             for position in closed
-            if position.realized_pnl > 0
+            if position.realized_pnl > self.PNL_EPSILON
         ]
 
         losers = [
             position.realized_pnl
             for position in closed
-            if position.realized_pnl < 0
+            if position.realized_pnl < -self.PNL_EPSILON
         ]
 
         report.gross_profit = sum(
@@ -198,6 +206,36 @@ class StatisticsService:
 
         monthly_pnl: dict[str, float] = {}
 
+        period_start = portfolio.backtest_started_at
+        period_end = portfolio.backtest_ended_at
+
+        if period_start is not None and period_end is not None:
+            cursor = period_start.replace(
+                day=1,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+            final_month = period_end.replace(
+                day=1,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+            while cursor <= final_month:
+                monthly_pnl[cursor.strftime("%Y-%m")] = 0.0
+                if cursor.month == 12:
+                    cursor = cursor.replace(
+                        year=cursor.year + 1,
+                        month=1,
+                    )
+                else:
+                    cursor = cursor.replace(
+                        month=cursor.month + 1,
+                    )
+
         for position in closed:
             if position.closed_at is None:
                 continue
@@ -205,9 +243,12 @@ class StatisticsService:
             month = position.closed_at.strftime(
                 "%Y-%m"
             )
+            pnl = position.realized_pnl
+            if abs(pnl) <= self.PNL_EPSILON:
+                pnl = 0.0
             monthly_pnl[month] = (
                 monthly_pnl.get(month, 0.0)
-                + position.realized_pnl
+                + pnl
             )
 
         month_start_equity = report.initial_equity
@@ -221,5 +262,13 @@ class StatisticsService:
                 else 0.0
             )
             month_start_equity += pnl
+
+        report.evaluated_months = len(
+            report.monthly_returns
+        )
+        report.profitable_months = sum(
+            monthly_return > self.PNL_EPSILON
+            for monthly_return in report.monthly_returns.values()
+        )
 
         return report

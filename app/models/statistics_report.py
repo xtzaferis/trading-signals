@@ -10,6 +10,8 @@ class StatisticsReport:
 
     losses: int = 0
 
+    breakevens: int = 0
+
     win_rate: float = 0.0
 
     gross_profit: float = 0.0
@@ -49,3 +51,7 @@ class StatisticsReport:
     monthly_returns: dict[str, float] = field(
         default_factory=dict
     )
+
+    profitable_months: int = 0
+
+    evaluated_months: int = 0

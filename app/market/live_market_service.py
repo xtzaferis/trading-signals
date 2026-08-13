@@ -10,6 +10,7 @@ class LiveMarketService:
     def get_snapshot(
         self,
         symbol: str,
+        regime_timeframe: str,
         trend_timeframe: str,
         confirm_timeframe: str,
         entry_timeframe: str,
@@ -17,6 +18,16 @@ class LiveMarketService:
     ) -> dict:
 
         return {
+
+            "regime": {
+                "candles": (
+                    self.client.get_ohlcv(
+                        symbol,
+                        timeframe=regime_timeframe,
+                        limit=limit,
+                    )
+                ),
+            },
 
             "trend": {
                 "candles": (

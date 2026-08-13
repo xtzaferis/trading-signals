@@ -6,10 +6,12 @@ from app.config.weights import (
 )
 from app.strategy.filters import (
     adx_filter,
+    classify_regime,
     confirmation_filter,
     ema_filter,
     entry_filter,
     macd_filter,
+    regime_filter,
     rsi_filter,
     trend_filter,
 )
@@ -24,6 +26,39 @@ def bullish_trend():
         "ema200": 100,
         "ema20_slope_pct": 0.01,
     }
+
+
+def test_regime_filter():
+
+    assert regime_filter(bullish_trend())
+    assert not regime_filter(bearish_trend())
+
+
+def test_regime_classifier_allows_conservative_recovery():
+    recovery = {
+        "close": 96,
+        "ema20": 95,
+        "ema50": 94,
+        "ema200": 100,
+        "ema20_slope_pct": 0.01,
+    }
+
+    assert classify_regime(bullish_trend()) == "BULL"
+    assert classify_regime(recovery) == "RECOVERY"
+    assert regime_filter(recovery)
+
+
+def test_regime_classifier_blocks_weak_recovery():
+    recovery = {
+        "close": 89,
+        "ema20": 88,
+        "ema50": 87,
+        "ema200": 100,
+        "ema20_slope_pct": 0.01,
+    }
+
+    assert classify_regime(recovery) == "BEAR"
+    assert not regime_filter(recovery)
 
 
 def bearish_trend():

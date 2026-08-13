@@ -11,6 +11,13 @@ from app.strategy.signal_engine import SignalEngine
 def bullish_data():
 
     return {
+        "regime": {
+            "close": 130,
+            "ema20": 120,
+            "ema50": 110,
+            "ema200": 100,
+            "ema20_slope_pct": 0.01,
+        },
         "trend": {
             "close": 125,
             "ema20": 120,
@@ -87,6 +94,20 @@ def test_hold_when_trend_fails():
     assert result.action == "HOLD"
     assert result.score == 0
     assert "Trend filter failed" in result.reasons
+
+
+def test_hold_when_daily_regime_fails():
+
+    data = bullish_data()
+    data["regime"]["close"] = 90
+
+    result = SignalEngine().evaluate(
+        "BTC/USDC",
+        data,
+    )
+
+    assert result.action == "HOLD"
+    assert "Daily regime filter failed" in result.reasons
 
 
 

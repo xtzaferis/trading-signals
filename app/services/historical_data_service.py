@@ -1,6 +1,10 @@
+import json
 import math
+import time
+from pathlib import Path
 from typing import Any
 
+from app.config.settings import BACKTEST_CACHE_TTL_SECONDS
 from app.core.logger import logger
 from app.exchange.okx_client import OKXClient
 
@@ -15,6 +19,9 @@ class HistoricalDataService:
             self.client.exchange
         )
 
+        self.use_cache = client is None
+        self.cache_dir = Path("data") / "backtest_cache"
+
     def load(
         self,
         symbol: str,
@@ -27,6 +34,17 @@ class HistoricalDataService:
             f"{timeframe} candles..."
         )
 
+        cached = self._load_cache(
+            symbol,
+            timeframe,
+            limit,
+        )
+        if cached is not None:
+            logger.info(
+                f"Loaded {len(cached)} candles from cache."
+            )
+            return cached
+
         timeframe_ms = int(
             self.exchange.parse_timeframe(timeframe)
             * 1000
@@ -37,6 +55,9 @@ class HistoricalDataService:
         # OKX returns at most 300 candles in one response. CCXT's deterministic
         # pagination is required for larger, statistically useful backtests.
         pagination_calls = max(1, math.ceil(limit / 200) + 1)
+        logger.info(
+            f"Requesting approximately {pagination_calls} OKX pages."
+        )
         candles: list[Any] = list(
             self.exchange.fetch_ohlcv(
                 symbol=symbol,
@@ -80,7 +101,90 @@ class HistoricalDataService:
                 f"Last candle timestamp: {candles[-1][0]}"
             )
 
+        self._save_cache(
+            symbol,
+            timeframe,
+            limit,
+            candles,
+        )
+
         return candles
+
+    def _cache_path(
+        self,
+        symbol: str,
+        timeframe: str,
+        limit: int,
+    ) -> Path:
+
+        safe_symbol = symbol.replace("/", "-")
+        return self.cache_dir / (
+            f"{safe_symbol}_{timeframe}_{limit}.json"
+        )
+
+    def _load_cache(
+        self,
+        symbol: str,
+        timeframe: str,
+        limit: int,
+    ) -> list[Any] | None:
+
+        if not self.use_cache:
+            return None
+
+        path = self._cache_path(
+            symbol,
+            timeframe,
+            limit,
+        )
+
+        try:
+            payload = json.loads(
+                path.read_text(encoding="utf-8")
+            )
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            OSError,
+        ):
+            return None
+
+        age = time.time() - float(
+            payload.get("saved_at", 0)
+        )
+        if age > BACKTEST_CACHE_TTL_SECONDS:
+            return None
+
+        candles = payload.get("candles")
+        return candles if isinstance(candles, list) else None
+
+    def _save_cache(
+        self,
+        symbol: str,
+        timeframe: str,
+        limit: int,
+        candles: list[Any],
+    ) -> None:
+
+        if not self.use_cache:
+            return
+
+        self.cache_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        path = self._cache_path(
+            symbol,
+            timeframe,
+            limit,
+        )
+        path.write_text(
+            json.dumps({
+                "saved_at": time.time(),
+                "candles": candles,
+            }),
+            encoding="utf-8",
+        )
 
     def load_multiple(
         self,

@@ -30,6 +30,10 @@ class Portfolio:
 
         self.max_drawdown: float = 0.0
 
+        self.backtest_started_at: datetime | None = None
+
+        self.backtest_ended_at: datetime | None = None
+
 
     @property
     def equity(self) -> float:

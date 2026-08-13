@@ -1,3 +1,4 @@
+from bisect import bisect_right
 from typing import ClassVar
 
 
@@ -7,11 +8,13 @@ class Timeline:
         "15m": 15 * 60 * 1000,
         "1h": 60 * 60 * 1000,
         "4h": 4 * 60 * 60 * 1000,
+        "1d": 24 * 60 * 60 * 1000,
     }
 
     def __init__(self):
 
         self.data = {}
+        self.close_timestamps = {}
         self.current_index = 0
 
 
@@ -21,6 +24,14 @@ class Timeline:
     ):
 
         self.data = data
+        self.close_timestamps = {
+            timeframe: [
+                candle[0]
+                + self.TIMEFRAME_MS[timeframe]
+                for candle in candles
+            ]
+            for timeframe, candles in data.items()
+        }
         self.current_index = 0
 
 
@@ -66,33 +77,10 @@ class Timeline:
 
         target = self.current_timestamp()
 
-        candles = self.data[
-            timeframe
-        ]
-
-        timeframe_ms = self.TIMEFRAME_MS[
-            timeframe
-        ]
-
-        latest = -1
-
-
-        for index, candle in enumerate(
-            candles
-        ):
-
-            candle_close = (
-                candle[0]
-                + timeframe_ms
+        return (
+            bisect_right(
+                self.close_timestamps[timeframe],
+                target,
             )
-
-            if candle_close <= target:
-
-                latest = index
-
-            else:
-
-                break
-
-
-        return latest
+            - 1
+        )

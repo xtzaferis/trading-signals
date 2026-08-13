@@ -1,6 +1,7 @@
 from app.config.settings import (
     CANDLE_LIMIT,
     ENTRY_TIMEFRAME,
+    REGIME_TIMEFRAME,
 )
 from app.data.data_service import (
     DataService,
@@ -75,6 +76,11 @@ class IndicatorEngine:
     ):
 
         return {
+
+            "regime": self.calculate(
+                symbol=symbol,
+                timeframe=REGIME_TIMEFRAME,
+            ),
 
             "trend": self.calculate(
                 symbol=symbol,

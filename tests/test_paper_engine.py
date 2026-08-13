@@ -7,6 +7,9 @@ from app.paper.paper_engine import PaperEngine
 def create_snapshot():
 
     return {
+        "regime": {
+            "candles": [],
+        },
         "trend": {
             "candles": [],
         },

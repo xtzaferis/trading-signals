@@ -100,7 +100,7 @@ class BacktestBroker(Broker):
         )
 
 
-        logger.info(
+        logger.debug(
             f"OPEN EXEC -> price={execution_price:.6f} "
             f"qty={quantity:.8f} "
             f"position_value={trade_plan.position_size:.6f} "
@@ -137,7 +137,7 @@ class BacktestBroker(Broker):
         timestamp: datetime,
     ) -> bool:
 
-        logger.info(
+        logger.debug(
             f"POSITION UPDATE | "
             f"entry={position.entry_price:.2f} | "
             f"high={high:.2f} | "
@@ -364,7 +364,7 @@ class BacktestBroker(Broker):
         )
 
 
-        logger.info(
+        logger.debug(
             f"CLOSE EXEC -> "
             f"price={execution_price:.6f} "
             f"qty={position.quantity:.8f} "
@@ -391,7 +391,7 @@ class BacktestBroker(Broker):
         self.portfolio.cash -= exit_fee
 
 
-        logger.info(
+        logger.debug(
             f"POSITION CLOSE VALIDATED -> "
             f"symbol={position.symbol} "
             f"pnl={position.realized_pnl:.6f} "

@@ -1,11 +1,11 @@
-from app.backtesting.backtest_engine import (
-    BacktestEngine,
+from app.backtesting.multi_symbol_backtest_engine import (
+    MultiSymbolBacktestEngine,
 )
 
 
 def main():
 
-    engine = BacktestEngine()
+    engine = MultiSymbolBacktestEngine()
 
     engine.run()
 

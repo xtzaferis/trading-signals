@@ -20,12 +20,12 @@ class ScreenerService:
 
         candidates = []
 
-        pairs = self.scanner.get_spot_pairs()
+        pairs = self.scanner.get_top_spot_pairs()
 
         logger.info(f"Scanning {len(pairs)} pairs...")
 
         # Προσωρινά σκανάρουμε μόνο τα πρώτα 10
-        for symbol in pairs[:10]:
+        for symbol in pairs:
 
             try:
 

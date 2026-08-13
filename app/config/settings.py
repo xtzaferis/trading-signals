@@ -38,7 +38,26 @@ QUOTE_CURRENCY = os.getenv(
     "USDC",
 )
 
+# OKX's USDC spot history starts much later than its USDT history. Backtests
+# use the matching USDT market as a price-history proxy while all live/paper
+# symbols remain denominated in QUOTE_CURRENCY.
+BACKTEST_DATA_QUOTE_CURRENCY = os.getenv(
+    "BACKTEST_DATA_QUOTE_CURRENCY",
+    "USDT",
+)
+
 TOP_COINS = 5
+
+# A fixed universe avoids selecting newly listed coins merely because they
+# have a temporary volume spike. These are still crypto assets and can remain
+# volatile; the intent is to prefer established, liquid markets.
+CORE_SPOT_BASES = (
+    "BTC",
+    "ETH",
+    "XRP",
+    "SOL",
+    "ADA",
+)
 SCAN_INTERVAL = 60
 CANDLE_LIMIT = 200
 
@@ -55,6 +74,7 @@ MARKET_MIN_SCORE = 70
 # Strategy
 # =====================================
 
+REGIME_TIMEFRAME = "1d"
 TREND_TIMEFRAME = "4h"
 CONFIRM_TIMEFRAME = "1h"
 ENTRY_TIMEFRAME = "15m"
@@ -66,13 +86,22 @@ MIN_SCORE = 70
 # Backtesting
 # =====================================
 
-# Roughly one month of evaluated candles plus enough earlier candles for
-# the longest (EMA 200) indicator to warm up on every timeframe.
+# Roughly one year of evaluated candles plus enough earlier candles for
+# the longest indicator to warm up on every timeframe.
 BACKTEST_CANDLE_LIMITS = {
-    "4h": 1280,
-    "1h": 4520,
-    "15m": 17480,
+    "1d": 580,
+    "4h": 2400,
+    "1h": 8960,
+    "15m": 35240,
 }
+
+# Exchanges can legitimately return slightly fewer candles because of gaps,
+# listing schedules, or pagination boundaries. Require enough history for
+# indicator warm-up and a useful evaluation period without demanding an exact
+# response length.
+BACKTEST_MIN_HISTORY_RATIO = 0.90
+
+BACKTEST_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 
 # =====================================
@@ -108,6 +137,7 @@ MAX_POSITION_HOLD_HOURS = 24
 # =====================================
 
 MIN_BARS_BETWEEN_TRADES = 4
+MIN_BARS_AFTER_STOP_LOSS = 96
 
 
 # =====================================

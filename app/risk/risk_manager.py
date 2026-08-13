@@ -89,17 +89,21 @@ class RiskManager:
         )
 
 
-        units = (
-            capital_at_risk
-            /
-            risk
+        execution_entry = entry * (1 + SLIPPAGE)
+        broker_stop = execution_entry - risk
+        execution_stop = broker_stop * (1 - SLIPPAGE)
+        loss_per_unit = (
+            execution_entry
+            - execution_stop
+            + execution_entry * TRADING_FEE
+            + execution_stop * TRADING_FEE
         )
+
+        units = capital_at_risk / loss_per_unit
 
 
         position_value = (
-            units
-            *
-            entry
+            units * execution_entry
         )
 
 
@@ -123,11 +127,6 @@ class RiskManager:
 
         # Small ATR targets can be nominally profitable while losing money
         # after round-trip fees and slippage. Reject them before entry.
-        execution_entry = (
-            entry
-            * (1 + SLIPPAGE)
-        )
-
         execution_target = (
             execution_entry
             + risk * RISK_REWARD_RATIO

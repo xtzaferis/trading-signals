@@ -8,6 +8,7 @@ from app.models.trade_plan import (
 )
 
 EMPTY_DATA = {
+    "1d": [],
     "4h": [],
     "1h": [],
     "15m": [],
@@ -19,6 +20,7 @@ def test_engine_opens_position_on_buy_signal():
     engine = BacktestEngine()
 
     market = {
+        "regime": {},
         "trend": {},
         "confirm": {},
         "entry": {
@@ -197,6 +199,7 @@ def test_engine_full_trade_lifecycle_take_profit():
 
 
     first_market = {
+        "regime": {},
         "trend": {},
         "confirm": {},
         "entry": {
@@ -207,6 +210,7 @@ def test_engine_full_trade_lifecycle_take_profit():
 
 
     second_market = {
+        "regime": {},
         "trend": {},
         "confirm": {},
         "entry": {

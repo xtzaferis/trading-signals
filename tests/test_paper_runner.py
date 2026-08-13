@@ -8,6 +8,11 @@ from app.paper.paper_runner import (
 def create_snapshot():
 
     return {
+        "regime": {
+            "candles": [
+                [0, 100, 101, 99, 100, 10],
+            ],
+        },
         "trend": {
             "candles": [
                 [1, 100, 101, 99, 100, 10],

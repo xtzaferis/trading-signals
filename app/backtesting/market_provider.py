@@ -52,6 +52,7 @@ class MarketProvider:
             return
 
         timeframe_keys = {
+            "regime": "1d",
             "trend": "4h",
             "confirm": "1h",
             "entry": "15m",
@@ -94,6 +95,11 @@ class MarketProvider:
 
 
         market = {
+
+            "regime": self.calculate(
+                snapshot["regime"]["candles"],
+                "regime",
+            ),
 
             "trend": self.calculate(
                 snapshot["trend"]["candles"],

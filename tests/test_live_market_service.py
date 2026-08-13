@@ -13,6 +13,9 @@ def test_live_market_service_returns_snapshot():
 
     service.client.get_ohlcv.side_effect = [
         [
+            [0, 99, 100, 98, 99, 9],
+        ],
+        [
             [1, 100, 101, 99, 100, 10],
         ],
         [
@@ -25,10 +28,16 @@ def test_live_market_service_returns_snapshot():
 
     snapshot = service.get_snapshot(
         symbol="BTC/USDC",
+        regime_timeframe="1d",
         trend_timeframe="4h",
         confirm_timeframe="1h",
         entry_timeframe="15m",
         limit=200,
+    )
+
+    assert (
+        "regime"
+        in snapshot
     )
 
     assert (
@@ -44,6 +53,11 @@ def test_live_market_service_returns_snapshot():
     assert (
         "entry"
         in snapshot
+    )
+
+    assert (
+        snapshot["regime"]["candles"][0][0]
+        == 0
     )
 
     assert (

@@ -7,6 +7,7 @@ from app.config.settings import (
     CONFIRM_TIMEFRAME,
     ENTRY_TIMEFRAME,
     MARKET_SYMBOL,
+    REGIME_TIMEFRAME,
     SCAN_INTERVAL,
     TREND_TIMEFRAME,
 )
@@ -52,6 +53,7 @@ class PaperRunner:
             snapshot = (
                 self.market.get_snapshot(
                     symbol=MARKET_SYMBOL,
+                    regime_timeframe=REGIME_TIMEFRAME,
                     trend_timeframe=TREND_TIMEFRAME,
                     confirm_timeframe=CONFIRM_TIMEFRAME,
                     entry_timeframe=ENTRY_TIMEFRAME,
@@ -60,6 +62,7 @@ class PaperRunner:
             )
 
             self.okx_feed.update_candles(
+                regime_candles=snapshot["regime"]["candles"],
                 trend_candles=snapshot["trend"]["candles"],
                 confirm_candles=snapshot["confirm"]["candles"],
                 entry_candles=snapshot["entry"]["candles"],

@@ -46,6 +46,9 @@ class OKXClient:
     def get_ticker(self, symbol):
         return self.exchange.fetch_ticker(symbol)
 
+    def get_tickers(self):
+        return self.exchange.fetch_tickers()
+
     def get_ohlcv(
         self,
         symbol,
