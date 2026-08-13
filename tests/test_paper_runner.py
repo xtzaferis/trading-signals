@@ -33,7 +33,8 @@ def create_snapshot():
 
 def test_paper_runner_run_once():
 
-    runner = PaperRunner()
+    health = Mock()
+    runner = PaperRunner(health_repository=health)
 
     snapshot = create_snapshot()
 
@@ -57,3 +58,6 @@ def test_paper_runner_run_once():
     assert runner.market.get_snapshot.call_count == 2
 
     assert runner.engine.process_snapshot.call_count == 2
+    health.start_cycle.assert_called_once_with(2)
+    assert health.record_success.call_count == 2
+    health.complete_cycle.assert_called_once_with(2, 0, None)

@@ -9,7 +9,8 @@ from app.paper.paper_runner import (
 
 def test_paper_runner_handles_market_error():
 
-    runner = PaperRunner()
+    health = Mock()
+    runner = PaperRunner(health_repository=health)
 
     runner.market = Mock()
 
@@ -24,3 +25,19 @@ def test_paper_runner_handles_market_error():
     )
 
     runner.run_once()
+
+    health.record_failure.assert_called_once()
+    health.complete_cycle.assert_called_once()
+
+
+def test_paper_runner_records_scanner_failure():
+    health = Mock()
+    runner = PaperRunner(health_repository=health)
+    runner.scanner = Mock()
+    runner.scanner.get_top_spot_pairs.side_effect = ccxt.NetworkError(
+        "scanner offline"
+    )
+
+    runner.run_once()
+
+    health.record_scan_failure.assert_called_once_with("scanner offline")

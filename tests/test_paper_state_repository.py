@@ -1,20 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
 from app.models.position import Position
-from app.storage import database as database_module
 from app.storage.paper_state_repository import PaperStateRepository
 from app.trading.portfolio import Portfolio
 
 
 def test_paper_state_round_trip_preserves_risk_state(
-    tmp_path,
-    monkeypatch,
 ):
-    monkeypatch.setattr(
-        database_module,
-        "DATABASE_PATH",
-        tmp_path / "paper-state.db",
-    )
     repository = PaperStateRepository()
     portfolio = Portfolio()
     position = Position(

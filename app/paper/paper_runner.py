@@ -24,11 +24,12 @@ from app.paper.paper_engine import (
     PaperEngine,
 )
 from app.scanner.market_scanner import MarketScanner
+from app.storage.paper_health_repository import PaperHealthRepository
 
 
 class PaperRunner:
 
-    def __init__(self):
+    def __init__(self, health_repository=None):
 
         self.live_feed = LiveFeed()
 
@@ -46,6 +47,8 @@ class PaperRunner:
 
         self.scanner = MarketScanner()
 
+        self.health = health_repository or PaperHealthRepository()
+
         self.running = True
 
     def run_once(self):
@@ -59,26 +62,45 @@ class PaperRunner:
             ccxt.ExchangeError,
             ConnectionError,
             TimeoutError,
-        ):
+        ) as error:
 
             logger.exception(
                 "Paper runner market scan failed."
             )
 
+            self.health.record_scan_failure(str(error))
+
             return
+
+        self.health.start_cycle(len(symbols))
+        successful = 0
+        failed = 0
+        last_error = None
 
         for symbol in symbols:
             try:
                 self._process_symbol(symbol)
+                self.health.record_success(symbol)
+                successful += 1
             except (
                 ccxt.NetworkError,
                 ccxt.ExchangeError,
                 ConnectionError,
                 TimeoutError,
-            ):
+            ) as error:
                 logger.exception(
                     f"Paper cycle failed for {symbol}."
                 )
+                message = str(error)
+                self.health.record_failure(symbol, message)
+                failed += 1
+                last_error = message
+
+        self.health.complete_cycle(
+            successful,
+            failed,
+            last_error,
+        )
 
     def _process_symbol(self, symbol: str):
 

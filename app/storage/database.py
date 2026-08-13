@@ -140,6 +140,33 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_health (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                cycle_started_at TEXT,
+                cycle_completed_at TEXT,
+                cycle_status TEXT NOT NULL,
+                expected_symbols INTEGER NOT NULL,
+                successful_symbols INTEGER NOT NULL,
+                failed_symbols INTEGER NOT NULL,
+                last_error TEXT
+            )
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_symbol_health (
+                symbol TEXT PRIMARY KEY,
+                last_success_at TEXT,
+                last_failure_at TEXT,
+                consecutive_failures INTEGER NOT NULL DEFAULT 0,
+                last_error TEXT
+            )
+            """
+        )
+
         self.connection.commit()
 
     def execute(
