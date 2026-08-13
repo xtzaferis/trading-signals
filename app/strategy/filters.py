@@ -1,3 +1,4 @@
+from app.config.settings import ALLOW_RECOVERY_TRADES
 from app.config.weights import (
     ADX_WEIGHT,
     EMA_WEIGHT,
@@ -33,12 +34,16 @@ def classify_regime(regime):
 
 
 def regime_filter(regime):
-    """Permit long trades only in a bull or conservative recovery regime."""
+    """Permit proven regimes; recovery stays experimental by default."""
 
-    return classify_regime(regime) in {
-        "BULL",
-        "RECOVERY",
-    }
+    classification = classify_regime(regime)
+    return (
+        classification == "BULL"
+        or (
+            ALLOW_RECOVERY_TRADES
+            and classification == "RECOVERY"
+        )
+    )
 
 
 def trend_filter(trend):

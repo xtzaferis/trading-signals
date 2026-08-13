@@ -110,6 +110,22 @@ def test_hold_when_daily_regime_fails():
     assert "Daily regime filter failed" in result.reasons
 
 
+def test_hold_during_unproven_recovery_regime():
+    data = bullish_data()
+    data["regime"] = {
+        "close": 96,
+        "ema20": 95,
+        "ema50": 94,
+        "ema200": 100,
+        "ema20_slope_pct": 0.01,
+    }
+
+    result = SignalEngine().evaluate("BTC/USDC", data)
+
+    assert result.action == "HOLD"
+    assert "Daily regime filter failed" in result.reasons
+
+
 
 def test_hold_when_confirmation_fails():
 

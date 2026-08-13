@@ -81,6 +81,10 @@ ENTRY_TIMEFRAME = "15m"
 
 MIN_SCORE = 70
 
+# Recovery-regime entries remain classified and reported, but are not enabled
+# for trading until an independent sample demonstrates positive expectancy.
+ALLOW_RECOVERY_TRADES = False
+
 
 # =====================================
 # Backtesting
