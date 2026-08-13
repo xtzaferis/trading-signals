@@ -157,3 +157,9 @@ SLIPPAGE = 0.0005
 # =====================================
 
 PAPER_MONITOR_CONTINUOUS = False
+
+# Records experimental recovery signals and their hypothetical TP/SL outcomes.
+# Shadow trades never reach a broker or reserve portfolio cash.
+SHADOW_RECOVERY_ENABLED = True
+SHADOW_MIN_CLOSED_TRADES = 30
+SHADOW_MIN_PROFIT_FACTOR = 1.20

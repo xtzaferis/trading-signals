@@ -1,7 +1,17 @@
+import time
+from typing import ClassVar
+
 from app.exchange.okx_client import OKXClient
 
 
 class LiveMarketService:
+
+    TIMEFRAME_SECONDS: ClassVar[dict[str, int]] = {
+        "15m": 15 * 60,
+        "1h": 60 * 60,
+        "4h": 4 * 60 * 60,
+        "1d": 24 * 60 * 60,
+    }
 
     def __init__(self):
 
@@ -21,41 +31,52 @@ class LiveMarketService:
 
             "regime": {
                 "candles": (
-                    self.client.get_ohlcv(
-                        symbol,
-                        timeframe=regime_timeframe,
-                        limit=limit,
+                    self._load_closed(
+                        symbol, regime_timeframe, limit
                     )
                 ),
             },
 
             "trend": {
                 "candles": (
-                    self.client.get_ohlcv(
-                        symbol,
-                        timeframe=trend_timeframe,
-                        limit=limit,
+                    self._load_closed(
+                        symbol, trend_timeframe, limit
                     )
                 ),
             },
 
             "confirm": {
                 "candles": (
-                    self.client.get_ohlcv(
-                        symbol,
-                        timeframe=confirm_timeframe,
-                        limit=limit,
+                    self._load_closed(
+                        symbol, confirm_timeframe, limit
                     )
                 ),
             },
 
             "entry": {
                 "candles": (
-                    self.client.get_ohlcv(
-                        symbol,
-                        timeframe=entry_timeframe,
-                        limit=limit,
+                    self._load_closed(
+                        symbol, entry_timeframe, limit
                     )
                 ),
             },
         }
+
+    def _load_closed(
+        self,
+        symbol: str,
+        timeframe: str,
+        limit: int,
+    ) -> list:
+        candles = self.client.get_ohlcv(
+            symbol,
+            timeframe=timeframe,
+            limit=limit + 1,
+        )
+        duration_ms = self.TIMEFRAME_SECONDS[timeframe] * 1000
+        now_ms = int(time.time() * 1000)
+        return [
+            candle
+            for candle in candles
+            if candle[0] + duration_ms <= now_ms
+        ][-limit:]

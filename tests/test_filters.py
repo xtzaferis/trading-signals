@@ -46,6 +46,7 @@ def test_regime_classifier_allows_conservative_recovery():
     assert classify_regime(bullish_trend()) == "BULL"
     assert classify_regime(recovery) == "RECOVERY"
     assert not regime_filter(recovery)
+    assert regime_filter(recovery, allow_recovery=True)
 
 
 def test_regime_classifier_blocks_weak_recovery():

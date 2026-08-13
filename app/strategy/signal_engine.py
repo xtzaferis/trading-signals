@@ -19,6 +19,7 @@ class SignalEngine:
         self,
         symbol,
         data,
+        allow_recovery: bool | None = None,
     ):
 
         result = SignalResult(
@@ -56,7 +57,10 @@ class SignalEngine:
         # Hard Market Structure Gates
         # ---------------------------------
 
-        if not regime_filter(regime):
+        if not regime_filter(
+            regime,
+            allow_recovery=allow_recovery,
+        ):
 
             result.action = "HOLD"
             result.reasons.append(

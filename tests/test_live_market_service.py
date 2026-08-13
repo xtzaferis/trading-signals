@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from app.market.live_market_service import (
     LiveMarketService,
@@ -74,3 +74,27 @@ def test_live_market_service_returns_snapshot():
         snapshot["entry"]["candles"][0][0]
         == 3
     )
+
+    assert all(
+        call.kwargs["limit"] == 201
+        for call in service.client.get_ohlcv.call_args_list
+    )
+
+
+def test_live_market_service_removes_forming_candle():
+    service = LiveMarketService()
+    service.client = Mock()
+    now_ms = 2_000_000_000_000
+    duration_ms = 15 * 60 * 1000
+    service.client.get_ohlcv.return_value = [
+        [now_ms - duration_ms, 1, 1, 1, 1, 1],
+        [now_ms, 2, 2, 2, 2, 2],
+    ]
+
+    with patch(
+        "app.market.live_market_service.time.time",
+        return_value=now_ms / 1000,
+    ):
+        candles = service._load_closed("BTC/USDC", "15m", 200)
+
+    assert candles == [[now_ms - duration_ms, 1, 1, 1, 1, 1]]

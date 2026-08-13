@@ -125,6 +125,13 @@ def test_hold_during_unproven_recovery_regime():
     assert result.action == "HOLD"
     assert "Daily regime filter failed" in result.reasons
 
+    shadow_result = SignalEngine().evaluate(
+        "BTC/USDC",
+        data,
+        allow_recovery=True,
+    )
+    assert shadow_result.action == "BUY"
+
 
 
 def test_hold_when_confirmation_fails():

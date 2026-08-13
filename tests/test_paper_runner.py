@@ -39,6 +39,13 @@ def test_paper_runner_run_once():
 
     runner.market = Mock()
 
+    runner.scanner = Mock()
+
+    runner.scanner.get_top_spot_pairs.return_value = [
+        "BTC/USDC",
+        "ETH/USDC",
+    ]
+
     runner.market.get_snapshot.return_value = (
         snapshot
     )
@@ -47,6 +54,6 @@ def test_paper_runner_run_once():
 
     runner.run_once()
 
-    runner.market.get_snapshot.assert_called_once()
+    assert runner.market.get_snapshot.call_count == 2
 
-    runner.engine.process_snapshot.assert_called_once()
+    assert runner.engine.process_snapshot.call_count == 2

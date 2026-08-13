@@ -72,6 +72,27 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shadow_trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                regime TEXT NOT NULL,
+                entry_price REAL NOT NULL,
+                stop_loss REAL NOT NULL,
+                take_profit REAL NOT NULL,
+                quantity REAL NOT NULL,
+                opened_at TEXT NOT NULL,
+                status TEXT NOT NULL,
+                closed_at TEXT,
+                exit_price REAL,
+                exit_reason TEXT,
+                pnl REAL,
+                UNIQUE(symbol, opened_at)
+            )
+            """
+        )
+
         self.connection.commit()
 
     def execute(

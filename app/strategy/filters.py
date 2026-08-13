@@ -33,14 +33,22 @@ def classify_regime(regime):
     return "BEAR"
 
 
-def regime_filter(regime):
+def regime_filter(
+    regime,
+    allow_recovery: bool | None = None,
+):
     """Permit proven regimes; recovery stays experimental by default."""
 
     classification = classify_regime(regime)
+    recovery_enabled = (
+        ALLOW_RECOVERY_TRADES
+        if allow_recovery is None
+        else allow_recovery
+    )
     return (
         classification == "BULL"
         or (
-            ALLOW_RECOVERY_TRADES
+            recovery_enabled
             and classification == "RECOVERY"
         )
     )

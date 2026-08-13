@@ -172,7 +172,7 @@ class PaperBroker(Broker):
             self.close(
                 position,
                 position.stop_loss,
-                "STOP_LOSS",
+                self._stop_exit_reason(position),
             )
 
             return True
@@ -207,6 +207,14 @@ class PaperBroker(Broker):
 
 
         return False
+
+    @staticmethod
+    def _stop_exit_reason(position: Position) -> str:
+        if position.trailing_stop > 0:
+            return "TRAILING_STOP"
+        if position.break_even:
+            return "BREAK_EVEN"
+        return "STOP_LOSS"
 
 
 
