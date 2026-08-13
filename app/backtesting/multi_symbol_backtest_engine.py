@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+from datetime import datetime
 from heapq import heappop, heappush
 
 import ccxt
@@ -15,7 +16,9 @@ from app.config.settings import (
     BACKTEST_MIN_HISTORY_RATIO,
     MAX_DRAWDOWN_PCT,
     QUOTE_CURRENCY,
+    SLIPPAGE,
     TOP_COINS,
+    TRADING_FEE,
 )
 from app.core.logger import logger
 from app.risk.risk_manager import RiskManager
@@ -46,6 +49,8 @@ class MultiSymbolBacktestEngine:
         self,
         symbols: list[str] | None = None,
         data: dict[str, dict] | None = None,
+        start_at: datetime | float | None = None,
+        end_at: datetime | float | None = None,
     ):
         logger.info("")
         logger.info("=" * 60)
@@ -74,6 +79,15 @@ class MultiSymbolBacktestEngine:
             "Selected pairs: "
             + ", ".join(self.symbols)
         )
+
+        start_timestamp = self._timestamp_ms(start_at)
+        end_timestamp = self._timestamp_ms(end_at)
+        if (
+            start_timestamp is not None
+            and end_timestamp is not None
+            and start_timestamp > end_timestamp
+        ):
+            raise ValueError("start_at must be before end_at")
 
         providers: dict[str, MarketProvider] = {}
         event_heap = []
@@ -105,9 +119,15 @@ class MultiSymbolBacktestEngine:
         symbol_bars = Counter()
         rejection_counts = Counter()
         rejections_by_symbol = defaultdict(Counter)
+        benchmark_prices: dict[str, list[float]] = {}
 
         while event_heap:
             timestamp = event_heap[0][0]
+            if (
+                end_timestamp is not None
+                and timestamp > end_timestamp
+            ):
+                break
             events = []
 
             while (
@@ -146,7 +166,18 @@ class MultiSymbolBacktestEngine:
                 ):
                     continue
 
+                if (
+                    start_timestamp is not None
+                    and snapshot["timestamp"] < start_timestamp
+                ):
+                    continue
+
                 entry = market["entry"]
+                prices = benchmark_prices.setdefault(
+                    symbol,
+                    [float(entry["close"]), float(entry["close"])],
+                )
+                prices[1] = float(entry["close"])
                 symbol_bars[symbol] += 1
                 bar_number = symbol_bars[symbol]
                 last_entries[symbol] = entry
@@ -319,6 +350,13 @@ class MultiSymbolBacktestEngine:
         report = self.statistics.generate(
             self.portfolio
         )
+        report.benchmark_return = self._benchmark_return(
+            benchmark_prices
+        )
+        report.alpha = (
+            report.total_return
+            - report.benchmark_return
+        )
         self.printer.print(report)
 
         logger.info("Signal rejection summary:")
@@ -344,9 +382,13 @@ class MultiSymbolBacktestEngine:
             position.symbol
             for position in self.portfolio.closed_positions
         )
+        pnl_by_symbol = defaultdict(float)
+        for position in self.portfolio.closed_positions:
+            pnl_by_symbol[position.symbol] += position.realized_pnl
         for symbol in self.symbols:
             logger.info(
-                f"  {symbol}: {trade_counts[symbol]}"
+                f"  {symbol}: {trade_counts[symbol]} trades, "
+                f"{pnl_by_symbol[symbol]:+.2f} USDC"
             )
 
         self.rejection_counts = rejection_counts
@@ -463,3 +505,29 @@ class MultiSymbolBacktestEngine:
         if BACKTEST_DATA_QUOTE_CURRENCY == QUOTE_CURRENCY:
             return execution_symbol
         return f"{base}/{BACKTEST_DATA_QUOTE_CURRENCY}"
+
+    @staticmethod
+    def _timestamp_ms(
+        value: datetime | float | None,
+    ) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.timestamp() * 1000
+        numeric = float(value)
+        return numeric * 1000 if numeric < 10_000_000_000 else numeric
+
+    @staticmethod
+    def _benchmark_return(
+        prices: dict[str, list[float]],
+    ) -> float:
+        returns = []
+        for first, last in prices.values():
+            if first <= 0:
+                continue
+            entry_cost = first * (1 + SLIPPAGE) * (1 + TRADING_FEE)
+            exit_value = last * (1 - SLIPPAGE) * (1 - TRADING_FEE)
+            returns.append(
+                (exit_value / entry_cost - 1) * 100
+            )
+        return sum(returns) / len(returns) if returns else 0.0

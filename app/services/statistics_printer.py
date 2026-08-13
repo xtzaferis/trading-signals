@@ -85,6 +85,14 @@ class StatisticsPrinter:
         )
 
         logger.info(
+            f"Benchmark Return:  {report.benchmark_return:.2f}%"
+        )
+
+        logger.info(
+            f"Alpha:             {report.alpha:.2f}%"
+        )
+
+        logger.info(
             f"Peak Equity:       {report.peak_equity:.2f} USDC"
         )
 

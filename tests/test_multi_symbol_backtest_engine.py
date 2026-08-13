@@ -1,5 +1,7 @@
 from unittest.mock import Mock, patch
 
+import pytest
+
 from app.backtesting.multi_symbol_backtest_engine import (
     MultiSymbolBacktestEngine,
 )
@@ -29,6 +31,26 @@ def test_backtest_uses_deeper_quote_history_proxy():
     assert MultiSymbolBacktestEngine._data_symbol(
         "BTC/USDC"
     ) == "BTC/USDT"
+
+
+def test_benchmark_return_includes_round_trip_costs():
+    result = MultiSymbolBacktestEngine._benchmark_return({
+        "BTC/USDC": [100.0, 110.0],
+    })
+
+    assert 9.6 < result < 9.8
+
+
+def test_invalid_evaluation_period_is_rejected():
+    engine = MultiSymbolBacktestEngine()
+
+    with pytest.raises(ValueError):
+        engine.run(
+            symbols=[],
+            data={},
+            start_at=2_000_000_000_000,
+            end_at=1_000_000_000_000,
+        )
 
 
 def test_stop_loss_uses_longer_cooldown():

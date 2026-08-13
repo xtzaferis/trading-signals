@@ -55,3 +55,7 @@ class StatisticsReport:
     profitable_months: int = 0
 
     evaluated_months: int = 0
+
+    benchmark_return: float = 0.0
+
+    alpha: float = 0.0
