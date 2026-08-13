@@ -15,6 +15,7 @@ class MarketProvider:
     def __init__(
         self,
         feed: DataFeed,
+        precomputed=None,
     ):
 
         self.feed = feed
@@ -29,9 +30,14 @@ class MarketProvider:
 
         self.cache = {}
 
-        self.precomputed = {}
+        self.precomputed = (
+            precomputed
+            if precomputed is not None
+            else {}
+        )
 
-        self._precompute_indicators()
+        if precomputed is None:
+            self._precompute_indicators()
 
 
     def _precompute_indicators(self):

@@ -101,7 +101,10 @@ class Portfolio:
         self,
         max_drawdown_pct: float,
     ) -> bool:
-        return self.get_drawdown_percent() > max_drawdown_pct
+        return (
+            self.get_drawdown_percent()
+            > max_drawdown_pct * 100
+        )
 
 
     def has_open_position(

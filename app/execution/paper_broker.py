@@ -3,6 +3,7 @@ from datetime import datetime
 from app.config.settings import (
     SLIPPAGE,
     TRADING_FEE,
+    TRAILING_START_R,
 )
 from app.core.logger import logger
 from app.execution.broker import Broker
@@ -252,7 +253,10 @@ class PaperBroker(Broker):
 
 
 
-        if TRAILING_STOP_ENABLED:
+        if (
+            TRAILING_STOP_ENABLED
+            and r_multiple >= TRAILING_START_R
+        ):
 
             trailing_distance = (
                 position.initial_risk

@@ -2,6 +2,7 @@ from app.config.settings import (
     ACCOUNT_SIZE,
     ATR_MULTIPLIER,
     MAX_POSITION_SIZE,
+    MIN_STOP_DISTANCE_PCT,
     RISK_PER_TRADE,
     RISK_REWARD_RATIO,
     SLIPPAGE,
@@ -41,22 +42,19 @@ class RiskManager:
             )
 
 
+        stop_distance = max(
+            atr * ATR_MULTIPLIER,
+            entry * MIN_STOP_DISTANCE_PCT,
+        )
+
+
         stop_loss = (
             entry
-            -
-            (
-                atr
-                *
-                ATR_MULTIPLIER
-            )
+            - stop_distance
         )
 
 
-        risk = (
-            entry
-            -
-            stop_loss
-        )
+        risk = stop_distance
 
 
         if risk <= 0:

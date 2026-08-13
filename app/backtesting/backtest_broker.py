@@ -3,8 +3,10 @@ from datetime import datetime, timezone
 from app.config.settings import (
     BREAK_EVEN_ENABLED,
     BREAK_EVEN_R,
+    MAX_POSITION_HOLD_HOURS,
     SLIPPAGE,
     TRADING_FEE,
+    TRAILING_START_R,
     TRAILING_STOP_ENABLED,
 )
 from app.core.logger import logger
@@ -197,6 +199,25 @@ class BacktestBroker(Broker):
             return True
 
 
+        current_time = self._as_datetime(
+            timestamp
+        )
+
+        hours_open = (
+            current_time
+            - position.opened_at
+        ).total_seconds() / 3600
+
+        if hours_open >= MAX_POSITION_HOLD_HOURS:
+            self.close(
+                position,
+                close,
+                "TIME_EXIT",
+                timestamp=timestamp,
+            )
+            return True
+
+
 
         position.update_price(high)
         self.manage_position(position)
@@ -243,7 +264,10 @@ class BacktestBroker(Broker):
             )
 
 
-        if TRAILING_STOP_ENABLED:
+        if (
+            TRAILING_STOP_ENABLED
+            and r_multiple >= TRAILING_START_R
+        ):
 
             trailing_distance = (
                 position.initial_risk

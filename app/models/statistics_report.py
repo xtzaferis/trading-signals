@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -45,3 +45,7 @@ class StatisticsReport:
     expectancy: float = 0.0
 
     average_r: float = 0.0
+
+    monthly_returns: dict[str, float] = field(
+        default_factory=dict
+    )

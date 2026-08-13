@@ -197,3 +197,13 @@ def test_cash_never_negative():
         portfolio.cash
         >= 0
     )
+
+
+def test_max_drawdown_setting_uses_fraction():
+
+    portfolio = Portfolio()
+    portfolio.peak_equity = 1000.0
+    portfolio.cash = 840.0
+
+    assert portfolio.is_max_drawdown_exceeded(0.15)
+    assert not portfolio.is_max_drawdown_exceeded(0.20)

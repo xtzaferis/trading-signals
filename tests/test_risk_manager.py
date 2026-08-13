@@ -162,7 +162,7 @@ def test_capital_at_risk():
     assert capital_at_risk > 0
 
 
-def test_rejects_target_that_cannot_cover_trading_costs():
+def test_minimum_stop_distance_handles_low_volatility():
 
     manager = RiskManager()
 
@@ -174,4 +174,6 @@ def test_rejects_target_that_cannot_cover_trading_costs():
         },
     )
 
-    assert plan is None
+    assert plan is not None
+    assert plan.stop_loss < plan.entry
+    assert plan.take_profit > plan.entry

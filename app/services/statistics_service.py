@@ -196,4 +196,30 @@ class StatisticsService:
                     len(r_values)
                 )
 
+        monthly_pnl: dict[str, float] = {}
+
+        for position in closed:
+            if position.closed_at is None:
+                continue
+
+            month = position.closed_at.strftime(
+                "%Y-%m"
+            )
+            monthly_pnl[month] = (
+                monthly_pnl.get(month, 0.0)
+                + position.realized_pnl
+            )
+
+        month_start_equity = report.initial_equity
+
+        for month, pnl in sorted(
+            monthly_pnl.items()
+        ):
+            report.monthly_returns[month] = (
+                pnl / month_start_equity * 100
+                if month_start_equity > 0
+                else 0.0
+            )
+            month_start_equity += pnl
+
         return report

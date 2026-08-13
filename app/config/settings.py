@@ -69,9 +69,9 @@ MIN_SCORE = 70
 # Roughly one month of evaluated candles plus enough earlier candles for
 # the longest (EMA 200) indicator to warm up on every timeframe.
 BACKTEST_CANDLE_LIMITS = {
-    "4h": 380,
-    "1h": 920,
-    "15m": 3080,
+    "4h": 1280,
+    "1h": 4520,
+    "15m": 17480,
 }
 
 
@@ -79,12 +79,13 @@ BACKTEST_CANDLE_LIMITS = {
 # Risk Management
 # =====================================
 
-RISK_PER_TRADE = 0.01
+RISK_PER_TRADE = 0.005
 MAX_OPEN_POSITIONS = 2
-MAX_POSITION_SIZE = 0.10
+MAX_POSITION_SIZE = 0.50
 
 ATR_MULTIPLIER = 2.0
-RISK_REWARD_RATIO = 2.0
+RISK_REWARD_RATIO = 3.0
+MIN_STOP_DISTANCE_PCT = 0.0075
 
 MAX_DRAWDOWN_PCT = 0.15
 
@@ -97,6 +98,7 @@ BREAK_EVEN_ENABLED = True
 BREAK_EVEN_R = 1.0
 
 TRAILING_STOP_ENABLED = True
+TRAILING_START_R = 1.5
 
 MAX_POSITION_HOLD_HOURS = 24
 

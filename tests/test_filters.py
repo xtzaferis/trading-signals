@@ -18,50 +18,86 @@ from app.strategy.filters import (
 def bullish_trend():
 
     return {
+        "close": 125,
         "ema20": 120,
         "ema50": 110,
         "ema200": 100,
+        "ema20_slope_pct": 0.01,
     }
 
 
 def bearish_trend():
 
     return {
+        "close": 85,
         "ema20": 90,
         "ema50": 100,
         "ema200": 110,
+        "ema20_slope_pct": -0.01,
     }
 
 
 def bullish_confirm():
 
     return {
+        "close": 120,
+        "ema20": 110,
+        "ema50": 100,
         "macd": 5,
         "macd_signal": 3,
+        "macd_histogram": 2,
+        "macd_histogram_prev": 1,
+        "rsi": 60,
     }
 
 
 def bearish_confirm():
 
     return {
+        "close": 90,
+        "ema20": 100,
+        "ema50": 110,
         "macd": 2,
         "macd_signal": 4,
+        "macd_histogram": -2,
+        "macd_histogram_prev": -1,
+        "rsi": 40,
     }
 
 
 def healthy_entry():
 
     return {
+        "close": 110,
+        "ema20": 105,
         "rsi": 55,
+        "rsi_prev": 49,
         "adx": 30,
+        "macd_histogram": 1,
+        "macd_histogram_prev": -1,
+        "close_prev": 100,
+        "ema20_prev": 105,
+        "atr_pct": 0.001,
+        "breakout_high_20": 120,
+        "volume_ratio": 1.0,
     }
 
 
 def weak_entry():
 
     return {
+        "close": 90,
+        "ema20": 100,
         "rsi": 40,
+        "rsi_prev": 45,
         "adx": 15,
+        "macd_histogram": -1,
+        "macd_histogram_prev": -2,
+        "close_prev": 95,
+        "ema20_prev": 100,
+        "atr_pct": 0.0001,
+        "breakout_high_20": 120,
+        "volume_ratio": 0.5,
     }
 
 
@@ -96,6 +132,23 @@ def test_entry_filter():
     assert not entry_filter(
         weak_entry()
     )
+
+
+def test_entry_requires_positive_momentum():
+
+    entry = healthy_entry()
+    entry["macd_histogram"] = -1
+
+    assert not entry_filter(entry)
+
+
+def test_entry_requires_fresh_trigger():
+
+    entry = healthy_entry()
+    entry["macd_histogram_prev"] = 0.5
+    entry["close_prev"] = 106
+
+    assert not entry_filter(entry)
 
 
 def test_ema_filter():

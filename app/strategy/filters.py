@@ -15,8 +15,11 @@ def trend_filter(trend):
     """
 
     return (
+        trend["close"] > trend["ema200"]
+        and trend["ema20_slope_pct"] > 0
+        and
         trend["ema20"] > trend["ema50"]
-        and trend["ema50"] >= trend["ema200"]
+        and trend["ema50"] > trend["ema200"]
     )
 
 
@@ -25,11 +28,11 @@ def confirmation_filter(confirm):
     1H Confirmation Gate
     """
 
-    macd = confirm["macd"]
-    signal = confirm["macd_signal"]
-
     return (
-        macd >= signal - abs(signal) * 0.005
+        confirm["close"] > confirm["ema20"]
+        and confirm["ema20"] > confirm["ema50"]
+        and confirm["macd_histogram"] > 0
+        and 50 <= confirm["rsi"] <= 72
     )
 
 
@@ -38,9 +41,23 @@ def entry_filter(entry):
     15m Entry Gate
     """
 
+    momentum_cross = (
+        entry["macd_histogram_prev"] <= 0
+        and entry["macd_histogram"] > 0
+    )
+
+    ema_reclaim = (
+        entry["close_prev"] <= entry["ema20_prev"]
+        and entry["close"] > entry["ema20"]
+    )
+
     return (
-        50 <= entry["rsi"] <= 60
-        and entry["adx"] >= 25
+        entry["adx"] >= 18
+        and entry["atr_pct"] >= 0.0005
+        and 50 <= entry["rsi"] <= 65
+        and entry["close"] > entry["ema20"]
+        and entry["macd_histogram"] > 0
+        and (momentum_cross or ema_reclaim)
     )
 
 
@@ -70,7 +87,7 @@ def rsi_filter(
     entry,
 ):
 
-    if 50 <= entry["rsi"] <= 60:
+    if 50 <= entry["rsi"] <= 70:
 
         return (
             RSI_WEIGHT,
@@ -102,7 +119,7 @@ def adx_filter(
     entry,
 ):
 
-    if entry["adx"] >= 25:
+    if entry["adx"] >= 18:
 
         return (
             ADX_WEIGHT,

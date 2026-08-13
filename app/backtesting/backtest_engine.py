@@ -8,6 +8,7 @@ from app.backtesting.market_provider import (
 from app.config.settings import (
     BACKTEST_CANDLE_LIMITS,
     MARKET_SYMBOL,
+    MAX_DRAWDOWN_PCT,
     MIN_BARS_BETWEEN_TRADES,
 )
 from app.core.logger import logger
@@ -77,6 +78,7 @@ class BacktestEngine:
         self,
         data=None,
         close_open_positions: bool = True,
+        precomputed_indicators=None,
     ):
 
         logger.info("")
@@ -130,7 +132,8 @@ class BacktestEngine:
 
         self.market_provider = (
             MarketProvider(
-                self.feed
+                self.feed,
+                precomputed=precomputed_indicators,
             )
         )
 
@@ -228,6 +231,16 @@ class BacktestEngine:
             ):
                 continue
 
+            self.portfolio.update_peak_equity()
+
+            if self.portfolio.is_max_drawdown_exceeded(
+                MAX_DRAWDOWN_PCT
+            ):
+                logger.warning(
+                    "New entries halted: maximum drawdown exceeded."
+                )
+                continue
+
             #
             # Evaluate signal
             #
@@ -264,6 +277,9 @@ class BacktestEngine:
                 self.risk_manager.create_trade_plan(
                     signal,
                     entry,
+                    available_cash=(
+                        self.portfolio.available_cash
+                    ),
                 )
             )
 

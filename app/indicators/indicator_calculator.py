@@ -108,6 +108,15 @@ class IndicatorCalculator:
             macd.macd_signal()
         )
 
+        df["macd_histogram"] = (
+            df["macd"]
+            - df["macd_signal"]
+        )
+
+        df["macd_histogram_prev"] = (
+            df["macd_histogram"].shift(1)
+        )
+
 
         # -------------------------
         # ADX
@@ -137,6 +146,51 @@ class IndicatorCalculator:
 
         df["atr"] = self._calculate_atr(
             df
+        )
+
+
+        # -------------------------
+        # Causal strategy features
+        # -------------------------
+
+        df["ema20_slope_pct"] = (
+            df["ema20"].pct_change(3)
+        )
+
+        df["close_prev"] = (
+            df["close"].shift(1)
+        )
+
+        df["ema20_prev"] = (
+            df["ema20"].shift(1)
+        )
+
+        df["rsi_prev"] = (
+            df["rsi"].shift(1)
+        )
+
+        df["volume_sma20"] = (
+            df["volume"]
+            .shift(1)
+            .rolling(20)
+            .mean()
+        )
+
+        df["volume_ratio"] = (
+            df["volume"]
+            / df["volume_sma20"]
+        )
+
+        df["breakout_high_20"] = (
+            df["high"]
+            .shift(1)
+            .rolling(20)
+            .max()
+        )
+
+        df["atr_pct"] = (
+            df["atr"]
+            / df["close"]
         )
 
 

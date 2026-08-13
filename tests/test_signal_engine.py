@@ -12,17 +12,35 @@ def bullish_data():
 
     return {
         "trend": {
+            "close": 125,
             "ema20": 120,
             "ema50": 110,
             "ema200": 100,
+            "ema20_slope_pct": 0.01,
         },
         "confirm": {
+            "close": 120,
+            "ema20": 110,
+            "ema50": 100,
             "macd": 5,
             "macd_signal": 3,
+            "macd_histogram": 2,
+            "macd_histogram_prev": 1,
+            "rsi": 60,
         },
         "entry": {
+            "close": 110,
+            "ema20": 105,
             "rsi": 55,
+            "rsi_prev": 49,
             "adx": 30,
+            "macd_histogram": 1,
+            "macd_histogram_prev": -1,
+            "close_prev": 100,
+            "ema20_prev": 105,
+            "atr_pct": 0.001,
+            "breakout_high_20": 120,
+            "volume_ratio": 1.0,
         },
     }
 
@@ -78,6 +96,7 @@ def test_hold_when_confirmation_fails():
 
     data["confirm"]["macd"] = 2
     data["confirm"]["macd_signal"] = 4
+    data["confirm"]["macd_histogram"] = -2
 
     engine = SignalEngine()
 
@@ -126,11 +145,13 @@ def test_reasons_are_recorded():
     assert "15m Strong Trend" in result.reasons
 
 
-def test_negative_macd_tolerance_is_symmetric():
+def test_positive_histogram_can_confirm_below_zero_macd():
 
     data = bullish_data()
     data["confirm"]["macd"] = -100.4
-    data["confirm"]["macd_signal"] = -100.0
+    data["confirm"]["macd_signal"] = -101.0
+    data["confirm"]["macd_histogram"] = 0.6
+    data["confirm"]["macd_histogram_prev"] = 0.5
 
     result = SignalEngine().evaluate(
         "BTC/USDC",

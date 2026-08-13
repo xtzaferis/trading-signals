@@ -102,4 +102,14 @@ class StatisticsPrinter:
             f"Average R:         {report.average_r:.2f}"
         )
 
+        if report.monthly_returns:
+            logger.info("")
+            logger.info("Monthly Returns:")
+            for month, monthly_return in (
+                report.monthly_returns.items()
+            ):
+                logger.info(
+                    f"  {month}:          {monthly_return:.2f}%"
+                )
+
         logger.info("=" * 50)

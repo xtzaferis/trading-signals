@@ -270,7 +270,7 @@ def test_trailing_stop_moves_stop():
 
     closed = broker.update(
         position,
-        high=115.0,
+        high=116.0,
         low=110.0,
         close=112.0,
         timestamp=Mock(),
@@ -303,7 +303,7 @@ def test_trailing_stop_becomes_active_on_next_candle():
     assert position is not None
     assert broker.update(
         position,
-        high=115.0,
+        high=116.0,
         low=99.0,
         close=112.0,
         timestamp=datetime.now(timezone.utc),
@@ -311,9 +311,9 @@ def test_trailing_stop_becomes_active_on_next_candle():
 
     assert broker.update(
         position,
-        high=106.0,
-        low=104.0,
-        close=105.0,
+        high=107.0,
+        low=105.0,
+        close=106.0,
         timestamp=datetime.now(timezone.utc),
     ) is True
     assert position.exit_reason == "STOP_LOSS"
