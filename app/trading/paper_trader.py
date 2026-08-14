@@ -1,3 +1,4 @@
+from app.config.settings import QUOTE_CURRENCY
 from app.core.logger import logger
 from app.database.repositories.portfolio_repository import (
     PortfolioRepository,
@@ -93,11 +94,11 @@ class PaperTrader:
         logger.info("=" * 50)
 
         logger.info(
-            f"Cash: {self.portfolio.cash:.2f} USDC"
+            f"Cash: {self.portfolio.cash:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Equity: {self.portfolio.equity:.2f} USDC"
+            f"Equity: {self.portfolio.equity:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(

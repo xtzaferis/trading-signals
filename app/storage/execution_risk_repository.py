@@ -2,8 +2,8 @@ from app.storage.database import Database
 
 
 class ExecutionRiskRepository:
-    def __init__(self):
-        self.database = Database()
+    def __init__(self, database=None):
+        self.database = database or Database()
 
     def load(self, mode: str) -> dict | None:
         row = self.database.connection.execute(

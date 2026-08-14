@@ -1,19 +1,20 @@
 from app.config.settings import (
     BREAK_EVEN_ENABLED,
     BREAK_EVEN_R,
+    QUOTE_CURRENCY,
     TRAILING_STOP_ENABLED,
 )
 from app.core.logger import logger
-from app.exchange.okx_client import OKXClient
+from app.exchange.coinbase_client import CoinbaseClient
 from app.journal.trade_journal import TradeJournal
 from app.trading.portfolio import Portfolio
 
 
 class PositionMonitor:
 
-    def __init__(self):
+    def __init__(self, client=None):
 
-        self.client = OKXClient()
+        self.client = client or CoinbaseClient()
 
         self.journal = TradeJournal()
 
@@ -159,11 +160,11 @@ class PositionMonitor:
         logger.info("")
 
         logger.info(
-            f"Cash: {portfolio.cash:.2f} USDC"
+            f"Cash: {portfolio.cash:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Equity: {portfolio.equity:.2f} USDC"
+            f"Equity: {portfolio.equity:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(

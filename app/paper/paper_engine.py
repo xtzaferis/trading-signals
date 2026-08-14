@@ -323,7 +323,7 @@ class PaperEngine:
             result["available_cash"] = self.broker.sync_balance()
         else:
             logger.error(
-                "OKX demo reconciliation unresolved; new entries disabled."
+                "Exchange reconciliation unresolved; new entries disabled."
             )
         return result
 

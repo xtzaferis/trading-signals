@@ -1,3 +1,4 @@
+from app.config.settings import QUOTE_CURRENCY
 from app.models.trade_candidate import TradeCandidate
 from app.trading.portfolio import Portfolio
 from app.trading.rules.base_rule import BaseTradingRule
@@ -21,7 +22,8 @@ class CashRule(BaseTradingRule):
         ):
 
             message = (
-                f"Insufficient cash ({portfolio.available_cash:.2f} USDC)."
+                "Insufficient cash "
+                f"({portfolio.available_cash:.2f} {QUOTE_CURRENCY})."
             )
 
             return False, message

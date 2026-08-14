@@ -15,8 +15,8 @@ from app.core.logger import logger
 from app.market.live_market_service import (
     LiveMarketService,
 )
-from app.market.okx_feed import (
-    OKXFeed,
+from app.market.market_feed import (
+    MarketFeed,
 )
 from app.paper.live_feed import (
     LiveFeed,
@@ -42,7 +42,7 @@ class PaperRunner:
 
         self.live_feed = LiveFeed()
 
-        self.okx_feed = OKXFeed(
+        self.market_feed = MarketFeed(
             self.live_feed
         )
 
@@ -150,7 +150,7 @@ class PaperRunner:
             )
         )
 
-        self.okx_feed.update_candles(
+        self.market_feed.update_candles(
             regime_candles=snapshot["regime"]["candles"],
             trend_candles=snapshot["trend"]["candles"],
             confirm_candles=snapshot["confirm"]["candles"],

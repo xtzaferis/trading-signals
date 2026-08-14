@@ -6,29 +6,19 @@ load_dotenv()
 
 
 # =====================================
-# OKX API
+# Coinbase Advanced Trade API
 # =====================================
 
-OKX_API_KEY = os.getenv("OKX_API_KEY")
-OKX_SECRET = os.getenv("OKX_SECRET")
-OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE")
-
-OKX_API_HOSTNAME = os.getenv(
-    "OKX_API_HOSTNAME",
-    "www.okx.com",
-).strip().lower()
-
-VALID_OKX_API_HOSTNAMES = {
-    "www.okx.com",
-    "openapi.okx.com",
-    "eea.okx.com",
-    "us.okx.com",
-    "tr.okx.com",
-}
-
-if OKX_API_HOSTNAME not in VALID_OKX_API_HOSTNAMES:
-    raise ValueError("OKX_API_HOSTNAME is not an approved OKX API domain.")
-
+# Coinbase Advanced Trade uses a CDP API key name (normally beginning with
+# ``organizations/``) and an EC private key.  dotenv stores multiline private
+# keys most reliably with literal ``\\n`` sequences, which are normalized by
+# the Coinbase client before authentication.
+COINBASE_API_KEY = os.getenv("COINBASE_API_KEY")
+COINBASE_API_SECRET = os.getenv("COINBASE_API_SECRET")
+COINBASE_EXPECTED_PORTFOLIO_ID = os.getenv(
+    "COINBASE_EXPECTED_PORTFOLIO_ID",
+    "",
+).strip()
 
 # =====================================
 # Trading Mode
@@ -41,17 +31,15 @@ TRADING_MODE = os.getenv(
 
 VALID_TRADING_MODES = {
     "paper",
-    "okx_demo",
     "live",
 }
 
 if TRADING_MODE not in VALID_TRADING_MODES:
     raise ValueError(
-        "TRADING_MODE must be one of: paper, okx_demo, live."
+        "TRADING_MODE must be one of: paper, live."
     )
 
-# Compatibility flag for the existing paper entry point. New execution code
-# must use TRADING_MODE so demo and live modes cannot be confused.
+# Compatibility flag for the existing paper entry point.
 PAPER_TRADING = TRADING_MODE == "paper"
 
 # Live orders require both TRADING_MODE=live and this separate opt-in. Keeping
@@ -82,12 +70,11 @@ QUOTE_CURRENCY = os.getenv(
     "USDC",
 )
 
-# OKX's USDC spot history starts much later than its USDT history. Backtests
-# use the matching USDT market as a price-history proxy while all live/paper
-# symbols remain denominated in QUOTE_CURRENCY.
+# Backtests may use a different quote market as a price-history proxy while
+# all live and paper symbols remain denominated in QUOTE_CURRENCY.
 BACKTEST_DATA_QUOTE_CURRENCY = os.getenv(
     "BACKTEST_DATA_QUOTE_CURRENCY",
-    "USDT",
+    QUOTE_CURRENCY,
 )
 
 TOP_COINS = 5
@@ -100,7 +87,7 @@ CORE_SPOT_BASES = (
     "ETH",
     "XRP",
     "SOL",
-    "ADA",
+    "BNB",
 )
 SCAN_INTERVAL = 60
 CANDLE_LIMIT = 200
@@ -110,7 +97,7 @@ CANDLE_LIMIT = 200
 # Market Filter
 # =====================================
 
-MARKET_SYMBOL = "BTC/USDC"
+MARKET_SYMBOL = f"BTC/{QUOTE_CURRENCY}"
 MARKET_MIN_SCORE = 70
 
 
@@ -151,7 +138,7 @@ BACKTEST_MIN_HISTORY_RATIO = 0.90
 
 # Fresh completed candles are fetched for every backtest by default. Set this
 # to true only when faster, repeatable development runs are preferred over the
-# newest available OKX history.
+# newest available exchange history.
 BACKTEST_USE_CACHE = (
     os.getenv("BACKTEST_USE_CACHE", "false").strip().lower() == "true"
 )
@@ -188,6 +175,37 @@ EMERGENCY_STOP = (
 MAX_EXCHANGE_ORDER_VALUE = float(
     os.getenv("MAX_EXCHANGE_ORDER_VALUE", "500.0")
 )
+
+# Real-money canary execution has its own explicit opt-in and remains capped
+# independently of the wider exchange gateway configuration.
+LIVE_CANARY_ENABLED = (
+    os.getenv("LIVE_CANARY_ENABLED", "false").strip().lower() == "true"
+)
+LIVE_CANARY_CONFIRMATION = os.getenv(
+    "LIVE_CANARY_CONFIRMATION",
+    "",
+).strip()
+LIVE_CANARY_SYMBOL = os.getenv(
+    "LIVE_CANARY_SYMBOL",
+    MARKET_SYMBOL,
+).strip().upper()
+LIVE_CANARY_ORDER_VALUE = float(
+    os.getenv("LIVE_CANARY_ORDER_VALUE", "10.0")
+)
+LIVE_CANARY_MAX_ALLOCATION = 100.0
+LIVE_ACCOUNT_SIZE = float(os.getenv("LIVE_ACCOUNT_SIZE", "100.0"))
+LIVE_CANARY_STOP_LOSS_PCT = 0.02
+LIVE_CANARY_TAKE_PROFIT_PCT = 0.04
+
+if not 0 < LIVE_ACCOUNT_SIZE <= LIVE_CANARY_MAX_ALLOCATION:
+    raise ValueError(
+        f"LIVE_ACCOUNT_SIZE must be between 0 and 100 {QUOTE_CURRENCY}."
+    )
+if not 0 < LIVE_CANARY_ORDER_VALUE <= LIVE_ACCOUNT_SIZE:
+    raise ValueError(
+        "LIVE_CANARY_ORDER_VALUE must be positive and no greater than "
+        "LIVE_ACCOUNT_SIZE."
+    )
 
 
 # =====================================

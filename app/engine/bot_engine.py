@@ -1,6 +1,6 @@
 import time
 
-from app.config.settings import SCAN_INTERVAL
+from app.config.settings import QUOTE_CURRENCY, SCAN_INTERVAL
 from app.core.logger import logger
 from app.database.database import Database
 from app.engine.state import BotState
@@ -42,7 +42,7 @@ class BotEngine:
         self.state = BotState.STARTING
 
         logger.info("=" * 50)
-        logger.info("OKX Trading Bot")
+        logger.info("Coinbase Trading Bot")
         logger.info("=" * 50)
 
         Database().initialize()
@@ -201,7 +201,7 @@ class BotEngine:
 
             logger.info(
                 f"   Position Size: "
-                f"{trade.position_size:.2f} USDC"
+                f"{trade.position_size:.2f} {QUOTE_CURRENCY}"
             )
 
             logger.info(

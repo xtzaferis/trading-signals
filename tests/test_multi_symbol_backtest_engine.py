@@ -30,7 +30,7 @@ def test_history_validation_accepts_small_exchange_gaps():
 def test_backtest_uses_deeper_quote_history_proxy():
     assert MultiSymbolBacktestEngine._data_symbol(
         "BTC/USDC"
-    ) == "BTC/USDT"
+    ) == "BTC/USDC"
 
 
 def test_benchmark_return_includes_round_trip_costs():

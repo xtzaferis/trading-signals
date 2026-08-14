@@ -246,7 +246,7 @@ def test_paper_engine_blocks_buy_after_maximum_drawdown():
     engine.broker.open.assert_not_called()
 
 
-def test_demo_reconciliation_disables_entries_when_unresolved():
+def test_live_reconciliation_disables_entries_when_unresolved():
     broker = Mock()
     broker.reconcile.return_value = {
         "safe": False,
@@ -254,7 +254,7 @@ def test_demo_reconciliation_disables_entries_when_unresolved():
     }
     engine = PaperEngine(
         persist_state=False,
-        trading_mode="okx_demo",
+        trading_mode="live",
         broker=broker,
     )
 
@@ -265,13 +265,13 @@ def test_demo_reconciliation_disables_entries_when_unresolved():
     broker.sync_balance.assert_not_called()
 
 
-def test_demo_reconciliation_refreshes_cash_when_safe():
+def test_live_reconciliation_refreshes_cash_when_safe():
     broker = Mock()
     broker.reconcile.return_value = {"safe": True}
     broker.sync_balance.return_value = 750.0
     engine = PaperEngine(
         persist_state=False,
-        trading_mode="okx_demo",
+        trading_mode="live",
         broker=broker,
     )
 
@@ -282,11 +282,11 @@ def test_demo_reconciliation_refreshes_cash_when_safe():
     broker.sync_balance.assert_called_once()
 
 
-def test_unresolved_demo_reconciliation_blocks_buy_order():
+def test_unresolved_live_reconciliation_blocks_buy_order():
     broker = Mock()
     engine = PaperEngine(
         persist_state=False,
-        trading_mode="okx_demo",
+        trading_mode="live",
         broker=broker,
     )
     engine.entries_enabled = False

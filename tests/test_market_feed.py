@@ -1,16 +1,16 @@
-from app.market.okx_feed import OKXFeed
+from app.market.market_feed import MarketFeed
 from app.paper.live_feed import LiveFeed
 
 
-def test_okx_feed_updates_live_feed():
+def test_market_feed_updates_live_feed():
 
     live_feed = LiveFeed()
 
-    okx_feed = OKXFeed(
+    market_feed = MarketFeed(
         live_feed
     )
 
-    okx_feed.update_candles(
+    market_feed.update_candles(
         regime_candles=[0],
         trend_candles=[1, 2, 3],
         confirm_candles=[4, 5, 6],

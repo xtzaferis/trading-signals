@@ -11,10 +11,10 @@ from app.paper.paper_runner import (
 
 def main():
 
-    if TRADING_MODE not in {"paper", "okx_demo"}:
+    if TRADING_MODE != "paper":
 
         logger.error(
-            "This runner supports only paper and okx_demo modes."
+            "This runner supports only paper mode."
         )
 
         sys.exit(1)

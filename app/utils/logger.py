@@ -11,4 +11,4 @@ logging.basicConfig(
     handlers=[logging.FileHandler(f"{LOG_DIR}/bot.log"), logging.StreamHandler()],
 )
 
-logger = logging.getLogger("OKXBot")
+logger = logging.getLogger("TradingBot")

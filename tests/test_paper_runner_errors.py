@@ -20,7 +20,7 @@ def test_paper_runner_handles_market_error():
 
     runner.market.get_snapshot.side_effect = (
         ccxt.NetworkError(
-            "OKX connection failed"
+            "Exchange connection failed"
         )
     )
 

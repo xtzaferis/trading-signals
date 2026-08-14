@@ -8,14 +8,16 @@ DATABASE_PATH = Path(
 
 class Database:
 
-    def __init__(self):
+    def __init__(self, path: Path | None = None):
 
-        DATABASE_PATH.parent.mkdir(
+        self.path = path or DATABASE_PATH
+
+        self.path.parent.mkdir(
             exist_ok=True
         )
 
         self.connection = sqlite3.connect(
-            DATABASE_PATH
+            self.path
         )
 
         self.create_tables()
@@ -231,6 +233,16 @@ class Database:
                 orders_today INTEGER NOT NULL,
                 halted_reason TEXT,
                 updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS demo_smoke_rejections (
+                api_key_fingerprint TEXT PRIMARY KEY,
+                reason TEXT NOT NULL,
+                rejected_at TEXT NOT NULL
             )
             """
         )

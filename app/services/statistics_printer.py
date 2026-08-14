@@ -1,3 +1,4 @@
+from app.config.settings import QUOTE_CURRENCY
 from app.core.logger import logger
 from app.models.statistics_report import StatisticsReport
 
@@ -37,15 +38,15 @@ class StatisticsPrinter:
         logger.info("")
 
         logger.info(
-            f"Gross Profit:      {report.gross_profit:.2f} USDC"
+            f"Gross Profit:      {report.gross_profit:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Gross Loss:        {report.gross_loss:.2f} USDC"
+            f"Gross Loss:        {report.gross_loss:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Net Profit:        {report.net_profit:.2f} USDC"
+            f"Net Profit:        {report.net_profit:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
@@ -55,29 +56,29 @@ class StatisticsPrinter:
         logger.info("")
 
         logger.info(
-            f"Average Winner:    {report.average_winner:.2f} USDC"
+            f"Average Winner:    {report.average_winner:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Average Loser:     {report.average_loser:.2f} USDC"
+            f"Average Loser:     {report.average_loser:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Best Trade:        {report.best_trade:.2f} USDC"
+            f"Best Trade:        {report.best_trade:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Worst Trade:       {report.worst_trade:.2f} USDC"
+            f"Worst Trade:       {report.worst_trade:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info("")
 
         logger.info(
-            f"Initial Equity:    {report.initial_equity:.2f} USDC"
+            f"Initial Equity:    {report.initial_equity:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
-            f"Current Equity:    {report.current_equity:.2f} USDC"
+            f"Current Equity:    {report.current_equity:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
@@ -93,7 +94,7 @@ class StatisticsPrinter:
         )
 
         logger.info(
-            f"Peak Equity:       {report.peak_equity:.2f} USDC"
+            f"Peak Equity:       {report.peak_equity:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(
@@ -107,7 +108,7 @@ class StatisticsPrinter:
         logger.info("")
 
         logger.info(
-            f"Expectancy:        {report.expectancy:.2f} USDC"
+            f"Expectancy:        {report.expectancy:.2f} {QUOTE_CURRENCY}"
         )
 
         logger.info(

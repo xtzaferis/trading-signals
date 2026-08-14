@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from app.paper.live_feed import LiveFeed
 
 
-class OKXFeed:
+class MarketFeed:
 
     def __init__(
         self,

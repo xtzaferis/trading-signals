@@ -29,6 +29,15 @@ def test_new_portfolio_has_initial_balance():
     assert portfolio.realized_pnl == 0
 
 
+def test_portfolio_accepts_isolated_initial_balance():
+    portfolio = Portfolio(initial_balance=100.0)
+
+    assert portfolio.initial_balance == 100.0
+    assert portfolio.cash == 100.0
+    assert portfolio.peak_equity == 100.0
+    assert portfolio.get_drawdown_percent() == 0.0
+
+
 def test_add_position_reduces_cash():
 
     portfolio = Portfolio()

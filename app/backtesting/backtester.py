@@ -1,6 +1,7 @@
 from app.backtesting.historical_data_provider import (
     HistoricalDataProvider,
 )
+from app.config.settings import MARKET_SYMBOL
 from app.core.logger import logger
 from app.indicators.indicator_engine import (
     IndicatorEngine,
@@ -44,7 +45,7 @@ class Backtester:
 
         data = (
             self.history.load_multiple(
-                symbol="BTC/USDC",
+                symbol=MARKET_SYMBOL,
                 timeframes=[
                     "4h",
                     "1h",
@@ -86,13 +87,13 @@ class Backtester:
 
             data = (
                 self.indicators.calculate_multi_timeframe(
-                    symbol="BTC/USDC",
+                    symbol=MARKET_SYMBOL,
                 )
             )
 
             signal = (
                 self.signal_engine.evaluate(
-                    symbol="BTC/USDC",
+                    symbol=MARKET_SYMBOL,
                     data=data,
                 )
             )

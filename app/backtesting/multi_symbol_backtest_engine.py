@@ -388,7 +388,7 @@ class MultiSymbolBacktestEngine:
         for symbol in self.symbols:
             logger.info(
                 f"  {symbol}: {trade_counts[symbol]} trades, "
-                f"{pnl_by_symbol[symbol]:+.2f} USDC"
+                f"{pnl_by_symbol[symbol]:+.2f} {QUOTE_CURRENCY}"
             )
 
         self.rejection_counts = rejection_counts

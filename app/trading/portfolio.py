@@ -12,11 +12,14 @@ from app.models.trade_record import TradeRecord
 
 class Portfolio:
 
-    def __init__(self) -> None:
+    def __init__(self, initial_balance: float = ACCOUNT_SIZE) -> None:
 
-        self.initial_balance: float = float(ACCOUNT_SIZE)
+        if initial_balance <= 0:
+            raise ValueError("Portfolio initial balance must be positive.")
 
-        self.cash: float = float(ACCOUNT_SIZE)
+        self.initial_balance: float = float(initial_balance)
+
+        self.cash: float = float(initial_balance)
 
         self.open_positions: list[Position] = []
 
@@ -26,7 +29,7 @@ class Portfolio:
 
         self.trade_repository: Any = None
 
-        self.peak_equity: float = float(ACCOUNT_SIZE)
+        self.peak_equity: float = float(initial_balance)
 
         self.max_drawdown: float = 0.0
 

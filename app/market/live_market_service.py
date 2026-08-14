@@ -1,7 +1,7 @@
 import time
 from typing import ClassVar
 
-from app.exchange.okx_client import OKXClient
+from app.exchange.coinbase_client import CoinbaseClient
 
 
 class LiveMarketService:
@@ -13,9 +13,9 @@ class LiveMarketService:
         "1d": 24 * 60 * 60,
     }
 
-    def __init__(self):
+    def __init__(self, client=None):
 
-        self.client = OKXClient()
+        self.client = client or CoinbaseClient()
 
     def get_snapshot(
         self,

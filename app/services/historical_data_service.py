@@ -9,14 +9,14 @@ from app.config.settings import (
     BACKTEST_USE_CACHE,
 )
 from app.core.logger import logger
-from app.exchange.okx_client import OKXClient
+from app.exchange.coinbase_client import CoinbaseClient
 
 
 class HistoricalDataService:
 
     def __init__(self, client=None, use_cache: bool | None = None):
 
-        self.client = client or OKXClient()
+        self.client = client or CoinbaseClient()
 
         self.exchange = (
             self.client.exchange
@@ -59,11 +59,11 @@ class HistoricalDataService:
         now = int(self.exchange.milliseconds())
         since = now - (limit + 1) * timeframe_ms
 
-        # OKX returns at most 300 candles in one response. CCXT's deterministic
-        # pagination is required for larger, statistically useful backtests.
+        # CCXT's deterministic pagination is required for larger,
+        # statistically useful backtests.
         pagination_calls = max(1, math.ceil(limit / 200) + 1)
         logger.info(
-            f"Requesting approximately {pagination_calls} OKX pages."
+            f"Requesting approximately {pagination_calls} exchange pages."
         )
         candles: list[Any] = list(
             self.exchange.fetch_ohlcv(
@@ -86,7 +86,7 @@ class HistoricalDataService:
             key=lambda candle: candle[0]
         )
 
-        # The most recent OKX candle may still be forming. Using it would leak
+        # The most recent candle may still be forming. Using it would leak
         # information that was not available at the candle's open time.
         candles = [
             candle

@@ -1,4 +1,5 @@
 from app.config.settings import (
+    QUOTE_CURRENCY,
     SHADOW_MIN_CLOSED_TRADES,
     SHADOW_MIN_PROFIT_FACTOR,
 )
@@ -17,9 +18,13 @@ def main():
     logger.info(f"Closed Shadows:    {report['trades']}")
     logger.info(f"Wins:              {report['wins']}")
     logger.info(f"Losses:            {report['losses']}")
-    logger.info(f"Net Profit:        {report['net_profit']:.2f} USDC")
+    logger.info(
+        f"Net Profit:        {report['net_profit']:.2f} {QUOTE_CURRENCY}"
+    )
     logger.info(f"Profit Factor:     {report['profit_factor']:.2f}")
-    logger.info(f"Expectancy:        {report['expectancy']:.2f} USDC")
+    logger.info(
+        f"Expectancy:        {report['expectancy']:.2f} {QUOTE_CURRENCY}"
+    )
     logger.info(
         "Promotion Criteria: "
         f">={SHADOW_MIN_CLOSED_TRADES} trades, "

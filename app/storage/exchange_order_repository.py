@@ -13,8 +13,8 @@ TERMINAL_ORDER_STATUSES = {
 class ExchangeOrderRepository:
     """Persist exchange intent before any order can leave the process."""
 
-    def __init__(self):
-        self.database = Database()
+    def __init__(self, database=None):
+        self.database = database or Database()
 
     def prepare(
         self,
@@ -76,6 +76,21 @@ class ExchangeOrderRepository:
             """
             UPDATE exchange_order_intents SET
                 status = 'UNKNOWN', last_error = ?, updated_at = ?
+            WHERE client_order_id = ?
+            """,
+            (
+                error,
+                datetime.now(timezone.utc).isoformat(),
+                client_order_id,
+            ),
+        )
+
+    def mark_rejected(self, client_order_id: str, error: str) -> None:
+        """Record an explicit exchange rejection as a terminal outcome."""
+        self.database.execute(
+            """
+            UPDATE exchange_order_intents SET
+                status = 'REJECTED', last_error = ?, updated_at = ?
             WHERE client_order_id = ?
             """,
             (

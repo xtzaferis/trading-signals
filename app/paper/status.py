@@ -1,3 +1,4 @@
+from app.config.settings import QUOTE_CURRENCY
 from app.core.logger import logger
 from app.services.recovery_shadow_tracker import RecoveryShadowTracker
 from app.storage.paper_health_repository import PaperHealthRepository
@@ -30,7 +31,9 @@ def main():
             f"  {symbol}: {failure['count']} consecutive failures "
             f"({failure['error']})"
         )
-    logger.info(f"Paper Cash:        {paper['cash']:.2f} USDC")
+    logger.info(
+        f"Paper Cash:        {paper['cash']:.2f} {QUOTE_CURRENCY}"
+    )
     logger.info(f"Open Positions:    {paper['open_positions']}")
     logger.info(f"Closed Positions:  {paper['closed_positions']}")
     logger.info(f"Open Shadows:      {shadow['open']}")

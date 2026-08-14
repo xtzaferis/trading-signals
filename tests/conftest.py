@@ -8,6 +8,7 @@ import pytest
 # from the developer's real .env file.
 os.environ["TRADING_MODE"] = "paper"
 os.environ["EMERGENCY_STOP"] = "false"
+os.environ["QUOTE_CURRENCY"] = "USDC"
 
 from app.storage import database as storage_database
 

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from app.config.settings import (
     ACCOUNT_SIZE,
+    QUOTE_CURRENCY,
     SHADOW_MIN_CLOSED_TRADES,
     SHADOW_MIN_PROFIT_FACTOR,
     SHADOW_RECOVERY_ENABLED,
@@ -115,7 +116,7 @@ class RecoveryShadowTracker:
         self.repository.close(trade)
         logger.info(
             f"SHADOW CLOSE: {trade.symbol} {reason} "
-            f"pnl={trade.pnl:+.2f} USDC"
+            f"pnl={trade.pnl:+.2f} {QUOTE_CURRENCY}"
         )
         return True
 

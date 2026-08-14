@@ -75,3 +75,15 @@ def test_ambiguous_submission_is_marked_unknown():
     intent = repository.get("botBTC123")
     assert intent["status"] == "UNKNOWN"
     assert intent["last_error"] == "request timed out"
+
+
+def test_explicit_exchange_rejection_is_terminal():
+    repository = ExchangeOrderRepository()
+    prepare(repository)
+
+    repository.mark_rejected("botBTC123", "trading permission denied")
+
+    intent = repository.get("botBTC123")
+    assert intent["status"] == "REJECTED"
+    assert intent["last_error"] == "trading permission denied"
+    assert repository.pending() == []

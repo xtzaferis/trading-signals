@@ -1,12 +1,12 @@
 from app.cache.candle_cache import cache
 from app.data.data_provider import DataProvider
-from app.exchange.okx_client import OKXClient
+from app.exchange.coinbase_client import CoinbaseClient
 
 
 class DataService(DataProvider):
 
     def __init__(self):
-        self.client = OKXClient()
+        self.client = CoinbaseClient()
 
     def get_ohlcv(
         self,

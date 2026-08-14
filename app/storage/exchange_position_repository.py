@@ -7,8 +7,8 @@ from app.storage.database import Database
 class ExchangePositionRepository:
     """Persist demo positions independently from simulated paper state."""
 
-    def __init__(self):
-        self.database = Database()
+    def __init__(self, database=None):
+        self.database = database or Database()
 
     def prepare_entry(
         self,

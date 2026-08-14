@@ -5,7 +5,7 @@ from app.config.settings import (
     QUOTE_CURRENCY,
     TOP_COINS,
 )
-from app.exchange.okx_client import OKXClient
+from app.exchange.coinbase_client import CoinbaseClient
 
 
 class MarketScanner:
@@ -32,8 +32,8 @@ class MarketScanner:
         "BEAR",
     )
 
-    def __init__(self):
-        self.client = OKXClient()
+    def __init__(self, client=None):
+        self.client = client or CoinbaseClient()
 
     def get_spot_pairs(self):
 
