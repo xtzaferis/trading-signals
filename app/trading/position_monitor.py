@@ -5,7 +5,7 @@ from app.config.settings import (
     TRAILING_STOP_ENABLED,
 )
 from app.core.logger import logger
-from app.exchange.coinbase_client import CoinbaseClient
+from app.exchange.kraken_client import KrakenClient
 from app.journal.trade_journal import TradeJournal
 from app.trading.portfolio import Portfolio
 
@@ -14,7 +14,7 @@ class PositionMonitor:
 
     def __init__(self, client=None):
 
-        self.client = client or CoinbaseClient()
+        self.client = client or KrakenClient()
 
         self.journal = TradeJournal()
 

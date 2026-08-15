@@ -2,7 +2,7 @@
 
 ## Objective
 
-Add stock and ETF trading through Interactive Brokers after Coinbase execution
+Add stock and ETF trading through Interactive Brokers after Kraken execution
 is operationally stable. The first target should be a small universe of liquid
 ETFs, not speculative individual stocks.
 
@@ -18,7 +18,7 @@ Extract and formalize exchange-independent interfaces:
 - `CommissionModel`
 - `PositionRepository`
 
-Coinbase and IBKR must have separate adapters, processes, databases, logs,
+Kraken and IBKR must have separate adapters, processes, databases, logs,
 capital allocations and safety switches. Shared strategy code must not be able
 to confuse a crypto symbol with a stock contract.
 

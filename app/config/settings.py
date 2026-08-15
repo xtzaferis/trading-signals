@@ -6,17 +6,16 @@ load_dotenv()
 
 
 # =====================================
-# Coinbase Advanced Trade API
+# Kraken Pro Spot API
 # =====================================
 
-# Coinbase Advanced Trade uses a CDP API key name (normally beginning with
-# ``organizations/``) and an EC private key.  dotenv stores multiline private
-# keys most reliably with literal ``\\n`` sequences, which are normalized by
-# the Coinbase client before authentication.
-COINBASE_API_KEY = os.getenv("COINBASE_API_KEY")
-COINBASE_API_SECRET = os.getenv("COINBASE_API_SECRET")
-COINBASE_EXPECTED_PORTFOLIO_ID = os.getenv(
-    "COINBASE_EXPECTED_PORTFOLIO_ID",
+# Kraken API credentials are a public key plus a base64-encoded private
+# signing secret. The optional key-name guard prevents authenticating with a
+# different Kraken key than the one dedicated to this bot.
+KRAKEN_API_KEY = os.getenv("KRAKEN_API_KEY")
+KRAKEN_API_SECRET = os.getenv("KRAKEN_API_SECRET")
+KRAKEN_EXPECTED_KEY_NAME = os.getenv(
+    "KRAKEN_EXPECTED_KEY_NAME",
     "",
 ).strip()
 

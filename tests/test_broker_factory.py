@@ -12,7 +12,7 @@ def test_factory_returns_paper_broker():
     assert isinstance(broker, PaperBroker)
 
 
-def test_factory_keeps_coinbase_live_execution_disconnected():
+def test_factory_keeps_kraken_live_execution_disconnected():
     with pytest.raises(TradingModeError, match="not connected yet"):
         create_broker(Portfolio(), trading_mode="live")
 

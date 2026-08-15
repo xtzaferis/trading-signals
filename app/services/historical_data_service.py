@@ -9,14 +9,14 @@ from app.config.settings import (
     BACKTEST_USE_CACHE,
 )
 from app.core.logger import logger
-from app.exchange.coinbase_client import CoinbaseClient
+from app.exchange.kraken_client import KrakenClient
 
 
 class HistoricalDataService:
 
     def __init__(self, client=None, use_cache: bool | None = None):
 
-        self.client = client or CoinbaseClient()
+        self.client = client or KrakenClient()
 
         self.exchange = (
             self.client.exchange

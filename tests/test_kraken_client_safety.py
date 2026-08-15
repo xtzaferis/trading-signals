@@ -3,45 +3,39 @@ from unittest.mock import Mock
 import pytest
 
 from app.exceptions import LiveTradingDisabledError, TradingModeError
-from app.exchange.coinbase_client import CoinbaseClient
+from app.exchange.kraken_client import KrakenClient
 
 
 def create_client(mode="live", live_enabled=False):
     exchange = Mock()
-    client = CoinbaseClient(
+    client = KrakenClient(
         trading_mode=mode,
         live_trading_enabled=live_enabled,
-        api_key="organizations/test/apiKeys/key",
-        secret="-----BEGIN EC PRIVATE KEY-----\\nsecret\\n-----END EC PRIVATE KEY-----",
+        api_key="api-key",
+        secret="private-secret",
         exchange=exchange,
     )
     return client, exchange
 
 
-def test_client_normalizes_dotenv_private_key():
-    client, _ = create_client()
-
-    assert "\\n" not in client.secret
-    assert "\nsecret\n" in client.secret
-
-
-def test_key_permissions_use_authenticated_advanced_trade_endpoint():
+def test_key_info_uses_authenticated_spot_endpoint():
     client, exchange = create_client()
-    exchange.v3_private_get_brokerage_key_permissions.return_value = {
-        "can_view": True
+    exchange.privatePostGetApiKeyInfo.return_value = {
+        "error": [],
+        "result": {"apiKeyName": "trading-bot"},
     }
 
-    assert client.get_key_permissions() == {"can_view": True}
-    exchange.v3_private_get_brokerage_key_permissions.assert_called_once_with()
+    assert client.get_key_info() == {"apiKeyName": "trading-bot"}
+    exchange.privatePostGetApiKeyInfo.assert_called_once_with()
 
 
-def test_preview_uses_preview_endpoint_flag_without_live_opt_in():
+def test_preview_validates_quote_sized_order_without_live_opt_in():
     client, exchange = create_client(live_enabled=False)
-    exchange.create_order.return_value = {"preview_id": "preview-1"}
+    exchange.create_order.return_value = {"id": None}
 
     result = client.preview_market_buy("BTC/EUR", 5.0, "preview-1")
 
-    assert result == {"preview_id": "preview-1"}
+    assert result == {"id": None}
     exchange.create_order.assert_called_once_with(
         symbol="BTC/EUR",
         type="market",
@@ -50,8 +44,8 @@ def test_preview_uses_preview_endpoint_flag_without_live_opt_in():
         price=None,
         params={
             "cost": 5.0,
-            "client_order_id": "preview-1",
-            "preview": True,
+            "clientOrderId": "preview-1",
+            "validate": True,
         },
     )
 
@@ -65,9 +59,9 @@ def test_live_order_requires_separate_opt_in():
     exchange.create_order.assert_not_called()
 
 
-def test_coinbase_rejects_unsupported_demo_mode():
-    with pytest.raises(TradingModeError, match="static responses"):
-        CoinbaseClient(
+def test_client_rejects_unsupported_demo_mode():
+    with pytest.raises(TradingModeError, match="no Spot execution sandbox"):
+        KrakenClient(
             trading_mode="demo",
             api_key="key",
             secret="secret",

@@ -1,8 +1,8 @@
 import ccxt
 
 from app.config.settings import (
-    COINBASE_API_KEY,
-    COINBASE_API_SECRET,
+    KRAKEN_API_KEY,
+    KRAKEN_API_SECRET,
     LIVE_TRADING_ENABLED,
     TRADING_MODE,
 )
@@ -14,8 +14,8 @@ from app.exceptions import (
 )
 
 
-class CoinbaseClient:
-    """Small, safety-focused wrapper around Coinbase Advanced Trade."""
+class KrakenClient:
+    """Safety-focused wrapper around Kraken Pro Spot through CCXT."""
 
     def __init__(
         self,
@@ -27,52 +27,42 @@ class CoinbaseClient:
     ):
         if trading_mode not in {"paper", "live"}:
             raise TradingModeError(
-                "Coinbase supports paper or live mode; its API sandbox returns "
-                "static responses and is not an execution simulator."
+                "Kraken supports paper or live mode; no Spot execution "
+                "sandbox is used by this bot."
             )
 
         self.trading_mode = trading_mode
         self.live_trading_enabled = live_trading_enabled
-        self.api_key = api_key or COINBASE_API_KEY
-        self.secret = self._normalize_private_key(
-            secret or COINBASE_API_SECRET
-        )
+        self.api_key = (api_key or KRAKEN_API_KEY or "").strip() or None
+        self.secret = (secret or KRAKEN_API_SECRET or "").strip() or None
 
         config = {
             "enableRateLimit": True,
-            "options": {
-                "defaultType": "spot",
-                "fetchBalance": "v3PrivateGetBrokerageAccounts",
-            },
+            "options": {"defaultType": "spot"},
         }
         if self.api_key and self.secret:
             config["apiKey"] = self.api_key
             config["secret"] = self.secret
-        self.exchange = exchange or ccxt.coinbase(config)
-
-    @staticmethod
-    def _normalize_private_key(secret: str | None) -> str | None:
-        if secret is None:
-            return None
-        return secret.strip().strip('"').replace("\\n", "\n")
+        self.exchange = exchange or ccxt.kraken(config)
 
     def _require_credentials(self) -> None:
         if not (self.api_key and self.secret):
             raise MissingApiKeysError(
-                "Coinbase CDP API key and private key are not configured."
+                "Kraken API key and private signing secret are not configured."
             )
 
     def _require_order_mode(self) -> None:
         if self.trading_mode != "live":
-            raise TradingModeError("Coinbase orders are disabled outside live mode.")
+            raise TradingModeError("Kraken orders are disabled outside live mode.")
         if not self.live_trading_enabled:
             raise LiveTradingDisabledError(
-                "Coinbase live orders require LIVE_TRADING_ENABLED=true."
+                "Kraken live orders require LIVE_TRADING_ENABLED=true."
             )
 
-    def get_key_permissions(self) -> dict:
+    def get_key_info(self) -> dict:
         self._require_credentials()
-        return self.exchange.v3_private_get_brokerage_key_permissions()
+        response = self.exchange.privatePostGetApiKeyInfo()
+        return response.get("result") or response
 
     def get_balance(self) -> dict:
         self._require_credentials()
@@ -112,7 +102,7 @@ class CoinbaseClient:
         quote_cost: float,
         client_order_id: str,
     ) -> dict:
-        """Ask Coinbase to validate an order without submitting it."""
+        """Validate a quote-sized Kraken order without submitting it."""
         self._require_credentials()
         if quote_cost <= 0:
             raise OrderValidationError("Preview quote cost must be positive.")
@@ -126,8 +116,8 @@ class CoinbaseClient:
             price=None,
             params={
                 "cost": quote_cost,
-                "client_order_id": client_order_id,
-                "preview": True,
+                "clientOrderId": client_order_id,
+                "validate": True,
             },
         )
 
@@ -139,13 +129,13 @@ class CoinbaseClient:
         client_order_id: str,
         quote_cost: float | None = None,
     ) -> dict:
-        """Submit one Coinbase order after both global live gates pass."""
+        """Submit one Kraken Spot order after both live gates pass."""
         self._require_credentials()
         self._require_order_mode()
         side = side.lower()
         if side not in {"buy", "sell"} or amount <= 0:
-            raise OrderValidationError("Invalid Coinbase spot market order.")
-        params = {"client_order_id": client_order_id}
+            raise OrderValidationError("Invalid Kraken spot market order.")
+        params = {"clientOrderId": client_order_id}
         if quote_cost is not None:
             if side != "buy" or quote_cost <= 0:
                 raise OrderValidationError(

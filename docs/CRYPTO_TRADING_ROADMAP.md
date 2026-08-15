@@ -1,74 +1,79 @@
-# Coinbase Crypto Trading Roadmap
+# Kraken Pro Crypto Trading Roadmap
 
 ## Objective
 
-Build a fail-closed Coinbase Advanced spot-trading service using a dedicated
-EUR portfolio. Profitability is a validation outcome, not a guaranteed monthly
-return. No phase may be skipped because a backtest looks attractive.
+Build a fail-closed Kraken Pro Spot trading service using EUR markets and a
+dedicated API key. Profitability is a validation outcome, not a guaranteed
+monthly return. No phase may be skipped because a backtest looks attractive.
 
 ## Phase 1 — Account and read-only validation
 
-- Create a dedicated Coinbase Advanced portfolio for the bot.
-- Create a CDP key scoped only to that portfolio.
-- Enable View and Trade.
-- Disable Transfer and Receive.
+- Create a dedicated Kraken Spot API key for the bot.
+- Enable Query Funds, Query Open Orders & Trades, Query Closed Orders & Trades,
+  Create & Modify Orders, and Cancel & Close Orders.
+- Disable deposits, withdrawals, withdrawal-address management, Earn and other
+  funding permissions.
+- Configure an IP allowlist after the production server receives a static IP.
 - Keep `LIVE_TRADING_ENABLED=false`.
-- Configure `COINBASE_API_KEY`, `COINBASE_API_SECRET` and
-  `COINBASE_EXPECTED_PORTFOLIO_ID` outside Git.
+- Configure `KRAKEN_API_KEY`, `KRAKEN_API_SECRET` and
+  `KRAKEN_EXPECTED_KEY_NAME` outside Git.
 - Run `python -m app.live.preflight`.
-- Confirm the expected portfolio, EUR balance, market availability and open
-  orders.
+- Confirm the expected key name, permissions, EUR balance, market availability
+  and open orders.
 
 Exit gate: authenticated preflight passes repeatedly and sends no order.
 
 ## Phase 2 — Market and strategy validation
 
-- Confirm every selected EUR spot market exists and is sufficiently liquid.
-- Download fresh Coinbase EUR candle history.
-- Model Coinbase fees, spread and conservative slippage.
+- Confirm every selected EUR Spot market exists and is sufficiently liquid.
+- Download fresh Kraken EUR candle history.
+- Model Kraken's actual fee tier, spread and conservative slippage.
 - Run chronological out-of-sample and walk-forward tests.
 - Report trade count, expectancy, profit factor, drawdown and monthly returns.
 - Reject parameters that work only on one asset or one short period.
-- Establish a benchmark and compare the strategy with holding cash and BTC.
+- Compare the strategy with holding cash and BTC.
 
 Exit gate: positive out-of-sample expectancy, acceptable drawdown and a
 statistically useful number of trades. A 5% monthly return is not an exit gate.
 
-## Phase 3 — Execution engine
+## Phase 3 — Execution and protection engine
 
 Implement and test:
 
-- Coinbase order previews.
-- Quote-sized spot market entries.
-- Unique, persistent client order IDs.
+- Kraken order validation using `validate=true`.
+- Quote-sized Spot market entries.
+- Unique, persistent `cl_ord_id` values.
 - Idempotent retry behavior.
 - Exact fills, partial fills and commissions.
-- Attached exchange-native TP/SL orders.
-- Bracket-order verification immediately after entry.
+- Stop-loss and take-profit order coordination.
+- Immediate protective-order verification after every entry.
+- Atomic sibling cancellation when one protective exit triggers.
+- Detection and repair of missing, canceled or partially filled protection.
 - Order, balance and position reconciliation after restart.
-- Emergency market exit if native protection cannot be established.
+- Emergency market exit if protection cannot be established.
 - Daily-loss, drawdown, order-count and consecutive-loss circuit breakers.
-- A dedicated Coinbase live database and capital allocation.
+- A dedicated Kraken live database and capital allocation.
 
-Coinbase attached TP/SL uses a `trigger_bracket_gtc` configuration. When one
-exit fills, the other side is disabled. Stop execution can still suffer
-slippage during volatile markets.
+Kraken supports conditional secondary close orders and client order IDs, but
+the exact Spot TP/SL coordination must be verified against the live API before
+the first canary. The bot must not assume that two independent exit orders are
+automatically OCO.
 
 Exit gate: every tested failure leaves the position protected, safely closed,
 or blocks all additional entries.
 
 ## Phase 4 — Forward paper observation
 
-- Deploy the service with live Coinbase market data and paper execution.
+- Deploy the service with live Kraken market data and paper execution.
 - Run continuously for at least 30 days.
 - Record every signal, rejection, stale candle, API failure and restart.
 - Reconcile state automatically after process and server restarts.
 - Produce weekly performance and health reports.
 - Require no unresolved orders or positions.
 
-Coinbase's API sandbox returns static mocked responses. It is useful for
-response-shape tests but does not validate realistic fills or a complete
-production lifecycle.
+Kraken does not provide a full Spot execution simulator for this workflow, so
+local paper execution and order-validation requests do not prove live fill
+behavior.
 
 Exit gate: at least 30 observed days, sufficient closed trades, acceptable
 performance and no unresolved operational failures.
@@ -78,7 +83,7 @@ performance and no unresolved operational failures.
 - Allocate no more than EUR 100.
 - Submit one EUR 5–10 order.
 - Permit one open position only.
-- Verify the entry fill and native bracket directly in Coinbase.
+- Verify the entry fill and every protective order directly in Kraken Pro.
 - Stop after the first completed trade and reconcile balances, fills and fees.
 - Review each of the first 20–30 trades before increasing automation.
 
@@ -89,6 +94,7 @@ and no manual repair required.
 
 - Deploy on the Frankfurt crypto server described in
   [HOSTING_ARCHITECTURE.md](HOSTING_ARCHITECTURE.md).
+- Restrict the API key to the server's static IP.
 - Add external monitoring and alerts.
 - Maintain a hard server-side allocation ceiling.
 - Review performance and execution quality weekly.
@@ -97,6 +103,7 @@ and no manual repair required.
 
 ## Sources
 
-- [Coinbase Advanced Trade endpoints](https://docs.cdp.coinbase.com/coinbase-app/advanced-trade-apis/rest-api)
-- [Coinbase bracket and attached TP/SL orders](https://docs.cdp.coinbase.com/coinbase-app/advanced-trade-apis/guides/orders)
-- [Coinbase API authentication](https://docs.cdp.coinbase.com/api-reference/authentication)
+- [Kraken Spot API documentation](https://docs.kraken.com/)
+- [Kraken API-key permissions and IP allowlist](https://docs.kraken.com/api/docs/rest-api/get-api-key-info)
+- [Kraken client order identifiers](https://docs.kraken.com/api/blog/cl-ord-id/)
+- [Kraken EEA MiCA availability](https://blog.kraken.com/news/all-30-eea-countries-mica)

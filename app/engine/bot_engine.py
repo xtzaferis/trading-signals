@@ -42,7 +42,7 @@ class BotEngine:
         self.state = BotState.STARTING
 
         logger.info("=" * 50)
-        logger.info("Coinbase Trading Bot")
+        logger.info("Kraken Trading Bot")
         logger.info("=" * 50)
 
         Database().initialize()

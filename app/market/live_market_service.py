@@ -1,7 +1,7 @@
 import time
 from typing import ClassVar
 
-from app.exchange.coinbase_client import CoinbaseClient
+from app.exchange.kraken_client import KrakenClient
 
 
 class LiveMarketService:
@@ -15,7 +15,7 @@ class LiveMarketService:
 
     def __init__(self, client=None):
 
-        self.client = client or CoinbaseClient()
+        self.client = client or KrakenClient()
 
     def get_snapshot(
         self,

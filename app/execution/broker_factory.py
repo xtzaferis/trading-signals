@@ -20,7 +20,7 @@ def create_broker(
 
     if trading_mode == "live":
         raise TradingModeError(
-            "Coinbase live broker is not connected yet; live execution "
+            "Kraken live broker is not connected yet; live execution "
             "remains disabled."
         )
 

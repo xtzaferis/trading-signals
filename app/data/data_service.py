@@ -1,12 +1,12 @@
 from app.cache.candle_cache import cache
 from app.data.data_provider import DataProvider
-from app.exchange.coinbase_client import CoinbaseClient
+from app.exchange.kraken_client import KrakenClient
 
 
 class DataService(DataProvider):
 
     def __init__(self):
-        self.client = CoinbaseClient()
+        self.client = KrakenClient()
 
     def get_ohlcv(
         self,

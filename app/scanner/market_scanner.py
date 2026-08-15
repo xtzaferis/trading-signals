@@ -5,7 +5,7 @@ from app.config.settings import (
     QUOTE_CURRENCY,
     TOP_COINS,
 )
-from app.exchange.coinbase_client import CoinbaseClient
+from app.exchange.kraken_client import KrakenClient
 
 
 class MarketScanner:
@@ -33,7 +33,7 @@ class MarketScanner:
     )
 
     def __init__(self, client=None):
-        self.client = client or CoinbaseClient()
+        self.client = client or KrakenClient()
 
     def get_spot_pairs(self):
 

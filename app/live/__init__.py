@@ -1,1 +1,1 @@
-"""Fail-closed Coinbase live validation tools."""
+"""Fail-closed Kraken live validation tools."""

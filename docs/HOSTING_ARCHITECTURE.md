@@ -9,7 +9,7 @@ stock account, and vice versa.
 | Component | Location | Purpose |
 | --- | --- | --- |
 | Source code | Private GitHub repository | Version control and CI tests |
-| Crypto runtime | AWS Lightsail, Frankfurt | Continuous Coinbase monitoring and execution |
+| Crypto runtime | AWS Lightsail, Frankfurt | Continuous Kraken monitoring and execution |
 | Crypto database | Encrypted server disk plus backups | Orders, positions, decisions and reconciliation |
 | Stock runtime | Separate GUI-capable machine or Windows VPS | IB Gateway and the stock bot |
 | Secrets | Runtime machines only | API credentials must never enter Git or CI |
@@ -30,8 +30,8 @@ with 2 GB RAM and a static public IPv4 address. At the time this decision was
 recorded, the corresponding Linux bundle was approximately USD 12 per month.
 Confirm pricing before provisioning.
 
-The static address will be added to the Coinbase API-key allowlist. Coinbase
-supports IP allowlisting and granular API permissions.
+The static address will be added to the Kraken API-key allowlist. Kraken's key
+information endpoint reports both permissions and allowed IP addresses.
 
 Required server controls:
 
@@ -48,7 +48,7 @@ Required server controls:
 
 ## Stock server
 
-IBKR must not share a process, database or capital allocation with Coinbase.
+IBKR must not share a process, database or capital allocation with Kraken.
 The official TWS API requires a running TWS or IB Gateway session. IBKR does
 not officially support a completely headless GUI-less session, and manual
 weekly authentication is normally required.
@@ -64,7 +64,7 @@ IBKR application does not interrupt the bot session.
 
 ## Sources
 
-- [Coinbase API authentication and IP allowlists](https://docs.cdp.coinbase.com/api-reference/authentication)
+- [Kraken API key information, permissions and IP allowlists](https://docs.kraken.com/api/docs/rest-api/get-api-key-info)
 - [AWS Lightsail instance bundles](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-bundles.html)
 - [AWS Lightsail European regions](https://docs.aws.amazon.com/lightsail/latest/userguide/understanding-regions-and-availability-zones-in-amazon-lightsail.html)
 - [IBKR TWS API requirements](https://ibkrcampus.com/campus/ibkr-api-page/twsapi-doc/)
