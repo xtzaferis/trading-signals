@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from app.execution.fee_normalizer import fee_cost_in_quote
 from app.storage.database import Database
 
 TERMINAL_ORDER_STATUSES = {
@@ -52,6 +53,15 @@ class ExchangeOrderRepository:
 
     def record_order(self, client_order_id: str, order: dict) -> None:
         status = self.normalized_status(order)
+        existing = self.get(client_order_id)
+        price = self._float_value(order.get("average")) or (
+            existing["reference_price"] if existing else 0.0
+        )
+        fee_cost = fee_cost_in_quote(
+            order,
+            existing["symbol"] if existing else "UNKNOWN/UNKNOWN",
+            price,
+        )
         self.database.execute(
             """
             UPDATE exchange_order_intents SET
@@ -65,7 +75,7 @@ class ExchangeOrderRepository:
                 status,
                 float(order.get("filled") or 0.0),
                 self._float_value(order.get("average")),
-                self._fee_cost(order),
+                fee_cost,
                 datetime.now(timezone.utc).isoformat(),
                 client_order_id,
             ),
@@ -174,8 +184,3 @@ class ExchangeOrderRepository:
     @staticmethod
     def _float_value(value) -> float | None:
         return float(value) if value is not None else None
-
-    @staticmethod
-    def _fee_cost(order: dict) -> float:
-        fee = order.get("fee") or {}
-        return abs(float(fee.get("cost") or 0.0))

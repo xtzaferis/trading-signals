@@ -220,7 +220,9 @@ class ExchangePositionRepository:
             "positions": len(rows),
             "open_positions": sum(row[0] == "OPEN" for row in rows),
             "pending_positions": sum(
-                row[0] not in {"OPEN", "CLOSED", "ENTRY_REJECTED"}
+                row[0] not in {
+                    "OPEN", "CLOSED", "ENTRY_REJECTED", "ENTRY_CANCELED"
+                }
                 for row in rows
             ),
             "unprotected_positions": sum(

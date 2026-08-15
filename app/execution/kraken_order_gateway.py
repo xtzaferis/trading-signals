@@ -148,6 +148,79 @@ class KrakenOrderGateway:
             client_order_id,
         )
 
+    def submit_post_only_limit_order(
+        self,
+        symbol: str,
+        side: str,
+        amount: float,
+        limit_price: float,
+        client_order_id: str,
+        stop_loss: float | None = None,
+    ) -> dict:
+        """Persist, validate, and submit a maker-only limit entry."""
+        side = side.lower()
+        if side not in {"buy", "sell"}:
+            raise OrderValidationError("Spot order side must be buy or sell.")
+        self._require_positive("amount", amount)
+        self._require_positive("limit price", limit_price)
+        if stop_loss is not None and (
+            side != "buy" or not 0 < stop_loss < limit_price
+        ):
+            raise OrderValidationError(
+                "Attached stop loss must be below the buy limit price."
+            )
+
+        markets = self.client.load_markets()
+        market = markets.get(symbol)
+        if market is None or not market.get("spot", False):
+            raise OrderValidationError(f"Unknown Kraken Spot market: {symbol}")
+        if market.get("active") is False:
+            raise OrderValidationError(f"Inactive Kraken market: {symbol}")
+        amount = self.client.amount_to_precision(symbol, amount)
+        limit_price = self.client.price_to_precision(symbol, limit_price)
+        if stop_loss is not None:
+            stop_loss = self.client.price_to_precision(symbol, stop_loss)
+        self._require_positive("amount after precision", amount)
+        self._require_positive("limit price after precision", limit_price)
+        notional = amount * limit_price
+        if notional > self.max_order_value:
+            raise OrderValidationError(
+                f"Order value {notional:.2f} exceeds the "
+                f"{self.max_order_value:.2f} safety ceiling."
+            )
+        self._validate_market_limits(market, amount, notional)
+        self._validate_balance(symbol, side, amount, notional)
+        if not self.order_repository.prepare(
+            client_order_id,
+            symbol,
+            side,
+            "post-only-limit",
+            amount,
+            limit_price,
+        ):
+            raise DuplicateOrderIntentError(
+                f"Order intent already exists: {client_order_id}"
+            )
+        try:
+            order = self.client.create_post_only_limit_order(
+                symbol=symbol,
+                side=side,
+                amount=amount,
+                price=limit_price,
+                client_order_id=client_order_id,
+                stop_loss=stop_loss,
+            )
+        except Exception as error:
+            if self._is_explicit_rejection(error):
+                self.order_repository.mark_rejected(client_order_id, str(error))
+                raise OrderValidationError(
+                    f"Kraken rejected the post-only order: {error}"
+                ) from error
+            self.order_repository.mark_unknown(client_order_id, str(error))
+            raise
+        self.order_repository.record_order(client_order_id, order)
+        return order
+
     def reconcile_intents(self) -> dict:
         resolved = 0
         unresolved = []

@@ -192,6 +192,6 @@ def test_minimum_stop_distance_handles_low_volatility():
         },
     )
 
-    assert plan is not None
-    assert plan.stop_loss < plan.entry
-    assert plan.take_profit > plan.entry
+    # Nominally valid, but not economically viable after Kraken's conservative
+    # taker/taker round-trip costs.
+    assert plan is None

@@ -250,8 +250,61 @@ MIN_BARS_AFTER_STOP_LOSS = 96
 # Trading Costs
 # =====================================
 
-TRADING_FEE = 0.001
-SLIPPAGE = 0.0005
+# Kraken Pro base-tier Spot fees. Entry orders are intended to be post-only;
+# exits remain market orders so protective exits cannot be delayed.
+MAKER_FEE = float(os.getenv("MAKER_FEE", "0.004"))
+TAKER_FEE = float(os.getenv("TAKER_FEE", "0.008"))
+MAKER_SLIPPAGE = float(os.getenv("MAKER_SLIPPAGE", "0.0"))
+TAKER_SLIPPAGE = float(os.getenv("TAKER_SLIPPAGE", "0.0005"))
+ESTIMATED_SPREAD_PCT = float(os.getenv("ESTIMATED_SPREAD_PCT", "0.0002"))
+
+# Backtests deliberately assume taker entry costs until maker fill probability
+# is simulated. This prevents a post-only strategy looking better simply because
+# unfilled limit orders were treated as fills.
+BACKTEST_ENTRY_FEE = float(os.getenv("BACKTEST_ENTRY_FEE", str(TAKER_FEE)))
+BACKTEST_EXIT_FEE = float(os.getenv("BACKTEST_EXIT_FEE", str(TAKER_FEE)))
+BACKTEST_ENTRY_SLIPPAGE = float(
+    os.getenv("BACKTEST_ENTRY_SLIPPAGE", str(TAKER_SLIPPAGE))
+)
+BACKTEST_EXIT_SLIPPAGE = float(
+    os.getenv("BACKTEST_EXIT_SLIPPAGE", str(TAKER_SLIPPAGE))
+)
+
+MIN_NET_RISK_REWARD = float(os.getenv("MIN_NET_RISK_REWARD", "1.50"))
+POST_ONLY_ENTRY_ENABLED = (
+    os.getenv("POST_ONLY_ENTRY_ENABLED", "true").strip().lower() == "true"
+)
+POST_ONLY_ENTRY_OFFSET_PCT = float(
+    os.getenv("POST_ONLY_ENTRY_OFFSET_PCT", "0.0002")
+)
+POST_ONLY_ENTRY_TIMEOUT_SECONDS = int(
+    os.getenv("POST_ONLY_ENTRY_TIMEOUT_SECONDS", "900")
+)
+
+for name, rate in {
+    "MAKER_FEE": MAKER_FEE,
+    "TAKER_FEE": TAKER_FEE,
+    "MAKER_SLIPPAGE": MAKER_SLIPPAGE,
+    "TAKER_SLIPPAGE": TAKER_SLIPPAGE,
+    "ESTIMATED_SPREAD_PCT": ESTIMATED_SPREAD_PCT,
+    "BACKTEST_ENTRY_FEE": BACKTEST_ENTRY_FEE,
+    "BACKTEST_EXIT_FEE": BACKTEST_EXIT_FEE,
+    "BACKTEST_ENTRY_SLIPPAGE": BACKTEST_ENTRY_SLIPPAGE,
+    "BACKTEST_EXIT_SLIPPAGE": BACKTEST_EXIT_SLIPPAGE,
+}.items():
+    if not 0 <= rate < 1:
+        raise ValueError(f"{name} must be between 0 and 1.")
+if MIN_NET_RISK_REWARD <= 0:
+    raise ValueError("MIN_NET_RISK_REWARD must be positive.")
+if not 0 <= POST_ONLY_ENTRY_OFFSET_PCT < 1:
+    raise ValueError("POST_ONLY_ENTRY_OFFSET_PCT must be between 0 and 1.")
+if POST_ONLY_ENTRY_TIMEOUT_SECONDS <= 0:
+    raise ValueError("POST_ONLY_ENTRY_TIMEOUT_SECONDS must be positive.")
+
+# Compatibility aliases for non-execution analytics that have not yet adopted
+# explicit liquidity roles. New order and risk code must use the named rates.
+TRADING_FEE = TAKER_FEE
+SLIPPAGE = TAKER_SLIPPAGE
 
 
 # =====================================

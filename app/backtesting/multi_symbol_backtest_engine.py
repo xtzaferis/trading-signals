@@ -16,9 +16,7 @@ from app.config.settings import (
     BACKTEST_MIN_HISTORY_RATIO,
     MAX_DRAWDOWN_PCT,
     QUOTE_CURRENCY,
-    SLIPPAGE,
     TOP_COINS,
-    TRADING_FEE,
 )
 from app.core.logger import logger
 from app.risk.risk_manager import RiskManager
@@ -27,6 +25,7 @@ from app.services.historical_data_service import HistoricalDataService
 from app.services.statistics_printer import StatisticsPrinter
 from app.services.statistics_service import StatisticsService
 from app.strategy.signal_engine import SignalEngine
+from app.trading.execution_costs import BACKTEST_COSTS
 from app.trading.portfolio import Portfolio
 
 
@@ -525,8 +524,12 @@ class MultiSymbolBacktestEngine:
         for first, last in prices.values():
             if first <= 0:
                 continue
-            entry_cost = first * (1 + SLIPPAGE) * (1 + TRADING_FEE)
-            exit_value = last * (1 - SLIPPAGE) * (1 - TRADING_FEE)
+            entry_cost = BACKTEST_COSTS.buy_price(first) * (
+                1 + BACKTEST_COSTS.entry_fee
+            )
+            exit_value = BACKTEST_COSTS.sell_price(last) * (
+                1 - BACKTEST_COSTS.exit_fee
+            )
             returns.append(
                 (exit_value / entry_cost - 1) * 100
             )

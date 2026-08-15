@@ -27,7 +27,11 @@ Exit gate: authenticated preflight passes repeatedly and sends no order.
 
 - Confirm every selected EUR Spot market exists and is sufficiently liquid.
 - Download fresh Kraken EUR candle history.
-- Model Kraken's actual fee tier, spread and conservative slippage.
+- Model Kraken's actual maker/taker fee tier, spread and conservative
+  slippage. Backtests assume taker entry and exit costs until maker fill
+  probability is modeled; this is intentionally pessimistic.
+- Reject trades whose expected net reward/risk is below 1.5 after fees and
+  slippage. Gross TP/SL ratios are not sufficient.
 - Run chronological out-of-sample and walk-forward tests.
 - Report trade count, expectancy, profit factor, drawdown and monthly returns.
 - Reject parameters that work only on one asset or one short period.
@@ -41,7 +45,9 @@ statistically useful number of trades. A 5% monthly return is not an exit gate.
 Implement and test:
 
 - Kraken order validation using `validate=true`.
-- Quote-sized Spot market entries.
+- Post-only limit entries so a signal cannot silently pay the taker fee.
+- Cancel unfilled entry orders after 15 minutes; flag partial fills for manual
+  reconciliation rather than inventing a full position.
 - Unique, persistent `cl_ord_id` values.
 - Idempotent retry behavior.
 - Exact fills, partial fills and commissions.
@@ -61,6 +67,19 @@ automatically OCO.
 
 Exit gate: every tested failure leaves the position protected, safely closed,
 or blocks all additional entries.
+
+## Current validation gates
+
+The automated chronological out-of-sample gate requires all of the following:
+
+- at least 30 closed out-of-sample trades;
+- profit factor of at least 1.20;
+- positive expectancy after all modeled trading costs;
+- maximum drawdown no greater than 10%.
+
+A result that fails any gate is research output, not authorization for live
+trading. Parameter selection must be performed only on the development period;
+the later out-of-sample period remains untouched until final evaluation.
 
 ## Phase 4 — Forward paper observation
 

@@ -178,6 +178,44 @@ class KrakenClient:
             params=params,
         )
 
+    def create_post_only_limit_order(
+        self,
+        symbol: str,
+        side: str,
+        amount: float,
+        price: float,
+        client_order_id: str,
+        stop_loss: float | None = None,
+    ) -> dict:
+        """Submit a maker-only Spot limit order; Kraken rejects any taker fill."""
+        self._require_credentials()
+        self._require_order_mode()
+        side = side.lower()
+        if side not in {"buy", "sell"} or amount <= 0 or price <= 0:
+            raise OrderValidationError("Invalid Kraken post-only limit order.")
+        self._validate_client_order_id(client_order_id)
+        params = {"postOnly": True}
+        if stop_loss is not None:
+            if side != "buy" or not 0 < stop_loss < price:
+                raise OrderValidationError(
+                    "Attached stop loss must be below a post-only buy price."
+                )
+            params["close"] = {
+                "ordertype": "stop-loss",
+                "price": stop_loss,
+            }
+            params["userref"] = self._userref(client_order_id)
+        else:
+            params["clientOrderId"] = client_order_id
+        return self.exchange.create_order(
+            symbol=symbol,
+            type="limit",
+            side=side,
+            amount=amount,
+            price=price,
+            params=params,
+        )
+
     def create_stop_loss_order(
         self,
         symbol: str,

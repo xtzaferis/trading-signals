@@ -17,3 +17,5 @@ class TradePlan:
     position_size: float
 
     risk_reward: float
+
+    net_risk_reward: float = 0.0

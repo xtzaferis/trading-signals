@@ -2,16 +2,16 @@ from app.config.settings import (
     ACCOUNT_SIZE,
     ATR_MULTIPLIER,
     MAX_POSITION_SIZE,
+    MIN_NET_RISK_REWARD,
     MIN_STOP_DISTANCE_PCT,
     RISK_PER_TRADE,
     RISK_REWARD_RATIO,
-    SLIPPAGE,
-    TRADING_FEE,
 )
 from app.core.logger import logger
 from app.models.trade_plan import (
     TradePlan,
 )
+from app.trading.execution_costs import BACKTEST_COSTS
 
 
 class RiskManager:
@@ -89,14 +89,15 @@ class RiskManager:
         )
 
 
-        execution_entry = entry * (1 + SLIPPAGE)
+        costs = BACKTEST_COSTS
+        execution_entry = costs.buy_price(entry)
         broker_stop = execution_entry - risk
-        execution_stop = broker_stop * (1 - SLIPPAGE)
+        execution_stop = costs.sell_price(broker_stop)
         loss_per_unit = (
             execution_entry
             - execution_stop
-            + execution_entry * TRADING_FEE
-            + execution_stop * TRADING_FEE
+            + costs.entry_fee_cost(execution_entry, 1.0)
+            + costs.exit_fee_cost(execution_stop, 1.0)
         )
 
         units = capital_at_risk / loss_per_unit
@@ -130,7 +131,8 @@ class RiskManager:
         execution_target = (
             execution_entry
             + risk * RISK_REWARD_RATIO
-        ) * (1 - SLIPPAGE)
+        )
+        execution_target = costs.sell_price(execution_target)
 
         quantity = (
             position_size
@@ -143,16 +145,19 @@ class RiskManager:
                 - execution_entry
             )
             * quantity
-            - position_size * TRADING_FEE
-            - execution_target
-            * quantity
-            * TRADING_FEE
+            - costs.entry_fee_cost(execution_entry, quantity)
+            - costs.exit_fee_cost(execution_target, quantity)
         )
 
-        if expected_net_profit <= 0:
+        expected_net_loss = loss_per_unit * quantity
+        net_risk_reward = expected_net_profit / expected_net_loss
+
+        if expected_net_profit <= 0 or net_risk_reward < MIN_NET_RISK_REWARD:
             logger.debug(
-                "Trade rejected: target does not cover "
-                "fees and slippage (expected net=%s)",
+                "Trade rejected: net reward/risk %.3f is below %.3f "
+                "(expected net=%s)",
+                net_risk_reward,
+                MIN_NET_RISK_REWARD,
                 expected_net_profit,
             )
             return None
@@ -198,4 +203,5 @@ class RiskManager:
             risk_reward=(
                 RISK_REWARD_RATIO
             ),
+            net_risk_reward=round(net_risk_reward, 4),
         )

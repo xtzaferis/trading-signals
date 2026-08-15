@@ -72,6 +72,21 @@ def test_live_order_requires_separate_opt_in():
     exchange.create_order.assert_not_called()
 
 
+def test_post_only_limit_order_sets_maker_flag_and_attached_stop():
+    client, exchange = create_client(live_enabled=True)
+    exchange.create_order.return_value = {"id": "maker-1", "status": "open"}
+
+    client.create_post_only_limit_order(
+        "BTC/EUR", "buy", 0.0001, 99_900.0, "maker-1", 98_000.0
+    )
+
+    call = exchange.create_order.call_args.kwargs
+    assert call["type"] == "limit"
+    assert call["price"] == 99_900.0
+    assert call["params"]["postOnly"] is True
+    assert call["params"]["close"]["ordertype"] == "stop-loss"
+
+
 def test_ambiguous_order_lookup_checks_client_id_before_userref():
     client, exchange = create_client()
     expected = {

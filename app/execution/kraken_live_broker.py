@@ -3,10 +3,17 @@ from uuid import uuid4
 
 import ccxt
 
-from app.config.settings import MAX_POSITION_HOLD_HOURS, QUOTE_CURRENCY
+from app.config.settings import (
+    MAX_POSITION_HOLD_HOURS,
+    POST_ONLY_ENTRY_ENABLED,
+    POST_ONLY_ENTRY_OFFSET_PCT,
+    POST_ONLY_ENTRY_TIMEOUT_SECONDS,
+    QUOTE_CURRENCY,
+)
 from app.core.logger import logger
 from app.exceptions import OrderValidationError
 from app.execution.broker import Broker
+from app.execution.fee_normalizer import fee_cost_in_quote
 from app.execution.kraken_order_gateway import KrakenOrderGateway
 from app.models.position import Position
 from app.models.trade_plan import TradePlan
@@ -27,6 +34,8 @@ class KrakenLiveBroker(Broker):
         position_repository=None,
         id_factory=None,
         circuit_breaker=None,
+        post_only_entries: bool = POST_ONLY_ENTRY_ENABLED,
+        entry_timeout_seconds: int = POST_ONLY_ENTRY_TIMEOUT_SECONDS,
     ):
         self.portfolio = portfolio
         self.gateway = gateway
@@ -39,6 +48,8 @@ class KrakenLiveBroker(Broker):
             "kraken_live",
             ExecutionRiskRepository(live_database),
         )
+        self.post_only_entries = bool(post_only_entries)
+        self.entry_timeout_seconds = int(entry_timeout_seconds)
         self._restore_positions()
 
     def entries_allowed(self) -> tuple[bool, str | None]:
@@ -71,7 +82,8 @@ class KrakenLiveBroker(Broker):
         if not allowed:
             return None
 
-        amount = trade_plan.position_size / trade_plan.entry
+        limit_price = trade_plan.entry * (1 - POST_ONLY_ENTRY_OFFSET_PCT)
+        amount = trade_plan.position_size / limit_price
         client_order_id = self.id_factory("entry")
         if not self.positions.prepare_entry(
             client_order_id,
@@ -84,15 +96,25 @@ class KrakenLiveBroker(Broker):
             return None
 
         try:
-            order = self.gateway.submit_market_order(
-                symbol=trade_plan.symbol,
-                side="buy",
-                amount=amount,
-                reference_price=trade_plan.entry,
-                client_order_id=client_order_id,
-                quote_cost=trade_plan.position_size,
-                stop_loss=trade_plan.stop_loss,
-            )
+            if self.post_only_entries:
+                order = self.gateway.submit_post_only_limit_order(
+                    symbol=trade_plan.symbol,
+                    side="buy",
+                    amount=amount,
+                    limit_price=limit_price,
+                    client_order_id=client_order_id,
+                    stop_loss=trade_plan.stop_loss,
+                )
+            else:
+                order = self.gateway.submit_market_order(
+                    symbol=trade_plan.symbol,
+                    side="buy",
+                    amount=amount,
+                    reference_price=trade_plan.entry,
+                    client_order_id=client_order_id,
+                    quote_cost=trade_plan.position_size,
+                    stop_loss=trade_plan.stop_loss,
+                )
             self.circuit_breaker.record_order(self.portfolio.equity)
         except OrderValidationError as error:
             self.positions.record_entry_status(
@@ -215,12 +237,20 @@ class KrakenLiveBroker(Broker):
         order_result = self.gateway.reconcile_intents()
         restored_entries = 0
         closed_exits = 0
+        stale_partial_entries = []
 
         for stored in self.positions.pending_entries():
             intent = self.gateway.order_repository.get(
                 stored["entry_client_order_id"]
             )
-            if intent is None or intent["status"] != "FILLED":
+            if intent is None:
+                continue
+            if intent["status"] != "FILLED":
+                if self._entry_is_stale(intent):
+                    if intent["filled_amount"] > 0:
+                        stale_partial_entries.append(stored["symbol"])
+                    else:
+                        self._cancel_stale_entry(stored, intent)
                 continue
             position = self._activate_confirmed_entry(
                 stored["entry_client_order_id"],
@@ -254,11 +284,13 @@ class KrakenLiveBroker(Broker):
             "unprotected_symbols": sorted(set(unprotected)),
             "balance_mismatches": balance_mismatches,
             "unexpected_open_order_ids": unexpected_open_orders,
+            "stale_partial_entry_symbols": stale_partial_entries,
             "safe": (
                 bool(order_result.get("safe"))
                 and not unprotected
                 and not balance_mismatches
                 and not unexpected_open_orders
+                and not stale_partial_entries
             ),
         }
 
@@ -280,7 +312,7 @@ class KrakenLiveBroker(Broker):
         target_fraction = max(0.0, (plan.take_profit - plan.entry) / plan.entry)
         stop_loss = entry_price * (1.0 - stop_fraction)
         take_profit = entry_price * (1.0 + target_fraction)
-        entry_fee = self._fee_cost(order)
+        entry_fee = fee_cost_in_quote(order, plan.symbol, entry_price)
         position = Position(
             symbol=plan.symbol,
             entry_price=entry_price,
@@ -524,7 +556,7 @@ class KrakenLiveBroker(Broker):
         reason: str,
         timestamp: datetime,
     ) -> None:
-        exit_fee = self._fee_cost(order)
+        exit_fee = fee_cost_in_quote(order, position.symbol, exit_price)
         pnl = (
             (exit_price - position.entry_price) * position.quantity
             - position.entry_fee
@@ -573,11 +605,54 @@ class KrakenLiveBroker(Broker):
             for stored in self.positions.open_positions()
             if stored["protection_order_id"]
         }
+        expected_ids.update(
+            intent["exchange_order_id"]
+            for intent in self.gateway.order_repository.pending()
+            if intent["exchange_order_id"]
+        )
         return sorted(
             str(order.get("id") or "unknown")
             for order in orders
             if str(order.get("id") or "") not in expected_ids
         )
+
+    def _entry_is_stale(self, intent: dict) -> bool:
+        if not self.post_only_entries or self.entry_timeout_seconds < 0:
+            return self.entry_timeout_seconds < 0
+        created_at = datetime.fromisoformat(intent["created_at"])
+        return datetime.now(timezone.utc) - created_at >= timedelta(
+            seconds=self.entry_timeout_seconds
+        )
+
+    def _cancel_stale_entry(self, stored: dict, intent: dict) -> None:
+        order_id = intent.get("exchange_order_id")
+        if not order_id:
+            self.positions.record_entry_status(
+                stored["entry_client_order_id"],
+                "ENTRY_UNKNOWN",
+                "Stale post-only entry has no Kraken order ID.",
+            )
+            return
+        try:
+            self.gateway.client.cancel_order(order_id, stored["symbol"])
+            order = self.gateway.client.fetch_order(order_id, stored["symbol"])
+            self.gateway.order_repository.record_order(
+                stored["entry_client_order_id"], order
+            )
+        except (
+            ccxt.NetworkError,
+            ccxt.ExchangeError,
+            ConnectionError,
+            TimeoutError,
+        ) as error:
+            self.positions.record_entry_status(
+                stored["entry_client_order_id"], "ENTRY_UNKNOWN", str(error)
+            )
+            return
+        if self._order_status(order) == "CANCELED":
+            self.positions.record_entry_status(
+                stored["entry_client_order_id"], "ENTRY_CANCELED"
+            )
 
     def _restore_positions(self) -> None:
         for stored in self.positions.open_positions():
@@ -637,11 +712,6 @@ class KrakenLiveBroker(Broker):
         if cost is not None and filled > 0:
             return float(cost) / filled
         return None
-
-    @staticmethod
-    def _fee_cost(order: dict) -> float:
-        fee = order.get("fee") or {}
-        return abs(float(fee.get("cost") or 0.0))
 
     @staticmethod
     def _order_from_intent(intent: dict) -> dict:

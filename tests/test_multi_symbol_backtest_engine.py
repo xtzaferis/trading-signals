@@ -9,6 +9,7 @@ from app.backtesting.trade_cooldown import (
     cooldown_bars_for_exit,
 )
 from app.strategy.scoring import SignalResult
+from app.trading.execution_costs import BACKTEST_COSTS
 
 
 def test_empty_multi_symbol_backtest():
@@ -38,7 +39,11 @@ def test_benchmark_return_includes_round_trip_costs():
         "BTC/USDC": [100.0, 110.0],
     })
 
-    assert 9.6 < result < 9.8
+    entry = BACKTEST_COSTS.buy_price(100.0) * (1 + BACKTEST_COSTS.entry_fee)
+    exit_value = BACKTEST_COSTS.sell_price(110.0) * (
+        1 - BACKTEST_COSTS.exit_fee
+    )
+    assert result == pytest.approx((exit_value / entry - 1) * 100)
 
 
 def test_invalid_evaluation_period_is_rejected():

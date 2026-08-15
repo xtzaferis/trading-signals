@@ -1,11 +1,14 @@
 from unittest.mock import Mock, patch
 
+import pytest
+
 from app.backtesting.backtest_engine import (
     BacktestEngine,
 )
 from app.models.trade_plan import (
     TradePlan,
 )
+from app.trading.execution_costs import BACKTEST_COSTS
 
 EMPTY_DATA = {
     "1d": [],
@@ -131,10 +134,13 @@ def test_engine_closes_position_on_take_profit():
     )
 
 
-    assert (
-        round(position.realized_pnl, 6)
-        == 9.730065
+    exit_price = BACKTEST_COSTS.sell_price(position.take_profit)
+    expected = (
+        (exit_price - position.entry_price) * position.quantity
+        - position.entry_fee
+        - BACKTEST_COSTS.exit_fee_cost(exit_price, position.quantity)
     )
+    assert position.realized_pnl == pytest.approx(expected)
 
 
 
@@ -186,10 +192,13 @@ def test_engine_closes_position_on_stop_loss():
     )
 
 
-    assert (
-        round(position.realized_pnl, 6)
-        == -5.239957
+    exit_price = BACKTEST_COSTS.sell_price(position.stop_loss)
+    expected = (
+        (exit_price - position.entry_price) * position.quantity
+        - position.entry_fee
+        - BACKTEST_COSTS.exit_fee_cost(exit_price, position.quantity)
     )
+    assert position.realized_pnl == pytest.approx(expected)
 
 
 

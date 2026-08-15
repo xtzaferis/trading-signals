@@ -14,6 +14,39 @@ class ChronologicalValidationResult:
     split_timestamp: int
     development: StatisticsReport
     out_of_sample: StatisticsReport
+    passed: bool
+    failures: list[str]
+
+
+@dataclass(frozen=True)
+class ValidationCriteria:
+    min_trades: int = 30
+    min_profit_factor: float = 1.20
+    min_expectancy: float = 0.0
+    max_drawdown_pct: float = 10.0
+
+    def evaluate(self, report: StatisticsReport) -> list[str]:
+        failures = []
+        if report.trades < self.min_trades:
+            failures.append(
+                f"trades {report.trades} < required {self.min_trades}"
+            )
+        if report.profit_factor < self.min_profit_factor:
+            failures.append(
+                f"profit factor {report.profit_factor:.2f} < required "
+                f"{self.min_profit_factor:.2f}"
+            )
+        if report.expectancy <= self.min_expectancy:
+            failures.append(
+                f"expectancy {report.expectancy:.4f} <= required "
+                f"{self.min_expectancy:.4f}"
+            )
+        if report.max_drawdown > self.max_drawdown_pct:
+            failures.append(
+                f"drawdown {report.max_drawdown:.2f}% > allowed "
+                f"{self.max_drawdown_pct:.2f}%"
+            )
+        return failures
 
 
 class ChronologicalValidator:
@@ -26,6 +59,7 @@ class ChronologicalValidator:
         symbols: list[str] | None = None,
         data: dict[str, dict] | None = None,
         development_ratio: float = 0.70,
+        criteria: ValidationCriteria | None = None,
     ) -> ChronologicalValidationResult:
         if not 0 < development_ratio < 1:
             raise ValueError("development_ratio must be between 0 and 1")
@@ -64,10 +98,18 @@ class ChronologicalValidator:
             start_at=split_timestamp + 1,
         )
 
+        failures = (criteria or ValidationCriteria()).evaluate(out_of_sample)
+        logger.info(
+            "VALIDATION GATE | %s%s",
+            "PASS" if not failures else "FAIL",
+            "" if not failures else " | " + "; ".join(failures),
+        )
         return ChronologicalValidationResult(
             split_timestamp=split_timestamp,
             development=development,
             out_of_sample=out_of_sample,
+            passed=not failures,
+            failures=failures,
         )
 
     @classmethod

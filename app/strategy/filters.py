@@ -62,8 +62,7 @@ def trend_filter(trend):
     return (
         trend["close"] > trend["ema200"]
         and trend["ema20_slope_pct"] > 0
-        and
-        trend["ema20"] > trend["ema50"]
+        and trend["ema20"] > trend["ema50"]
         and trend["ema50"] > trend["ema200"]
     )
 
@@ -74,7 +73,7 @@ def confirmation_filter(confirm):
     """
 
     return (
-        confirm["close"] > confirm["ema20"]
+        confirm["close"] > confirm["ema50"]
         and confirm["ema20"] > confirm["ema50"]
         and confirm["macd_histogram"] > 0
         and 50 <= confirm["rsi"] <= 72
@@ -116,14 +115,13 @@ def ema_filter(
     entry,
 ):
 
-    if trend_filter(trend):
-
-        return (
-            EMA_WEIGHT,
-            "4H EMA Trend"
-        )
-
-    return 0, None
+    points = 0
+    points += EMA_WEIGHT // 3 if trend["close"] > trend["ema20"] else 0
+    points += EMA_WEIGHT // 3 if trend["ema20"] > trend["ema50"] else 0
+    points += EMA_WEIGHT - 2 * (EMA_WEIGHT // 3) if (
+        trend["ema50"] > trend["ema200"]
+    ) else 0
+    return points, "4H EMA Trend" if points else None
 
 
 def rsi_filter(
@@ -132,14 +130,16 @@ def rsi_filter(
     entry,
 ):
 
-    if 50 <= entry["rsi"] <= 70:
-
-        return (
-            RSI_WEIGHT,
-            "15m Healthy RSI"
-        )
-
-    return 0, None
+    rsi = float(entry["rsi"])
+    if 52 <= rsi <= 60:
+        points = RSI_WEIGHT
+    elif 48 <= rsi <= 65:
+        points = round(RSI_WEIGHT * 0.75)
+    elif 42 <= rsi <= 72:
+        points = round(RSI_WEIGHT * 0.25)
+    else:
+        points = 0
+    return points, "15m Healthy RSI" if points else None
 
 
 def macd_filter(
@@ -148,14 +148,16 @@ def macd_filter(
     entry,
 ):
 
-    if confirmation_filter(confirm):
-
-        return (
-            MACD_WEIGHT,
-            "1H Bullish MACD"
-        )
-
-    return 0, None
+    histogram = float(confirm["macd_histogram"])
+    previous = float(
+        confirm.get("macd_histogram_prev", entry["macd_histogram_prev"])
+    )
+    points = 0
+    if histogram > 0:
+        points += MACD_WEIGHT // 2
+    if histogram > previous:
+        points += MACD_WEIGHT - MACD_WEIGHT // 2
+    return points, "1H Bullish MACD" if points else None
 
 
 def adx_filter(
@@ -164,11 +166,8 @@ def adx_filter(
     entry,
 ):
 
-    if entry["adx"] >= 18:
-
-        return (
-            ADX_WEIGHT,
-            "15m Strong Trend"
-        )
-
-    return 0, None
+    adx = float(entry["adx"])
+    # ADX is strength, not direction. Award it gradually rather than making
+    # the old threshold both a hard gate and an automatic full score.
+    points = round(ADX_WEIGHT * min(1.0, max(0.0, (adx - 18) / 12)))
+    return points, "15m Strong Trend" if points else None

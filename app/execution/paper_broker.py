@@ -1,14 +1,11 @@
 from datetime import datetime
 
-from app.config.settings import (
-    SLIPPAGE,
-    TRADING_FEE,
-    TRAILING_START_R,
-)
+from app.config.settings import TRAILING_START_R
 from app.core.logger import logger
 from app.execution.broker import Broker
 from app.models.position import Position
 from app.models.trade_plan import TradePlan
+from app.trading.execution_costs import BACKTEST_COSTS
 from app.trading.portfolio import Portfolio
 
 
@@ -35,7 +32,7 @@ class PaperBroker(Broker):
 
         execution_price = (
             trade_plan.entry
-            * (1 + SLIPPAGE)
+            * (1 + BACKTEST_COSTS.entry_slippage)
         )
 
 
@@ -101,7 +98,7 @@ class PaperBroker(Broker):
         position.entry_fee = (
             trade_plan.position_size
             *
-            TRADING_FEE
+            BACKTEST_COSTS.entry_fee
         )
 
 
@@ -295,8 +292,8 @@ class PaperBroker(Broker):
         )
 
         net_exit_fraction = (
-            (1 - SLIPPAGE)
-            * (1 - TRADING_FEE)
+            (1 - BACKTEST_COSTS.exit_slippage)
+            * (1 - BACKTEST_COSTS.exit_fee)
         )
 
         return (
@@ -320,7 +317,7 @@ class PaperBroker(Broker):
         execution_price = (
             price
             *
-            (1 - SLIPPAGE)
+            (1 - BACKTEST_COSTS.exit_slippage)
         )
 
 
@@ -334,7 +331,7 @@ class PaperBroker(Broker):
         exit_fee = (
             exit_value
             *
-            TRADING_FEE
+            BACKTEST_COSTS.exit_fee
         )
 
 

@@ -30,7 +30,32 @@ def create_gateway(max_order_value=10.0, eur=20.0):
         "remaining": 0,
         "average": 100_000.0,
     }
+    client.create_post_only_limit_order.return_value = {
+        "id": "maker-entry",
+        "status": "open",
+        "filled": 0,
+        "remaining": 0.0001,
+    }
     return KrakenOrderGateway(client, max_order_value), client
+
+
+def test_post_only_limit_entry_is_persisted_and_submitted():
+    gateway, client = create_gateway()
+
+    order = gateway.submit_post_only_limit_order(
+        "BTC/EUR", "buy", 0.0001, 99_900.0, "kmaker-1", 98_000.0
+    )
+
+    assert order["status"] == "open"
+    client.create_post_only_limit_order.assert_called_once_with(
+        symbol="BTC/EUR",
+        side="buy",
+        amount=0.0001,
+        price=99_900.0,
+        client_order_id="kmaker-1",
+        stop_loss=98_000.0,
+    )
+    assert gateway.order_repository.get("kmaker-1")["status"] == "OPEN"
 
 
 def test_quote_buy_carries_attached_native_stop():

@@ -46,6 +46,7 @@ def create_broker(*orders):
     gateway = Mock()
     gateway.submit_market_order.side_effect = list(orders)
     gateway.order_repository = Mock()
+    gateway.order_repository.pending.return_value = []
     gateway.reconcile_intents.return_value = {"safe": True, "resolved": 0}
     gateway.client.find_attached_stop.return_value = open_stop()
     gateway.client.get_balance.return_value = {
@@ -62,8 +63,59 @@ def create_broker(*orders):
         ExchangePositionRepository(),
         id_factory=lambda prefix: next(identifiers),
         circuit_breaker=breaker,
+        post_only_entries=False,
     )
     return broker, gateway
+
+
+def test_stale_unfilled_post_only_entry_is_canceled():
+    broker, gateway = create_broker()
+    broker.post_only_entries = True
+    broker.entry_timeout_seconds = 0
+    client_order_id = "stale-entry"
+    broker.positions.prepare_entry(
+        client_order_id, "BTC/EUR", 0.1, 100.0, 98.0, 104.0
+    )
+    gateway.order_repository.get.return_value = {
+        "client_order_id": client_order_id,
+        "exchange_order_id": "limit-1",
+        "symbol": "BTC/EUR",
+        "status": "OPEN",
+        "filled_amount": 0.0,
+        "created_at": NOW.isoformat(),
+    }
+    gateway.client.fetch_order.return_value = {
+        "id": "limit-1", "status": "canceled", "filled": 0
+    }
+
+    broker.reconcile()
+
+    gateway.client.cancel_order.assert_called_once_with("limit-1", "BTC/EUR")
+    assert broker.positions.find_active("BTC/EUR") is None
+
+
+def test_live_entry_uses_post_only_limit_by_default():
+    gateway = Mock()
+    gateway.submit_post_only_limit_order.return_value = {
+        "id": "entry-order",
+        "status": "open",
+        "filled": 0,
+    }
+    gateway.order_repository = Mock()
+    breaker = Mock()
+    breaker.can_open.return_value = (True, None)
+    broker = KrakenLiveBroker(
+        Portfolio(initial_balance=20.0),
+        gateway,
+        ExchangePositionRepository(),
+        id_factory=lambda prefix: "kentry-maker",
+        circuit_breaker=breaker,
+    )
+
+    assert broker.open(plan(), NOW) is None
+    gateway.submit_post_only_limit_order.assert_called_once()
+    gateway.submit_market_order.assert_not_called()
+    assert broker.positions.find_active("BTC/EUR")["status"] == "PENDING_ENTRY"
 
 
 def test_confirmed_entry_is_persisted_and_native_stop_is_discovered():
