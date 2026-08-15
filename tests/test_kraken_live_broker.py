@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 
 from app.execution.kraken_live_broker import KrakenLiveBroker
@@ -115,6 +115,42 @@ def test_take_profit_cancels_stop_before_market_sell():
     assert gateway.submit_market_order.call_count == 2
     assert position.exit_reason == "TAKE_PROFIT"
     assert broker.portfolio.open_positions == []
+
+
+def test_maximum_hold_cancels_stop_before_market_sell():
+    broker, gateway = create_broker(
+        filled("entry-order", 100.0),
+        filled("exit-order", 100.5),
+    )
+    position = broker.open(plan(), NOW - timedelta(hours=25))
+    gateway.client.fetch_order.side_effect = [
+        open_stop(),
+        {"id": "stop-1", "status": "canceled", "type": "stop-loss"},
+    ]
+
+    closed = broker.update(position, 100.5, 100.5, 100.5, NOW)
+
+    assert closed is True
+    gateway.client.cancel_order.assert_called_once_with("stop-1", "BTC/EUR")
+    assert gateway.submit_market_order.call_count == 2
+    assert position.exit_reason == "MAX_HOLD_TIME"
+    assert broker.portfolio.open_positions == []
+
+
+def test_take_profit_has_priority_when_maximum_hold_is_reached():
+    broker, gateway = create_broker(
+        filled("entry-order", 100.0),
+        filled("exit-order", 104.0),
+    )
+    position = broker.open(plan(), NOW - timedelta(hours=25))
+    gateway.client.fetch_order.side_effect = [
+        open_stop(),
+        {"id": "stop-1", "status": "canceled", "type": "stop-loss"},
+    ]
+
+    broker.update(position, 104.0, 104.0, 104.0, NOW)
+
+    assert position.exit_reason == "TAKE_PROFIT"
 
 
 def test_filled_native_stop_closes_persisted_position():

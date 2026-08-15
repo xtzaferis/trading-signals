@@ -12,6 +12,7 @@ from app.config.settings import (
     LIVE_MONITOR_HEALTH_PATH,
     LIVE_MONITOR_WEBHOOK_TIMEOUT_SECONDS,
     LIVE_MONITOR_WEBHOOK_URL,
+    MAX_POSITION_HOLD_HOURS,
     SCAN_INTERVAL,
 )
 from app.core.logger import logger
@@ -36,14 +37,15 @@ def monitor_once(broker=None) -> dict:
         ticker = broker.gateway.client.get_ticker(position.symbol)
         price = float(ticker.get("last") or 0.0)
         if price > 0:
+            observed_at = _as_utc_datetime(ticker.get("datetime"))
             closed = broker.update(
                 position,
                 price,
                 price,
                 price,
-                ticker.get("datetime") or datetime.now(timezone.utc),
+                observed_at,
             )
-            positions.append(_position_snapshot(position, price))
+            positions.append(_position_snapshot(position, price, observed_at))
             if closed:
                 closed_symbols.append(position.symbol)
     return {
@@ -56,10 +58,24 @@ def monitor_once(broker=None) -> dict:
     }
 
 
-def _position_snapshot(position, price: float) -> dict:
+def _as_utc_datetime(value) -> datetime:
+    if isinstance(value, datetime):
+        return (
+            value.replace(tzinfo=timezone.utc)
+            if value.tzinfo is None
+            else value.astimezone(timezone.utc)
+        )
+    if isinstance(value, str):
+        return datetime.fromisoformat(value).astimezone(timezone.utc)
+    return datetime.now(timezone.utc)
+
+
+def _position_snapshot(position, price: float, observed_at: datetime) -> dict:
     entry = float(position.entry_price)
     stop = float(position.stop_loss)
     target = float(position.take_profit)
+    opened_at = _as_utc_datetime(position.opened_at)
+    age_hours = max(0.0, (observed_at - opened_at).total_seconds() / 3600)
     return {
         "symbol": position.symbol,
         "price": price,
@@ -70,6 +86,9 @@ def _position_snapshot(position, price: float) -> dict:
         "return_pct": ((price / entry) - 1.0) * 100 if entry else 0.0,
         "distance_to_stop_pct": ((price / stop) - 1.0) * 100 if stop else 0.0,
         "distance_to_target_pct": ((target / price) - 1.0) * 100 if price else 0.0,
+        "age_hours": age_hours,
+        "max_hold_hours": MAX_POSITION_HOLD_HOURS,
+        "hours_until_max_hold": max(0.0, MAX_POSITION_HOLD_HOURS - age_hours),
     }
 
 
@@ -132,7 +151,9 @@ def log_monitor_result(result: dict) -> None:
             f"tp={position['take_profit']:.2f} "
             f"({position['distance_to_target_pct']:+.2f}%) | "
             f"pnl={position['unrealized_pnl']:+.4f} "
-            f"({position['return_pct']:+.2f}%)"
+            f"({position['return_pct']:+.2f}%) | "
+            f"age={position['age_hours']:.2f}h | "
+            f"max-hold-in={position['hours_until_max_hold']:.2f}h"
         )
 
 
@@ -194,6 +215,17 @@ def main() -> None:
                     severity="info",
                     force=True,
                 )
+            for position in result["positions"]:
+                if 0 < position["hours_until_max_hold"] <= 2:
+                    alerts.send(
+                        f"max-hold-approaching:{position['symbol']}",
+                        f"Maximum holding exit is approaching for "
+                        f"{position['symbol']}.",
+                        details={
+                            "age_hours": position["age_hours"],
+                            "hours_remaining": position["hours_until_max_hold"],
+                        },
+                    )
             previous_safe = safe
             if args.once or (
                 not args.wait

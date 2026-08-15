@@ -21,6 +21,7 @@ def _broker(price=102.0, closes=False):
         quantity=0.1,
         stop_loss=98.0,
         take_profit=104.0,
+        opened_at=datetime(2026, 8, 15, tzinfo=timezone.utc),
     )
     broker = Mock()
     broker.reconcile.return_value = {"safe": True}
@@ -48,6 +49,8 @@ def test_monitor_once_reports_price_and_exit_distances():
     assert round(position["return_pct"], 2) == 2.0
     assert round(position["distance_to_stop_pct"], 2) == 4.08
     assert round(position["distance_to_target_pct"], 2) == 1.96
+    assert position["age_hours"] == 0.0
+    assert position["hours_until_max_hold"] == 24.0
 
 
 def test_monitor_once_reports_closed_symbol():
@@ -67,6 +70,7 @@ def test_health_snapshot_is_machine_readable(tmp_path):
     assert payload["status"] == "healthy"
     assert payload["safe"] is True
     assert payload["positions"][0]["take_profit"] == 104.0
+    assert payload["positions"][0]["hours_until_max_hold"] == 24.0
 
 
 def test_health_snapshot_failure_does_not_escape(monkeypatch):
@@ -101,3 +105,4 @@ def test_log_result_includes_tp_and_sl(caplog):
 
     assert "sl=98.00" in caplog.text
     assert "tp=104.00" in caplog.text
+    assert "max-hold-in=24.00h" in caplog.text

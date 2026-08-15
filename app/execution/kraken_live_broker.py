@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import ccxt
 
-from app.config.settings import QUOTE_CURRENCY
+from app.config.settings import MAX_POSITION_HOLD_HOURS, QUOTE_CURRENCY
 from app.core.logger import logger
 from app.exceptions import OrderValidationError
 from app.execution.broker import Broker
@@ -144,6 +144,17 @@ class KrakenLiveBroker(Broker):
                 )
                 return False
             return self.close(position, close, "TAKE_PROFIT", timestamp)
+        held_for = self._as_datetime(timestamp) - self._as_datetime(
+            position.opened_at
+        )
+        if held_for >= timedelta(hours=MAX_POSITION_HOLD_HOURS):
+            if stored["protection_status"] != "ACTIVE":
+                logger.warning(
+                    "Maximum-hold exit deferred until Kraken stop protection "
+                    "is reconciled."
+                )
+                return False
+            return self.close(position, close, "MAX_HOLD_TIME", timestamp)
         return False
 
     def close(
