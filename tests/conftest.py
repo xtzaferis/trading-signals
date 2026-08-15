@@ -9,6 +9,9 @@ import pytest
 os.environ["TRADING_MODE"] = "paper"
 os.environ["EMERGENCY_STOP"] = "false"
 os.environ["QUOTE_CURRENCY"] = "USDC"
+os.environ["LIVE_TRADING_ENABLED"] = "false"
+os.environ["LIVE_CANARY_ENABLED"] = "false"
+os.environ["LIVE_CANARY_CONFIRMATION"] = ""
 
 from app.storage import database as storage_database
 

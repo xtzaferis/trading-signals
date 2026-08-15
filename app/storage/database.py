@@ -6,6 +6,19 @@ DATABASE_PATH = Path(
 )
 
 
+def mode_database_path(mode: str) -> Path:
+    """Derive an isolated database beside the configured base database."""
+    safe_mode = "".join(
+        character if character.isalnum() else "-"
+        for character in mode.strip().lower()
+    ).strip("-")
+    if not safe_mode:
+        raise ValueError("Database mode must not be empty.")
+    return DATABASE_PATH.with_name(
+        f"{DATABASE_PATH.stem}-{safe_mode}{DATABASE_PATH.suffix}"
+    )
+
+
 class Database:
 
     def __init__(self, path: Path | None = None):

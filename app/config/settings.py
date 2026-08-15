@@ -163,7 +163,7 @@ MAX_DRAWDOWN_PCT = 0.15
 MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.02"))
 MAX_CONSECUTIVE_LOSSES = int(os.getenv("MAX_CONSECUTIVE_LOSSES", "3"))
 MAX_EXCHANGE_ORDERS_PER_DAY = int(
-    os.getenv("MAX_EXCHANGE_ORDERS_PER_DAY", "20")
+    os.getenv("MAX_EXCHANGE_ORDERS_PER_DAY", "4")
 )
 EMERGENCY_STOP = (
     os.getenv("EMERGENCY_STOP", "false").strip().lower() == "true"
@@ -172,7 +172,7 @@ EMERGENCY_STOP = (
 # Absolute safety ceiling for a single exchange order. Risk sizing may choose
 # a smaller value, but exchange execution must never exceed this amount.
 MAX_EXCHANGE_ORDER_VALUE = float(
-    os.getenv("MAX_EXCHANGE_ORDER_VALUE", "500.0")
+    os.getenv("MAX_EXCHANGE_ORDER_VALUE", "10.0")
 )
 
 # Real-money canary execution has its own explicit opt-in and remains capped
@@ -191,14 +191,15 @@ LIVE_CANARY_SYMBOL = os.getenv(
 LIVE_CANARY_ORDER_VALUE = float(
     os.getenv("LIVE_CANARY_ORDER_VALUE", "10.0")
 )
-LIVE_CANARY_MAX_ALLOCATION = 100.0
-LIVE_ACCOUNT_SIZE = float(os.getenv("LIVE_ACCOUNT_SIZE", "100.0"))
+LIVE_CANARY_MAX_ALLOCATION = 20.0
+LIVE_ACCOUNT_SIZE = float(os.getenv("LIVE_ACCOUNT_SIZE", "20.0"))
 LIVE_CANARY_STOP_LOSS_PCT = 0.02
 LIVE_CANARY_TAKE_PROFIT_PCT = 0.04
 
 if not 0 < LIVE_ACCOUNT_SIZE <= LIVE_CANARY_MAX_ALLOCATION:
     raise ValueError(
-        f"LIVE_ACCOUNT_SIZE must be between 0 and 100 {QUOTE_CURRENCY}."
+        f"LIVE_ACCOUNT_SIZE must be between 0 and "
+        f"{LIVE_CANARY_MAX_ALLOCATION:g} {QUOTE_CURRENCY}."
     )
 if not 0 < LIVE_CANARY_ORDER_VALUE <= LIVE_ACCOUNT_SIZE:
     raise ValueError(
