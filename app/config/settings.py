@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -90,6 +91,22 @@ CORE_SPOT_BASES = (
 )
 SCAN_INTERVAL = 60
 CANDLE_LIMIT = 200
+
+# Live monitor observability. The webhook is optional and receives only
+# operational status (never credentials or raw exchange responses).
+LIVE_MONITOR_HEALTH_PATH = Path(
+    os.getenv("LIVE_MONITOR_HEALTH_PATH", "logs/kraken-monitor-health.json")
+)
+LIVE_MONITOR_WEBHOOK_URL = os.getenv(
+    "LIVE_MONITOR_WEBHOOK_URL",
+    "",
+).strip()
+LIVE_MONITOR_WEBHOOK_TIMEOUT_SECONDS = float(
+    os.getenv("LIVE_MONITOR_WEBHOOK_TIMEOUT_SECONDS", "5")
+)
+LIVE_MONITOR_ALERT_COOLDOWN_SECONDS = int(
+    os.getenv("LIVE_MONITOR_ALERT_COOLDOWN_SECONDS", "900")
+)
 
 
 # =====================================

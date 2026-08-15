@@ -46,6 +46,24 @@ Required server controls:
 - Back up the trading database daily and test restoration.
 - Pin Python dependencies and deploy immutable releases.
 
+### Monitor operations
+
+The live monitor writes `logs/kraken-monitor-health.json` atomically. An
+external uptime check should treat a stale `checked_at`, `status=error`, or
+`safe=false` as an incident. Each open position includes current price, SL,
+TP, unrealized P&L, and percentage distance to both exits.
+
+Set `LIVE_MONITOR_WEBHOOK_URL` to an HTTPS endpoint that accepts JSON to
+receive deduplicated alerts for unsafe reconciliation, monitor-cycle failure,
+recovery, and position closure. The payload contains operational metadata
+only; it does not contain API credentials or raw exchange responses.
+
+On Linux, install `deploy/systemd/kraken-monitor.service`, adjust its paths and
+user, then enable it with `systemctl enable --now kraken-monitor`. `systemd`
+restarts the process after a crash and at boot. For local development only,
+`python -m app.live.supervisor` provides restart-on-crash behavior. Never run
+the supervisor and a separate monitor simultaneously.
+
 ## Stock server
 
 IBKR must not share a process, database or capital allocation with Kraken.

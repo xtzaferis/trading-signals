@@ -1,0 +1,20 @@
+[Unit]
+Description=Kraken live position monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tradingbot
+WorkingDirectory=/opt/algorithmic-trading-platform
+EnvironmentFile=/etc/algorithmic-trading-platform/kraken.env
+ExecStart=/opt/algorithmic-trading-platform/.venv/bin/python -m app.live.monitor --wait
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/algorithmic-trading-platform/data /opt/algorithmic-trading-platform/logs
+
+[Install]
+WantedBy=multi-user.target
