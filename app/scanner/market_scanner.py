@@ -32,8 +32,15 @@ class MarketScanner:
         "BEAR",
     )
 
-    def __init__(self, client=None):
+    def __init__(
+        self,
+        client=None,
+        quote_currency: str = QUOTE_CURRENCY,
+        allowed_bases: tuple[str, ...] = CORE_SPOT_BASES,
+    ):
         self.client = client or KrakenClient()
+        self.quote_currency = quote_currency.upper()
+        self.allowed_bases = frozenset(base.upper() for base in allowed_bases)
 
     def get_spot_pairs(self):
 
@@ -45,7 +52,7 @@ class MarketScanner:
 
             if (
                 market.get("spot")
-                and market.get("quote") == QUOTE_CURRENCY
+                and market.get("quote") == self.quote_currency
                 and market.get("active")
             ):
                 pairs.append(symbol)
@@ -66,9 +73,9 @@ class MarketScanner:
 
             if not (
                 market.get("spot")
-                and market.get("quote") == QUOTE_CURRENCY
+                and market.get("quote") == self.quote_currency
                 and market.get("active")
-                and base in CORE_SPOT_BASES
+                and base in self.allowed_bases
                 and base not in self.STABLECOINS
                 and not base.endswith(
                     self.LEVERAGED_SUFFIXES

@@ -54,3 +54,47 @@ def test_top_spot_pairs_are_ranked_by_quote_volume():
         "ETH/USDC",
         "SOL/USDC",
     ]
+
+
+def test_scanner_can_use_advisory_quote_currency():
+    client = Mock()
+    client.load_markets.return_value = {
+        "BTC/USDT": {
+            "spot": True, "quote": "USDT", "base": "BTC", "active": True
+        },
+        "BTC/EUR": {
+            "spot": True, "quote": "EUR", "base": "BTC", "active": True
+        },
+    }
+    client.get_tickers.return_value = {
+        "BTC/USDT": {"quoteVolume": 1000},
+        "BTC/EUR": {"quoteVolume": 2000},
+    }
+
+    assert MarketScanner(client, quote_currency="USDT").get_top_spot_pairs() == [
+        "BTC/USDT"
+    ]
+
+
+def test_scanner_can_use_a_broader_advisory_universe():
+    client = Mock()
+    client.load_markets.return_value = {
+        "BTC/USDT": {
+            "spot": True, "quote": "USDT", "base": "BTC", "active": True
+        },
+        "SUI/USDT": {
+            "spot": True, "quote": "USDT", "base": "SUI", "active": True
+        },
+    }
+    client.get_tickers.return_value = {
+        "BTC/USDT": {"quoteVolume": 1000},
+        "SUI/USDT": {"quoteVolume": 2000},
+    }
+
+    scanner = MarketScanner(
+        client,
+        quote_currency="USDT",
+        allowed_bases=("BTC", "SUI"),
+    )
+
+    assert scanner.get_top_spot_pairs(2) == ["SUI/USDT", "BTC/USDT"]

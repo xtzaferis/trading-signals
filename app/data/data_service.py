@@ -5,8 +5,8 @@ from app.exchange.kraken_client import KrakenClient
 
 class DataService(DataProvider):
 
-    def __init__(self):
-        self.client = KrakenClient()
+    def __init__(self, client=None):
+        self.client = client or KrakenClient()
 
     def get_ohlcv(
         self,

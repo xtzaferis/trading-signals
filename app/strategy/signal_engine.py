@@ -15,6 +15,29 @@ from app.strategy.scoring import SignalResult
 
 class SignalEngine:
 
+    SCORING_FILTERS = (
+        ema_filter,
+        rsi_filter,
+        macd_filter,
+        adx_filter,
+    )
+
+    @classmethod
+    def score_components(cls, data) -> tuple[int, list[str]]:
+        """Score technical quality without overriding the safety gates."""
+        reasons = []
+        score = 0
+        for check in cls.SCORING_FILTERS:
+            points, reason = check(
+                data["trend"],
+                data["confirm"],
+                data["entry"],
+            )
+            score += points
+            if reason:
+                reasons.append(reason)
+        return score, reasons
+
     def evaluate(
         self,
         symbol,
@@ -133,31 +156,8 @@ class SignalEngine:
         # Scoring
         # ---------------------------------
 
-        filters = [
-            ema_filter,
-            rsi_filter,
-            macd_filter,
-            adx_filter,
-        ]
-
-
-        for check in filters:
-
-            points, reason = check(
-                trend,
-                confirm,
-                entry,
-            )
-
-
-            result.score += points
-
-
-            if reason:
-
-                result.reasons.append(
-                    reason
-                )
+        result.score, score_reasons = self.score_components(data)
+        result.reasons.extend(score_reasons)
 
 
         result.confidence = (

@@ -79,6 +79,41 @@ BACKTEST_DATA_QUOTE_CURRENCY = os.getenv(
 
 TOP_COINS = 5
 
+# Read-only discretionary-trading assistant. It ranks opportunities but never
+# imports a broker or submits an exchange order.
+ADVISORY_TOP_COINS = int(os.getenv("ADVISORY_TOP_COINS", "20"))
+ADVISORY_MAX_SIGNALS = int(os.getenv("ADVISORY_MAX_SIGNALS", "2"))
+ADVISORY_DATA_SOURCE = os.getenv("ADVISORY_DATA_SOURCE", "binance").strip().lower()
+ADVISORY_QUOTE_CURRENCY = os.getenv(
+    "ADVISORY_QUOTE_CURRENCY", "USDT"
+).strip().upper()
+ADVISORY_TIMEZONE = os.getenv("ADVISORY_TIMEZONE", "Europe/Athens").strip()
+ADVISORY_START_HOUR = int(os.getenv("ADVISORY_START_HOUR", "18"))
+ADVISORY_END_HOUR = int(os.getenv("ADVISORY_END_HOUR", "21"))
+ADVISORY_FUTURES_FEE = float(os.getenv("ADVISORY_FUTURES_FEE", "0.0005"))
+ADVISORY_FUTURES_SLIPPAGE = float(
+    os.getenv("ADVISORY_FUTURES_SLIPPAGE", "0.0005")
+)
+
+if ADVISORY_TOP_COINS <= 0:
+    raise ValueError("ADVISORY_TOP_COINS must be positive.")
+if not 1 <= ADVISORY_MAX_SIGNALS <= ADVISORY_TOP_COINS:
+    raise ValueError("ADVISORY_MAX_SIGNALS must be between 1 and ADVISORY_TOP_COINS.")
+if ADVISORY_DATA_SOURCE != "binance":
+    raise ValueError("ADVISORY_DATA_SOURCE currently supports only binance.")
+if not ADVISORY_QUOTE_CURRENCY:
+    raise ValueError("ADVISORY_QUOTE_CURRENCY cannot be empty.")
+if not 0 <= ADVISORY_START_HOUR <= 23:
+    raise ValueError("ADVISORY_START_HOUR must be between 0 and 23.")
+if not 1 <= ADVISORY_END_HOUR <= 24:
+    raise ValueError("ADVISORY_END_HOUR must be between 1 and 24.")
+if ADVISORY_START_HOUR >= ADVISORY_END_HOUR:
+    raise ValueError("The advisory session cannot cross midnight.")
+if not 0 <= ADVISORY_FUTURES_FEE < 1:
+    raise ValueError("ADVISORY_FUTURES_FEE must be between 0 and 1.")
+if not 0 <= ADVISORY_FUTURES_SLIPPAGE < 1:
+    raise ValueError("ADVISORY_FUTURES_SLIPPAGE must be between 0 and 1.")
+
 # A fixed universe avoids selecting newly listed coins merely because they
 # have a temporary volume spike. These are still crypto assets and can remain
 # volatile; the intent is to prefer established, liquid markets.
@@ -87,7 +122,37 @@ CORE_SPOT_BASES = (
     "ETH",
     "XRP",
     "SOL",
+    "ADA",
+    "DOGE",
+    "LINK",
+    "LTC",
+    "AVAX",
+    "DOT",
+)
+
+# Broader advisory-only universe. It includes liquid large caps plus more
+# volatile established altcoins, without changing the automated Spot universe.
+ADVISORY_SPOT_BASES = (
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP",
     "BNB",
+    "DOGE",
+    "ADA",
+    "AVAX",
+    "LINK",
+    "LTC",
+    "DOT",
+    "BCH",
+    "XLM",
+    "SUI",
+    "HBAR",
+    "UNI",
+    "AAVE",
+    "NEAR",
+    "ETC",
+    "ATOM",
 )
 SCAN_INTERVAL = 60
 CANDLE_LIMIT = 200
