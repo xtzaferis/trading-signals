@@ -53,12 +53,12 @@
 <body>
   <main class="shell">
     <header>
-      <div><div class="eyebrow">Manual futures intelligence</div><h1>Crypto Signal Desk</h1><p class="subtitle">Twenty liquid markets. Multi-timeframe candle confirmation. Futures positioning context. Two focused setups at most.</p></div>
+      <div><div class="eyebrow">Manual futures intelligence</div><h1>Crypto Signal Desk</h1><p class="subtitle">Twenty liquid markets. Completed USD-M futures candles. Futures positioning context. Two correlation-aware setups at most.</p></div>
       <div class="safety">● Read only · execution disabled</div>
     </header>
     <section class="control">
-      <div><h2>Run the 18:00 market scan</h2><p>The analysis normally takes about one minute. Prices can move while the scan is running.</p></div>
-      <div class="actions"><label><input id="force" type="checkbox"> Test outside 18:00–21:00</label><button id="scan">Get signals</button></div>
+      <div><h2>Run the 17:00 market scan</h2><p>The analysis normally takes about one minute. Prices can move while the scan is running.</p></div>
+      <div class="actions"><label id="force-label"><input id="force" type="checkbox"> Test outside 17:00–19:00</label><button id="scan">Get signals</button></div>
     </section>
     <div id="status" class="status"><span class="spinner"></span><span>Ready. No market data has been requested yet.</span></div>
     <section id="content" hidden>
@@ -67,7 +67,7 @@
       <div id="picks" class="picks"></div>
       <div class="section-head"><h2>Market board</h2><p>Score is alignment strength, not win probability</p></div>
       <div id="list" class="list"></div>
-      <p class="notice">Decision support only. Confirm the futures contract, mark price, spread, funding, leverage, stop and order size on your trading platform. A WAIT result is preferable to forcing a weak trade.</p>
+      <p class="notice">Decision support only. Confirm the futures contract, mark price, spread, funding, leverage, stop and order size on your trading platform. A WAIT result is preferable to forcing a weak trade. Only scans inside the 17:00–19:00 session enter the forward-performance journal.</p>
     </section>
   </main>
   <script>
@@ -86,7 +86,22 @@
       const mode=data.forced&&!data.window_open?' · outside session test':'';
       setStatus(`Updated ${new Date(data.generated_at).toLocaleString()} · ${data.duration_seconds}s${mode}`);
     }
-    button.addEventListener('click',async()=>{button.disabled=true;content.hidden=true;setStatus('Scanning 20 markets across five candle periods and futures positioning…',true);try{const response=await fetch('/api/signals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({force:document.querySelector('#force').checked})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Scan failed');if(!data.window_open&&!data.forced){setStatus('Trading window closed. Run between 18:00 and 21:00 Athens time, or enable test mode.');return}render(data)}catch(error){setStatus(error.message)}finally{button.disabled=false}});
+    const staticMode=location.hostname.endsWith('.github.io');
+    if(staticMode){document.querySelector('#force-label').hidden=true;button.textContent='Refresh published signals'}
+    button.addEventListener('click',async()=>{
+      button.disabled=true;content.hidden=true;
+      setStatus(staticMode?'Loading the latest 17:00 publication…':'Scanning 20 markets across five candle periods and futures positioning…',true);
+      try{
+        const response=staticMode
+          ?await fetch(`signals.json?t=${Date.now()}`,{cache:'no-store'})
+          :await fetch('/api/signals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({force:document.querySelector('#force').checked})});
+        const data=await response.json();
+        if(!response.ok)throw new Error(data.error||'Signal data is not available yet');
+        if(!data.window_open&&!data.forced){setStatus('Trading window closed. Run between 17:00 and 19:00 Athens time, or enable test mode.');return}
+        render(data)
+      }catch(error){setStatus(staticMode?'No published scan yet. The first one will appear after the 17:00 workflow runs.':error.message)}finally{button.disabled=false}
+    });
+    if(staticMode)button.click();
   </script>
 </body>
 </html>

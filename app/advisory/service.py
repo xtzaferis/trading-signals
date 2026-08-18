@@ -4,12 +4,16 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import ccxt
+import pandas as pd
 
+from app.advisory.correlation_selector import CorrelationAwareSelector
 from app.advisory.derivatives_context import DerivativesContext
 from app.advisory.directional_signal import DirectionalSignalEngine
+from app.advisory.outcome_tracker import AdvisoryOutcomeTracker
 from app.advisory.planner import AdvisoryLevels, FuturesAdvisoryPlanner
 from app.config.settings import (
     ADVISORY_END_HOUR,
+    ADVISORY_MAX_CORRELATION,
     ADVISORY_MAX_SIGNALS,
     ADVISORY_QUOTE_CURRENCY,
     ADVISORY_SPOT_BASES,
@@ -21,6 +25,7 @@ from app.data.data_service import DataService
 from app.exchange.binance_market_data_client import BinanceMarketDataClient
 from app.indicators.indicator_engine import IndicatorEngine
 from app.scanner.market_scanner import MarketScanner
+from app.storage.advisory_signal_repository import AdvisorySignalRepository
 
 
 @dataclass(frozen=True)
@@ -61,6 +66,9 @@ class EntryAdvisoryService:
         progress: Callable[[str], None] | None = None,
         context_client=None,
         max_signals: int = ADVISORY_MAX_SIGNALS,
+        journal=None,
+        outcome_tracker=None,
+        correlation_selector=None,
     ):
         public_client = BinanceMarketDataClient()
         self.scanner = scanner or MarketScanner(
@@ -80,6 +88,13 @@ class EntryAdvisoryService:
         self.progress = progress or (lambda message: None)
         self.context_client = context_client or public_client
         self.max_signals = max_signals
+        self.journal = journal or AdvisorySignalRepository()
+        self.outcome_tracker = outcome_tracker or AdvisoryOutcomeTracker(
+            public_client, self.journal
+        )
+        self.correlation_selector = correlation_selector or CorrelationAwareSelector(
+            ADVISORY_MAX_CORRELATION
+        )
 
     def is_window_open(self, now: datetime | None = None) -> bool:
         local_now = self._local_time(now)
@@ -95,7 +110,11 @@ class EntryAdvisoryService:
         if not window_open and not force:
             return AdvisoryReport(local_now, False)
 
+        if window_open:
+            self.outcome_tracker.resolve_open(local_now)
+
         candidates = []
+        returns_by_symbol = {}
         errors = []
         self.progress("Loading Binance USDT markets and 24-hour volumes...")
         try:
@@ -116,13 +135,19 @@ class EntryAdvisoryService:
             try:
                 data = self.indicators.calculate_multi_timeframe(symbol)
                 data["trigger"] = self.indicators.calculate(symbol, "5m")
+                hourly_returns = self._load_hourly_returns(symbol)
+                if hourly_returns is not None:
+                    returns_by_symbol[symbol] = hourly_returns
                 context = self._load_context(symbol)
                 signal = self.signal_engine.evaluate(symbol, data, context)
                 trade = None
                 reasons = list(signal.reasons)
                 status = signal.direction
                 if status in {"LONG", "SHORT"}:
-                    trade = self.planner.create(status, data["entry"])
+                    entry_data = data["entry"].copy()
+                    if context is not None and context.mark_price is not None:
+                        entry_data["close"] = context.mark_price
+                    trade = self.planner.create(status, entry_data)
                     if trade is None:
                         status = "WAIT"
                         reasons.append("Net reward/risk is too low after costs")
@@ -131,7 +156,11 @@ class EntryAdvisoryService:
                         symbol=symbol,
                         status=status,
                         score=signal.score,
-                        price=self._float_or_none(data["entry"].get("close")),
+                        price=(
+                            context.mark_price
+                            if context is not None and context.mark_price is not None
+                            else self._float_or_none(data["entry"].get("close"))
+                        ),
                         trade=trade,
                         reasons=tuple(reasons),
                         derivatives=context,
@@ -139,8 +168,7 @@ class EntryAdvisoryService:
                     )
                 )
                 self.progress(
-                    f"[{index}/{len(symbols)}] {symbol}: "
-                    f"{status} score={signal.score}"
+                    f"[{index}/{len(symbols)}] {symbol}: {status} score={signal.score}"
                 )
             except (
                 ccxt.NetworkError,
@@ -160,12 +188,12 @@ class EntryAdvisoryService:
             )
         )
         visible_candidates = tuple(candidates[: self.limit])
-        shortlist = tuple(
-            candidate
-            for candidate in visible_candidates
-            if candidate.status in {"LONG", "SHORT"}
-        )[: self.max_signals]
-        return AdvisoryReport(
+        shortlist = self.correlation_selector.select(
+            visible_candidates,
+            returns_by_symbol,
+            self.max_signals,
+        )
+        report = AdvisoryReport(
             generated_at=local_now,
             window_open=window_open,
             forced=force,
@@ -173,6 +201,9 @@ class EntryAdvisoryService:
             shortlist=shortlist,
             errors=tuple(errors),
         )
+        if window_open:
+            self.journal.save_report(report)
+        return report
 
     def _local_time(self, value: datetime | None) -> datetime:
         if value is None:
@@ -187,7 +218,8 @@ class EntryAdvisoryService:
 
     def _load_context(self, symbol: str) -> DerivativesContext | None:
         try:
-            return self.context_client.get_derivatives_context(symbol)
+            context = self.context_client.get_derivatives_context(symbol)
+            return context if isinstance(context, DerivativesContext) else None
         except (
             ccxt.NetworkError,
             ccxt.ExchangeError,
@@ -207,3 +239,13 @@ class EntryAdvisoryService:
         if value >= 0.0035:
             return "MEDIUM"
         return "LOW"
+
+    def _load_hourly_returns(self, symbol: str) -> tuple[float, ...] | None:
+        try:
+            frame = self.indicators.get_dataframe(symbol, "1h")
+            if not isinstance(frame, pd.DataFrame) or "close" not in frame.columns:
+                return None
+            values = frame["close"].pct_change().dropna().tail(96)
+            return tuple(float(value) for value in values)
+        except (KeyError, TypeError, ValueError):
+            return None

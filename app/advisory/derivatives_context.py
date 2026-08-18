@@ -9,6 +9,7 @@ class DerivativesContext:
     open_interest_change_pct: float | None = None
     long_short_ratio: float | None = None
     taker_buy_sell_ratio: float | None = None
+    mark_price: float | None = None
 
     @property
     def pressure(self) -> int:

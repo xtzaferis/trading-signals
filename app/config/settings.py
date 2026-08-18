@@ -83,13 +83,14 @@ TOP_COINS = 5
 # imports a broker or submits an exchange order.
 ADVISORY_TOP_COINS = int(os.getenv("ADVISORY_TOP_COINS", "20"))
 ADVISORY_MAX_SIGNALS = int(os.getenv("ADVISORY_MAX_SIGNALS", "2"))
+ADVISORY_MAX_CORRELATION = float(os.getenv("ADVISORY_MAX_CORRELATION", "0.80"))
 ADVISORY_DATA_SOURCE = os.getenv("ADVISORY_DATA_SOURCE", "binance").strip().lower()
 ADVISORY_QUOTE_CURRENCY = os.getenv(
     "ADVISORY_QUOTE_CURRENCY", "USDT"
 ).strip().upper()
 ADVISORY_TIMEZONE = os.getenv("ADVISORY_TIMEZONE", "Europe/Athens").strip()
-ADVISORY_START_HOUR = int(os.getenv("ADVISORY_START_HOUR", "18"))
-ADVISORY_END_HOUR = int(os.getenv("ADVISORY_END_HOUR", "21"))
+ADVISORY_START_HOUR = int(os.getenv("ADVISORY_START_HOUR", "17"))
+ADVISORY_END_HOUR = int(os.getenv("ADVISORY_END_HOUR", "19"))
 ADVISORY_FUTURES_FEE = float(os.getenv("ADVISORY_FUTURES_FEE", "0.0005"))
 ADVISORY_FUTURES_SLIPPAGE = float(
     os.getenv("ADVISORY_FUTURES_SLIPPAGE", "0.0005")
@@ -99,6 +100,8 @@ if ADVISORY_TOP_COINS <= 0:
     raise ValueError("ADVISORY_TOP_COINS must be positive.")
 if not 1 <= ADVISORY_MAX_SIGNALS <= ADVISORY_TOP_COINS:
     raise ValueError("ADVISORY_MAX_SIGNALS must be between 1 and ADVISORY_TOP_COINS.")
+if not 0 <= ADVISORY_MAX_CORRELATION <= 1:
+    raise ValueError("ADVISORY_MAX_CORRELATION must be between 0 and 1.")
 if ADVISORY_DATA_SOURCE != "binance":
     raise ValueError("ADVISORY_DATA_SOURCE currently supports only binance.")
 if not ADVISORY_QUOTE_CURRENCY:

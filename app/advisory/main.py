@@ -107,9 +107,7 @@ def main() -> None:
         "Starting keyless Binance market-data scan...",
         flush=True,
     )
-    service = EntryAdvisoryService(
-        progress=lambda message: print(message, flush=True)
-    )
+    service = EntryAdvisoryService(progress=lambda message: print(message, flush=True))
     print_report(service.scan(force=args.force))
 
 

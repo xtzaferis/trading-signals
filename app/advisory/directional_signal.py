@@ -22,8 +22,7 @@ class DirectionalSignalEngine:
         context: DerivativesContext | None = None,
     ) -> DirectionalSignal:
         scores = {
-            direction: self._score(data, direction)
-            for direction in ("LONG", "SHORT")
+            direction: self._score(data, direction) for direction in ("LONG", "SHORT")
         }
         direction = max(scores, key=scores.get)
         score = scores[direction]
@@ -83,11 +82,7 @@ class DirectionalSignalEngine:
         ]
         portions = (0.35, 0.30, 0.20, 0.15)
         return round(
-            weight * sum(
-                portion
-                for portion, passed in zip(portions, checks)
-                if passed
-            )
+            weight * sum(portion for portion, passed in zip(portions, checks) if passed)
         )
 
     @staticmethod

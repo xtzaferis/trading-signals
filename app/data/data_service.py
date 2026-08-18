@@ -15,7 +15,9 @@ class DataService(DataProvider):
         limit,
     ):
 
-        cache_key = f"{symbol}:{timeframe}:{limit}"
+        cache_key = (
+            f"{type(self.client).__name__}:{symbol}:{timeframe}:{limit}"
+        )
 
         candles = cache.get(cache_key)
 

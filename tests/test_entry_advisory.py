@@ -12,21 +12,21 @@ def test_advisory_does_not_call_exchange_outside_session():
     scanner = Mock()
     service = EntryAdvisoryService(scanner=scanner)
 
-    report = service.scan(datetime(2026, 8, 18, 14, 59, tzinfo=timezone.utc))
+    report = service.scan(datetime(2026, 8, 18, 13, 59, tzinfo=timezone.utc))
 
     assert report.window_open is False
     assert report.candidates == ()
     scanner.get_top_spot_pairs.assert_not_called()
 
 
-def test_advisory_session_is_athens_1800_until_2100():
+def test_advisory_session_is_athens_1700_until_1900():
     service = EntryAdvisoryService(scanner=Mock())
 
     assert service.is_window_open(
-        datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc)
+        datetime(2026, 8, 18, 14, 0, tzinfo=timezone.utc)
     )
     assert not service.is_window_open(
-        datetime(2026, 8, 18, 18, 0, tzinfo=timezone.utc)
+        datetime(2026, 8, 18, 16, 0, tzinfo=timezone.utc)
     )
 
 
@@ -59,7 +59,7 @@ def test_directional_entry_ranks_before_higher_scoring_wait():
     )
 
     report = service.scan(
-        datetime(2026, 8, 18, 16, 0, tzinfo=timezone.utc)
+        datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc)
     )
 
     assert [item.symbol for item in report.candidates] == [
@@ -81,7 +81,13 @@ def test_naive_timestamp_is_rejected():
 def test_force_scans_outside_session_without_changing_actual_window():
     scanner = Mock()
     scanner.get_top_spot_pairs.return_value = []
-    report = EntryAdvisoryService(scanner=scanner).scan(
+    journal = Mock()
+    outcome_tracker = Mock()
+    report = EntryAdvisoryService(
+        scanner=scanner,
+        journal=journal,
+        outcome_tracker=outcome_tracker,
+    ).scan(
         datetime(2026, 8, 18, 12, 0, tzinfo=timezone.utc),
         force=True,
     )
@@ -89,6 +95,8 @@ def test_force_scans_outside_session_without_changing_actual_window():
     assert report.window_open is False
     assert report.forced is True
     scanner.get_top_spot_pairs.assert_called_once_with(20)
+    journal.save_report.assert_not_called()
+    outcome_tracker.resolve_open.assert_not_called()
 
 
 def test_scan_reports_progress_for_each_coin():
@@ -111,7 +119,7 @@ def test_scan_reports_progress_for_each_coin():
     )
 
     service.scan(
-        datetime(2026, 8, 18, 16, 0, tzinfo=timezone.utc)
+        datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc)
     )
 
     assert messages[0].startswith("Loading Binance")

@@ -1,0 +1,51 @@
+name: Publish read-only advisory dashboard
+
+on:
+  schedule:
+    - cron: "0 17 * * *"
+      timezone: "Europe/Athens"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install -r requirements-advisory.txt
+      - name: Restore previously published observations
+        continue-on-error: true
+        env:
+          PAGES_BASE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          mkdir -p site
+          curl --fail --silent --show-error "$PAGES_BASE/advisory-history.json" -o site/advisory-history.json || true
+          curl --fail --silent --show-error "$PAGES_BASE/signals.json" -o site/signals.json || true
+      - name: Generate in-session signals
+        run: python -m app.advisory.publisher
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

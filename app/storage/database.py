@@ -260,6 +260,35 @@ class Database:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS advisory_signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                generated_at TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                risk TEXT NOT NULL,
+                reference_price REAL,
+                stop_loss REAL,
+                take_profit REAL,
+                net_risk_reward REAL,
+                reasons_json TEXT NOT NULL,
+                funding_rate REAL,
+                open_interest_change_pct REAL,
+                long_short_ratio REAL,
+                taker_buy_sell_ratio REAL,
+                shortlisted INTEGER NOT NULL,
+                outcome_status TEXT NOT NULL,
+                resolved_at TEXT,
+                exit_price REAL,
+                outcome TEXT,
+                net_return_pct REAL,
+                UNIQUE(generated_at, symbol)
+            )
+            """
+        )
+
         self._ensure_column(
             cursor,
             "exchange_order_intents",
