@@ -99,13 +99,13 @@ server binds only to the local computer by default and contains no order route.
 
 ### Free GitHub Pages publication
 
-The `advisory-pages.yml` GitHub Actions workflow runs at 17:00 in the
-`Europe/Athens` timezone and deploys a static, read-only copy of the dashboard.
-In the GitHub repository, open **Settings → Pages** and select **GitHub Actions**
-as the deployment source. The public dashboard URL is normally:
+The `advisory-pages.yml` workflow runs in the public `trading-signals`
+repository at 17:00 in the `Europe/Athens` timezone. Under **Settings → Pages**,
+set the source to **GitHub Actions**, then manually rerun the workflow once.
+No deployment token or API key is required. The dashboard URL is:
 
 ```text
-https://<github-user>.github.io/<repository>/
+https://xtzaferis.github.io/trading-signals/
 ```
 
 The workflow restores the previously published observation history, resolves
