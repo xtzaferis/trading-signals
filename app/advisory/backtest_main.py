@@ -19,9 +19,12 @@ def main() -> None:
     )
     parser.add_argument("--symbol", default="BTC/USDT")
     parser.add_argument("--days", type=int, default=30)
+    parser.add_argument("--validation-windows", type=int, default=3)
     args = parser.parse_args()
     if args.days <= 0:
         parser.error("--days must be positive")
+    if args.validation_windows <= 0:
+        parser.error("--validation-windows must be positive")
 
     client = BinanceMarketDataClient()
     end = datetime.now(timezone.utc)
@@ -52,6 +55,22 @@ def main() -> None:
     print(f"Win rate:            {result.win_rate:.2f}%")
     print(f"Average net return:  {result.average_return_pct:+.3f}%")
     print(f"Compounded return:   {result.compounded_return_pct:+.3f}%")
+    print("Chronological validation windows (fixed, untuned rules):")
+    window_size = (end - start) / args.validation_windows
+    for index in range(args.validation_windows):
+        window_start = start + window_size * index
+        window_end = start + window_size * (index + 1)
+        trades = tuple(
+            trade
+            for trade in result.trades
+            if window_start <= trade.opened_at.astimezone(timezone.utc) < window_end
+        )
+        window_result = type(result)(trades)
+        print(
+            f"  {index + 1}: {window_start.date()} to {window_end.date()} | "
+            f"trades={len(trades)} | win={window_result.win_rate:.2f}% | "
+            f"net={window_result.compounded_return_pct:+.3f}%"
+        )
     print("Fees, slippage and historical funding are included.")
 
 

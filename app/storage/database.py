@@ -1,16 +1,13 @@
 import sqlite3
 from pathlib import Path
 
-DATABASE_PATH = Path(
-    "data/trading.db"
-)
+DATABASE_PATH = Path("data/trading.db")
 
 
 def mode_database_path(mode: str) -> Path:
     """Derive an isolated database beside the configured base database."""
     safe_mode = "".join(
-        character if character.isalnum() else "-"
-        for character in mode.strip().lower()
+        character if character.isalnum() else "-" for character in mode.strip().lower()
     ).strip("-")
     if not safe_mode:
         raise ValueError("Database mode must not be empty.")
@@ -20,26 +17,19 @@ def mode_database_path(mode: str) -> Path:
 
 
 class Database:
-
     def __init__(self, path: Path | None = None):
 
         self.path = path or DATABASE_PATH
 
-        self.path.parent.mkdir(
-            exist_ok=True
-        )
+        self.path.parent.mkdir(exist_ok=True)
 
-        self.connection = sqlite3.connect(
-            self.path
-        )
+        self.connection = sqlite3.connect(self.path)
 
         self.create_tables()
 
     def create_tables(self):
 
-        cursor = (
-            self.connection.cursor()
-        )
+        cursor = self.connection.cursor()
 
         cursor.execute(
             """
@@ -284,11 +274,18 @@ class Database:
                 exit_price REAL,
                 outcome TEXT,
                 net_return_pct REAL,
+                market_regime TEXT NOT NULL DEFAULT 'UNKNOWN',
                 UNIQUE(generated_at, symbol)
             )
             """
         )
 
+        self._ensure_column(
+            cursor,
+            "advisory_signals",
+            "market_regime",
+            "TEXT NOT NULL DEFAULT 'UNKNOWN'",
+        )
         self._ensure_column(
             cursor,
             "exchange_order_intents",
@@ -325,13 +322,10 @@ class Database:
     @staticmethod
     def _ensure_column(cursor, table: str, column: str, definition: str):
         columns = {
-            row[1]
-            for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()
+            row[1] for row in cursor.execute(f"PRAGMA table_info({table})").fetchall()
         }
         if column not in columns:
-            cursor.execute(
-                f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
-            )
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     def execute(
         self,
@@ -339,9 +333,7 @@ class Database:
         params: tuple = (),
     ):
 
-        cursor = (
-            self.connection.cursor()
-        )
+        cursor = self.connection.cursor()
 
         cursor.execute(
             query,

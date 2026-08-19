@@ -30,6 +30,7 @@ def report_to_dict(report: AdvisoryReport, duration_seconds: float) -> dict:
                 "symbol": candidate.symbol,
                 "status": candidate.status,
                 "risk": candidate.risk,
+                "market_regime": candidate.market_regime,
                 "score": candidate.score,
                 "price": candidate.price,
                 "trade": trade,
@@ -51,6 +52,7 @@ def report_to_dict(report: AdvisoryReport, duration_seconds: float) -> dict:
             "wait": sum(item.status == "WAIT" for item in report.candidates),
             "shortlisted": len(report.shortlist),
         },
+        "calibration": report.calibration,
     }
 
 

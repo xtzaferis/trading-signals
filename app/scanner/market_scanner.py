@@ -9,17 +9,18 @@ from app.exchange.kraken_client import KrakenClient
 
 
 class MarketScanner:
-
-    STABLECOINS: ClassVar[frozenset[str]] = frozenset({
-        "DAI",
-        "FDUSD",
-        "PYUSD",
-        "TUSD",
-        "USD",
-        "USDC",
-        "USDE",
-        "USDT",
-    })
+    STABLECOINS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "DAI",
+            "FDUSD",
+            "PYUSD",
+            "TUSD",
+            "USD",
+            "USDC",
+            "USDE",
+            "USDT",
+        }
+    )
 
     LEVERAGED_SUFFIXES: ClassVar[tuple[str, ...]] = (
         "2L",
@@ -49,7 +50,6 @@ class MarketScanner:
         pairs = []
 
         for symbol, market in markets.items():
-
             if (
                 market.get("spot")
                 and market.get("quote") == self.quote_currency
@@ -77,35 +77,28 @@ class MarketScanner:
                 and market.get("active")
                 and base in self.allowed_bases
                 and base not in self.STABLECOINS
-                and not base.endswith(
-                    self.LEVERAGED_SUFFIXES
-                )
+                and not base.endswith(self.LEVERAGED_SUFFIXES)
             ):
                 continue
 
             ticker = tickers.get(symbol, {})
-            quote_volume = ticker.get(
-                "quoteVolume"
-            )
+            quote_volume = ticker.get("quoteVolume")
 
             if quote_volume is None:
-                base_volume = ticker.get(
-                    "baseVolume"
-                )
+                base_volume = ticker.get("baseVolume")
                 last = ticker.get("last")
                 if base_volume is not None and last is not None:
-                    quote_volume = (
-                        float(base_volume)
-                        * float(last)
-                    )
+                    quote_volume = float(base_volume) * float(last)
 
             if quote_volume is None:
                 continue
 
-            ranked.append((
-                float(quote_volume),
-                symbol,
-            ))
+            ranked.append(
+                (
+                    float(quote_volume),
+                    symbol,
+                )
+            )
 
         ranked.sort(
             key=lambda item: (
@@ -114,7 +107,35 @@ class MarketScanner:
             )
         )
 
-        return [
-            symbol
-            for _, symbol in ranked[:limit]
-        ]
+        return [symbol for _, symbol in ranked[:limit]]
+
+    def get_top_futures_pairs(
+        self,
+        limit: int,
+        min_quote_volume: float = 0,
+        max_spread_bps: float = float("inf"),
+        min_contract_age_days: int = 0,
+    ) -> list[str]:
+        """Rank active perpetuals by executable futures-market liquidity."""
+        ranked = []
+        for market in self.client.get_futures_market_summaries():
+            base = str(market.get("base", "")).upper()
+            volume = market.get("quote_volume")
+            spread = market.get("spread_bps")
+            age = market.get("contract_age_days")
+            if not (
+                base in self.allowed_bases
+                and base not in self.STABLECOINS
+                and not base.endswith(self.LEVERAGED_SUFFIXES)
+                and volume is not None
+                and float(volume) >= min_quote_volume
+                and spread is not None
+                and float(spread) <= max_spread_bps
+                and age is not None
+                and float(age) >= min_contract_age_days
+            ):
+                continue
+            ranked.append((float(volume), float(spread), str(market["symbol"])))
+
+        ranked.sort(key=lambda item: (-item[0], item[1], item[2]))
+        return [symbol for _, _, symbol in ranked[:limit]]

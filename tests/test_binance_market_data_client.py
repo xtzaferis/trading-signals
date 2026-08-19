@@ -23,6 +23,7 @@ def test_binance_client_exposes_only_public_data_operations():
         "get_ohlcv_range",
         "get_ohlcv_since",
         "get_funding_rates_range",
+        "get_futures_market_summaries",
         "get_derivatives_context",
         "get_tickers",
         "load_markets",
@@ -53,6 +54,44 @@ def test_binance_client_normalizes_public_futures_positioning_data():
     assert context.taker_buy_sell_ratio == 1.1
     assert context.mark_price == 65000.5
     assert context.label == "BULLISH"
+
+
+def test_binance_client_summarizes_tradeable_perpetual_liquidity():
+    exchange = Mock()
+    exchange.urls = {"api": {"public": "https://api.binance.com/api/v3"}}
+    exchange.fapiPublicGetExchangeInfo.return_value = {
+        "symbols": [
+            {
+                "symbol": "BTCUSDT",
+                "baseAsset": "BTC",
+                "quoteAsset": "USDT",
+                "status": "TRADING",
+                "contractType": "PERPETUAL",
+                "onboardDate": 0,
+            },
+            {
+                "symbol": "ETHUSDT_260925",
+                "baseAsset": "ETH",
+                "quoteAsset": "USDT",
+                "status": "TRADING",
+                "contractType": "CURRENT_QUARTER",
+                "onboardDate": 0,
+            },
+        ]
+    }
+    exchange.fapiPublicGetTicker24hr.return_value = [
+        {"symbol": "BTCUSDT", "quoteVolume": "100000000"}
+    ]
+    exchange.fapiPublicGetTickerBookTicker.return_value = [
+        {"symbol": "BTCUSDT", "bidPrice": "100", "askPrice": "100.05"}
+    ]
+
+    markets = BinanceMarketDataClient(exchange).get_futures_market_summaries()
+
+    assert len(markets) == 1
+    assert markets[0]["symbol"] == "BTC/USDT"
+    assert markets[0]["quote_volume"] == 100_000_000
+    assert 4.9 < markets[0]["spread_bps"] < 5.1
 
 
 def test_binance_client_returns_only_completed_futures_candles():

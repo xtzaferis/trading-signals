@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -14,7 +14,10 @@ from app.advisory.planner import AdvisoryLevels, FuturesAdvisoryPlanner
 from app.config.settings import (
     ADVISORY_END_HOUR,
     ADVISORY_MAX_CORRELATION,
+    ADVISORY_MAX_FUTURES_SPREAD_BPS,
     ADVISORY_MAX_SIGNALS,
+    ADVISORY_MIN_CONTRACT_AGE_DAYS,
+    ADVISORY_MIN_FUTURES_QUOTE_VOLUME,
     ADVISORY_QUOTE_CURRENCY,
     ADVISORY_SPOT_BASES,
     ADVISORY_START_HOUR,
@@ -38,6 +41,7 @@ class AdvisoryCandidate:
     reasons: tuple[str, ...] = ()
     derivatives: DerivativesContext | None = None
     risk: str = "UNKNOWN"
+    market_regime: str = "UNKNOWN"
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,7 @@ class AdvisoryReport:
     candidates: tuple[AdvisoryCandidate, ...] = ()
     shortlist: tuple[AdvisoryCandidate, ...] = ()
     errors: tuple[str, ...] = ()
+    calibration: dict = field(default_factory=dict)
 
 
 class EntryAdvisoryService:
@@ -116,9 +121,14 @@ class EntryAdvisoryService:
         candidates = []
         returns_by_symbol = {}
         errors = []
-        self.progress("Loading Binance USDT markets and 24-hour volumes...")
+        self.progress("Loading Binance USD-M futures liquidity and spreads...")
         try:
-            symbols = self.scanner.get_top_spot_pairs(self.limit)
+            symbols = self.scanner.get_top_futures_pairs(
+                self.limit,
+                min_quote_volume=ADVISORY_MIN_FUTURES_QUOTE_VOLUME,
+                max_spread_bps=ADVISORY_MAX_FUTURES_SPREAD_BPS,
+                min_contract_age_days=ADVISORY_MIN_CONTRACT_AGE_DAYS,
+            )
         except (ccxt.NetworkError, ccxt.ExchangeError) as error:
             return AdvisoryReport(
                 local_now,
@@ -165,6 +175,7 @@ class EntryAdvisoryService:
                         reasons=tuple(reasons),
                         derivatives=context,
                         risk=self._risk_label(data["entry"].get("atr_pct")),
+                        market_regime=self._market_regime(data.get("trend", {})),
                     )
                 )
                 self.progress(
@@ -200,6 +211,7 @@ class EntryAdvisoryService:
             candidates=visible_candidates,
             shortlist=shortlist,
             errors=tuple(errors),
+            calibration=self._load_calibration(),
         )
         if window_open:
             self.journal.save_report(report)
@@ -239,6 +251,21 @@ class EntryAdvisoryService:
         if value >= 0.0035:
             return "MEDIUM"
         return "LOW"
+
+    @staticmethod
+    def _market_regime(trend) -> str:
+        close = float(trend.get("close", 0))
+        ema200 = float(trend.get("ema200", 0))
+        slope = float(trend.get("ema20_slope_pct", 0))
+        if close > ema200 and slope > 0:
+            return "BULL"
+        if close < ema200 and slope < 0:
+            return "BEAR"
+        return "SIDEWAYS"
+
+    def _load_calibration(self) -> dict:
+        calibration = self.journal.calibration()
+        return calibration if isinstance(calibration, dict) else {}
 
     def _load_hourly_returns(self, symbol: str) -> tuple[float, ...] | None:
         try:

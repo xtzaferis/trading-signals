@@ -23,8 +23,8 @@ class AdvisorySignalRepository:
                     reference_price, stop_loss, take_profit, net_risk_reward,
                     reasons_json, funding_rate, open_interest_change_pct,
                     long_short_ratio, taker_buy_sell_ratio, shortlisted,
-                    outcome_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    outcome_status, market_regime
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     report.generated_at.isoformat(),
@@ -43,6 +43,7 @@ class AdvisorySignalRepository:
                     context.taker_buy_sell_ratio if context else None,
                     int(candidate.symbol in shortlisted),
                     "OPEN" if trade else "NOT_APPLICABLE",
+                    candidate.market_regime,
                 ),
             )
 
@@ -112,6 +113,97 @@ class AdvisorySignalRepository:
             "timeouts": int(row[3] or 0),
             "average_return_pct": float(row[4] or 0.0),
             "total_return_pct": float(row[5] or 0.0),
+        }
+
+    def calibration(self) -> dict:
+        """Summarize what scores actually achieved; never imply certainty."""
+        rows = self.database.execute(
+            """
+            SELECT direction, score, market_regime, outcome, net_return_pct
+            FROM advisory_signals
+            WHERE outcome_status = 'RESOLVED' AND shortlisted = 1
+            """
+        ).fetchall()
+        records = [
+            {
+                "direction": row[0],
+                "score": int(row[1]),
+                "regime": row[2] or "UNKNOWN",
+                "outcome": row[3],
+                "return": float(row[4] or 0),
+            }
+            for row in rows
+        ]
+        return {
+            "minimum_reliable_sample": 30,
+            "overall": self._calibration_group(records),
+            "by_direction": self._group_calibration(records, "direction"),
+            "by_regime": self._group_calibration(records, "regime"),
+            "by_score_band": self._score_band_calibration(records),
+        }
+
+    @classmethod
+    def _group_calibration(cls, records: list[dict], key: str) -> dict:
+        groups = {}
+        for value in sorted({record[key] for record in records}):
+            groups[value] = cls._calibration_group(
+                [record for record in records if record[key] == value]
+            )
+        return groups
+
+    @classmethod
+    def _score_band_calibration(cls, records: list[dict]) -> dict:
+        groups = {}
+        for label, lower, upper in (
+            ("0-69", 0, 69),
+            ("70-79", 70, 79),
+            ("80-89", 80, 89),
+            ("90-100", 90, 100),
+        ):
+            selected = [
+                record for record in records if lower <= record["score"] <= upper
+            ]
+            if selected:
+                groups[label] = cls._calibration_group(selected)
+        return groups
+
+    @staticmethod
+    def _calibration_group(records: list[dict]) -> dict:
+        sample = len(records)
+        targets = sum(record["outcome"] == "TARGET" for record in records)
+        positive = sum(record["return"] > 0 for record in records)
+        target_rate = targets / sample if sample else 0.0
+        if sample:
+            z = 1.959963984540054
+            denominator = 1 + z * z / sample
+            center = (target_rate + z * z / (2 * sample)) / denominator
+            margin = (
+                z
+                * (
+                    target_rate * (1 - target_rate) / sample
+                    + z * z / (4 * sample * sample)
+                )
+                ** 0.5
+                / denominator
+            )
+            interval = [
+                round((center - margin) * 100, 2),
+                round((center + margin) * 100, 2),
+            ]
+        else:
+            interval = [0.0, 0.0]
+        return {
+            "sample": sample,
+            "target_rate_pct": round(target_rate * 100, 2),
+            "positive_rate_pct": round(positive / sample * 100, 2) if sample else 0.0,
+            "average_net_return_pct": round(
+                sum(record["return"] for record in records) / sample,
+                4,
+            )
+            if sample
+            else 0.0,
+            "target_rate_95pct_interval": interval,
+            "reliable": sample >= 30,
         }
 
     def export_public_history(self, path: Path) -> None:

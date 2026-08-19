@@ -21,21 +21,40 @@ class DirectionalSignalEngine:
         data: dict,
         context: DerivativesContext | None = None,
     ) -> DirectionalSignal:
-        scores = {
-            direction: self._score(data, direction) for direction in ("LONG", "SHORT")
-        }
-        direction = max(scores, key=scores.get)
-        score = scores[direction]
         context_note = "Derivatives pressure unavailable"
         if context is not None:
             context_note = f"Derivatives pressure: {context.label}"
-            alignment = 1 if direction == "LONG" else -1
-            score = max(0, min(100, score + 5 * context.pressure * alignment))
 
-        failure = self._entry_failure(data, direction)
-        if failure is not None or score < MIN_SCORE:
+        evaluations = {}
+        for direction in ("LONG", "SHORT"):
+            score = self._score(data, direction)
+            if context is not None:
+                alignment = 1 if direction == "LONG" else -1
+                score = max(
+                    0,
+                    min(100, score + 5 * context.pressure * alignment),
+                )
+            evaluations[direction] = (
+                score,
+                self._entry_failure(data, direction),
+            )
+
+        qualified = {
+            direction: score
+            for direction, (score, failure) in evaluations.items()
+            if failure is None and score >= MIN_SCORE
+        }
+        if not qualified:
+            direction = max(
+                evaluations,
+                key=lambda candidate: evaluations[candidate][0],
+            )
+            score, failure = evaluations[direction]
             reason = failure or f"{direction.title()} score below {MIN_SCORE}"
             return DirectionalSignal(symbol, "WAIT", score, (reason, context_note))
+
+        direction = max(qualified, key=qualified.get)
+        score = qualified[direction]
 
         setup = (
             "Trend-aligned"

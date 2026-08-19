@@ -87,3 +87,32 @@ def test_public_history_round_trip_preserves_forward_statistics(tmp_path):
 
     assert restored.statistics()["targets"] == 1
     assert restored.statistics()["total_return_pct"] == 3.8
+
+
+def test_calibration_groups_resolved_results_without_claiming_reliability(tmp_path):
+    repository = AdvisorySignalRepository(Database(tmp_path / "calibration.db"))
+    candidate = AdvisoryCandidate(
+        "BTC/USDT",
+        "SHORT",
+        85,
+        100,
+        AdvisoryLevels("SHORT", 100, 102, 94, 1.8),
+        market_regime="BEAR",
+    )
+    generated_at = datetime(2026, 8, 19, 14, tzinfo=timezone.utc)
+    repository.save_report(
+        AdvisoryReport(
+            generated_at, True, candidates=(candidate,), shortlist=(candidate,)
+        )
+    )
+    signal = repository.list_open()[0]
+    repository.resolve(signal["id"], generated_at, 94, "TARGET", 5.8)
+
+    calibration = repository.calibration()
+
+    assert calibration["overall"]["sample"] == 1
+    assert calibration["overall"]["target_rate_pct"] == 100
+    assert calibration["overall"]["reliable"] is False
+    assert calibration["by_direction"]["SHORT"]["average_net_return_pct"] == 5.8
+    assert calibration["by_regime"]["BEAR"]["sample"] == 1
+    assert calibration["by_score_band"]["80-89"]["sample"] == 1

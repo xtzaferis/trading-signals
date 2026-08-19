@@ -59,12 +59,8 @@ def test_top_spot_pairs_are_ranked_by_quote_volume():
 def test_scanner_can_use_advisory_quote_currency():
     client = Mock()
     client.load_markets.return_value = {
-        "BTC/USDT": {
-            "spot": True, "quote": "USDT", "base": "BTC", "active": True
-        },
-        "BTC/EUR": {
-            "spot": True, "quote": "EUR", "base": "BTC", "active": True
-        },
+        "BTC/USDT": {"spot": True, "quote": "USDT", "base": "BTC", "active": True},
+        "BTC/EUR": {"spot": True, "quote": "EUR", "base": "BTC", "active": True},
     }
     client.get_tickers.return_value = {
         "BTC/USDT": {"quoteVolume": 1000},
@@ -79,12 +75,8 @@ def test_scanner_can_use_advisory_quote_currency():
 def test_scanner_can_use_a_broader_advisory_universe():
     client = Mock()
     client.load_markets.return_value = {
-        "BTC/USDT": {
-            "spot": True, "quote": "USDT", "base": "BTC", "active": True
-        },
-        "SUI/USDT": {
-            "spot": True, "quote": "USDT", "base": "SUI", "active": True
-        },
+        "BTC/USDT": {"spot": True, "quote": "USDT", "base": "BTC", "active": True},
+        "SUI/USDT": {"spot": True, "quote": "USDT", "base": "SUI", "active": True},
     }
     client.get_tickers.return_value = {
         "BTC/USDT": {"quoteVolume": 1000},
@@ -98,3 +90,42 @@ def test_scanner_can_use_a_broader_advisory_universe():
     )
 
     assert scanner.get_top_spot_pairs(2) == ["SUI/USDT", "BTC/USDT"]
+
+
+def test_top_futures_pairs_filter_spread_volume_and_contract_age():
+    client = Mock()
+    client.get_futures_market_summaries.return_value = [
+        {
+            "symbol": "BTC/USDT",
+            "base": "BTC",
+            "quote_volume": 100_000_000,
+            "spread_bps": 2,
+            "contract_age_days": 1000,
+        },
+        {
+            "symbol": "ETH/USDT",
+            "base": "ETH",
+            "quote_volume": 200_000_000,
+            "spread_bps": 12,
+            "contract_age_days": 1000,
+        },
+        {
+            "symbol": "SUI/USDT",
+            "base": "SUI",
+            "quote_volume": 50_000_000,
+            "spread_bps": 3,
+            "contract_age_days": 5,
+        },
+    ]
+    scanner = MarketScanner(
+        client,
+        quote_currency="USDT",
+        allowed_bases=("BTC", "ETH", "SUI"),
+    )
+
+    assert scanner.get_top_futures_pairs(
+        3,
+        min_quote_volume=10_000_000,
+        max_spread_bps=10,
+        min_contract_age_days=30,
+    ) == ["BTC/USDT"]

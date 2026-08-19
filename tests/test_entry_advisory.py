@@ -22,17 +22,13 @@ def test_advisory_does_not_call_exchange_outside_session():
 def test_advisory_session_is_athens_1700_until_1900():
     service = EntryAdvisoryService(scanner=Mock())
 
-    assert service.is_window_open(
-        datetime(2026, 8, 18, 14, 0, tzinfo=timezone.utc)
-    )
-    assert not service.is_window_open(
-        datetime(2026, 8, 18, 16, 0, tzinfo=timezone.utc)
-    )
+    assert service.is_window_open(datetime(2026, 8, 18, 14, 0, tzinfo=timezone.utc))
+    assert not service.is_window_open(datetime(2026, 8, 18, 16, 0, tzinfo=timezone.utc))
 
 
 def test_directional_entry_ranks_before_higher_scoring_wait():
     scanner = Mock()
-    scanner.get_top_spot_pairs.return_value = ["BTC/EUR", "ETH/EUR"]
+    scanner.get_top_futures_pairs.return_value = ["BTC/EUR", "ETH/EUR"]
     indicators = Mock()
     indicators.calculate_multi_timeframe.side_effect = [
         {"entry": {"close": 100.0}},
@@ -58,9 +54,7 @@ def test_directional_entry_ranks_before_higher_scoring_wait():
         planner=planner,
     )
 
-    report = service.scan(
-        datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc)
-    )
+    report = service.scan(datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc))
 
     assert [item.symbol for item in report.candidates] == [
         "ETH/EUR",
@@ -80,7 +74,7 @@ def test_naive_timestamp_is_rejected():
 
 def test_force_scans_outside_session_without_changing_actual_window():
     scanner = Mock()
-    scanner.get_top_spot_pairs.return_value = []
+    scanner.get_top_futures_pairs.return_value = []
     journal = Mock()
     outcome_tracker = Mock()
     report = EntryAdvisoryService(
@@ -94,18 +88,16 @@ def test_force_scans_outside_session_without_changing_actual_window():
 
     assert report.window_open is False
     assert report.forced is True
-    scanner.get_top_spot_pairs.assert_called_once_with(20)
+    scanner.get_top_futures_pairs.assert_called_once()
     journal.save_report.assert_not_called()
     outcome_tracker.resolve_open.assert_not_called()
 
 
 def test_scan_reports_progress_for_each_coin():
     scanner = Mock()
-    scanner.get_top_spot_pairs.return_value = ["BTC/EUR"]
+    scanner.get_top_futures_pairs.return_value = ["BTC/EUR"]
     indicators = Mock()
-    indicators.calculate_multi_timeframe.return_value = {
-        "entry": {"close": 100.0}
-    }
+    indicators.calculate_multi_timeframe.return_value = {"entry": {"close": 100.0}}
     signal_engine = Mock()
     signal_engine.evaluate.return_value = DirectionalSignal(
         "BTC/EUR", "WAIT", 50, ("No setup",)
@@ -118,9 +110,7 @@ def test_scan_reports_progress_for_each_coin():
         progress=messages.append,
     )
 
-    service.scan(
-        datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc)
-    )
+    service.scan(datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc))
 
     assert messages[0].startswith("Loading Binance")
     assert "[1/1] Loading BTC/EUR" in messages[1]

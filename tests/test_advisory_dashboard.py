@@ -28,6 +28,7 @@ def sample_report():
         window_open=True,
         candidates=(candidate,),
         shortlist=(candidate,),
+        calibration={"overall": {"sample": 4, "target_rate_pct": 50}},
     )
 
 
@@ -44,6 +45,7 @@ def test_dashboard_serializes_signal_report_for_browser():
     assert payload["candidates"][0]["shortlisted"] is True
     assert payload["candidates"][0]["trade"]["stop_loss"] == 6.37
     assert payload["candidates"][0]["derivatives"]["label"] == "BEARISH"
+    assert payload["calibration"]["overall"]["sample"] == 4
 
 
 def test_dashboard_application_passes_force_to_read_only_service():

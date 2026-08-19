@@ -64,13 +64,15 @@ Do not set `LIVE_TRADING_ENABLED=true` yet.
 
 The advisory command uses Binance's unauthenticated public APIs and ranks up
 to twenty liquid USDT coins, including a broader group of more volatile
-altcoins. Spot volume selects the liquid universe; all indicators and planned
-levels use completed Binance USD-M futures candles and the current mark price.
+altcoins. USD-M futures quote volume, spread, and contract age select the
+tradeable universe; all indicators and planned levels use completed Binance
+USD-M futures candles and the current mark price.
 Daily and 4-hour candles provide market
 context, while aligned 1-hour, 15-minute and 5-minute candles trigger a
 `LONG`, `SHORT`, or `WAIT` result. It also displays a derivatives-pressure
-proxy built from funding, 5-minute open-interest change, account long/short
-ratio and taker buy/sell flow. It never creates, sizes, or submits a futures
+proxy built from funding, account long/short ratio, and 5-minute, 15-minute,
+and 1-hour open-interest and taker-flow windows. It never creates, sizes, or
+submits a futures
 order. By default it only scans from 17:00
 inclusive until 19:00 exclusive in the `Europe/Athens` timezone:
 
@@ -137,14 +139,22 @@ stop. View forward results with:
 .\.venv\Scripts\python.exe -m app.advisory.performance
 ```
 
+The performance report calibrates the nominal signal score against resolved
+forward outcomes by direction, score band, and 4-hour market regime. Results
+remain explicitly preliminary until a group contains at least 30 resolved
+shortlisted setups; the displayed 95% interval communicates small-sample
+uncertainty.
+
 Run a candle replay for an individual USD-M futures symbol with:
 
 ```powershell
-.\.venv\Scripts\python.exe -m app.advisory.backtest_main --symbol BTC/USDT --days 30
+.\.venv\Scripts\python.exe -m app.advisory.backtest_main --symbol BTC/USDT --days 90 --validation-windows 3
 ```
 
 The replay uses the same candle signal and level planner, includes fees,
-slippage and historical funding, and never sends orders. Historical
+slippage and historical funding, and never sends orders. It reports separate
+chronological windows with frozen rules so that one favorable period cannot
+hide instability in another. Historical
 long/short-account and taker-flow snapshots are not available for the entire
 replay range, so the replay deliberately excludes the live positioning score
 adjustment.
@@ -162,4 +172,7 @@ ADVISORY_START_HOUR=17
 ADVISORY_END_HOUR=19
 ADVISORY_FUTURES_FEE=0.0005
 ADVISORY_FUTURES_SLIPPAGE=0.0005
+ADVISORY_MIN_FUTURES_QUOTE_VOLUME=10000000
+ADVISORY_MAX_FUTURES_SPREAD_BPS=10
+ADVISORY_MIN_CONTRACT_AGE_DAYS=30
 ```

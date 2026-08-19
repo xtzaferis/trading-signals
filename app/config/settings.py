@@ -24,10 +24,14 @@ KRAKEN_EXPECTED_KEY_NAME = os.getenv(
 # Trading Mode
 # =====================================
 
-TRADING_MODE = os.getenv(
-    "TRADING_MODE",
-    "paper",
-).strip().lower()
+TRADING_MODE = (
+    os.getenv(
+        "TRADING_MODE",
+        "paper",
+    )
+    .strip()
+    .lower()
+)
 
 VALID_TRADING_MODES = {
     "paper",
@@ -35,9 +39,7 @@ VALID_TRADING_MODES = {
 }
 
 if TRADING_MODE not in VALID_TRADING_MODES:
-    raise ValueError(
-        "TRADING_MODE must be one of: paper, live."
-    )
+    raise ValueError("TRADING_MODE must be one of: paper, live.")
 
 # Compatibility flag for the existing paper entry point.
 PAPER_TRADING = TRADING_MODE == "paper"
@@ -85,16 +87,19 @@ ADVISORY_TOP_COINS = int(os.getenv("ADVISORY_TOP_COINS", "20"))
 ADVISORY_MAX_SIGNALS = int(os.getenv("ADVISORY_MAX_SIGNALS", "2"))
 ADVISORY_MAX_CORRELATION = float(os.getenv("ADVISORY_MAX_CORRELATION", "0.80"))
 ADVISORY_DATA_SOURCE = os.getenv("ADVISORY_DATA_SOURCE", "binance").strip().lower()
-ADVISORY_QUOTE_CURRENCY = os.getenv(
-    "ADVISORY_QUOTE_CURRENCY", "USDT"
-).strip().upper()
+ADVISORY_QUOTE_CURRENCY = os.getenv("ADVISORY_QUOTE_CURRENCY", "USDT").strip().upper()
 ADVISORY_TIMEZONE = os.getenv("ADVISORY_TIMEZONE", "Europe/Athens").strip()
 ADVISORY_START_HOUR = int(os.getenv("ADVISORY_START_HOUR", "17"))
 ADVISORY_END_HOUR = int(os.getenv("ADVISORY_END_HOUR", "19"))
 ADVISORY_FUTURES_FEE = float(os.getenv("ADVISORY_FUTURES_FEE", "0.0005"))
-ADVISORY_FUTURES_SLIPPAGE = float(
-    os.getenv("ADVISORY_FUTURES_SLIPPAGE", "0.0005")
+ADVISORY_FUTURES_SLIPPAGE = float(os.getenv("ADVISORY_FUTURES_SLIPPAGE", "0.0005"))
+ADVISORY_MIN_FUTURES_QUOTE_VOLUME = float(
+    os.getenv("ADVISORY_MIN_FUTURES_QUOTE_VOLUME", "10000000")
 )
+ADVISORY_MAX_FUTURES_SPREAD_BPS = float(
+    os.getenv("ADVISORY_MAX_FUTURES_SPREAD_BPS", "10")
+)
+ADVISORY_MIN_CONTRACT_AGE_DAYS = int(os.getenv("ADVISORY_MIN_CONTRACT_AGE_DAYS", "30"))
 
 if ADVISORY_TOP_COINS <= 0:
     raise ValueError("ADVISORY_TOP_COINS must be positive.")
@@ -116,6 +121,12 @@ if not 0 <= ADVISORY_FUTURES_FEE < 1:
     raise ValueError("ADVISORY_FUTURES_FEE must be between 0 and 1.")
 if not 0 <= ADVISORY_FUTURES_SLIPPAGE < 1:
     raise ValueError("ADVISORY_FUTURES_SLIPPAGE must be between 0 and 1.")
+if ADVISORY_MIN_FUTURES_QUOTE_VOLUME < 0:
+    raise ValueError("ADVISORY_MIN_FUTURES_QUOTE_VOLUME cannot be negative.")
+if ADVISORY_MAX_FUTURES_SPREAD_BPS <= 0:
+    raise ValueError("ADVISORY_MAX_FUTURES_SPREAD_BPS must be positive.")
+if ADVISORY_MIN_CONTRACT_AGE_DAYS < 0:
+    raise ValueError("ADVISORY_MIN_CONTRACT_AGE_DAYS cannot be negative.")
 
 # A fixed universe avoids selecting newly listed coins merely because they
 # have a temporary volume spike. These are still crypto assets and can remain
@@ -223,9 +234,7 @@ BACKTEST_MIN_HISTORY_RATIO = 0.90
 # Fresh completed candles are fetched for every backtest by default. Set this
 # to true only when faster, repeatable development runs are preferred over the
 # newest available exchange history.
-BACKTEST_USE_CACHE = (
-    os.getenv("BACKTEST_USE_CACHE", "false").strip().lower() == "true"
-)
+BACKTEST_USE_CACHE = os.getenv("BACKTEST_USE_CACHE", "false").strip().lower() == "true"
 BACKTEST_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 
@@ -247,18 +256,12 @@ MAX_DRAWDOWN_PCT = 0.15
 # and exchange-native protection are always allowed to proceed.
 MAX_DAILY_LOSS_PCT = float(os.getenv("MAX_DAILY_LOSS_PCT", "0.02"))
 MAX_CONSECUTIVE_LOSSES = int(os.getenv("MAX_CONSECUTIVE_LOSSES", "3"))
-MAX_EXCHANGE_ORDERS_PER_DAY = int(
-    os.getenv("MAX_EXCHANGE_ORDERS_PER_DAY", "4")
-)
-EMERGENCY_STOP = (
-    os.getenv("EMERGENCY_STOP", "false").strip().lower() == "true"
-)
+MAX_EXCHANGE_ORDERS_PER_DAY = int(os.getenv("MAX_EXCHANGE_ORDERS_PER_DAY", "4"))
+EMERGENCY_STOP = os.getenv("EMERGENCY_STOP", "false").strip().lower() == "true"
 
 # Absolute safety ceiling for a single exchange order. Risk sizing may choose
 # a smaller value, but exchange execution must never exceed this amount.
-MAX_EXCHANGE_ORDER_VALUE = float(
-    os.getenv("MAX_EXCHANGE_ORDER_VALUE", "10.0")
-)
+MAX_EXCHANGE_ORDER_VALUE = float(os.getenv("MAX_EXCHANGE_ORDER_VALUE", "10.0"))
 
 # Real-money canary execution has its own explicit opt-in and remains capped
 # independently of the wider exchange gateway configuration.
@@ -269,13 +272,15 @@ LIVE_CANARY_CONFIRMATION = os.getenv(
     "LIVE_CANARY_CONFIRMATION",
     "",
 ).strip()
-LIVE_CANARY_SYMBOL = os.getenv(
-    "LIVE_CANARY_SYMBOL",
-    MARKET_SYMBOL,
-).strip().upper()
-LIVE_CANARY_ORDER_VALUE = float(
-    os.getenv("LIVE_CANARY_ORDER_VALUE", "10.0")
+LIVE_CANARY_SYMBOL = (
+    os.getenv(
+        "LIVE_CANARY_SYMBOL",
+        MARKET_SYMBOL,
+    )
+    .strip()
+    .upper()
 )
+LIVE_CANARY_ORDER_VALUE = float(os.getenv("LIVE_CANARY_ORDER_VALUE", "10.0"))
 LIVE_CANARY_MAX_ALLOCATION = 20.0
 LIVE_ACCOUNT_SIZE = float(os.getenv("LIVE_ACCOUNT_SIZE", "20.0"))
 LIVE_CANARY_STOP_LOSS_PCT = 0.02
@@ -334,17 +339,13 @@ BACKTEST_EXIT_FEE = float(os.getenv("BACKTEST_EXIT_FEE", str(TAKER_FEE)))
 BACKTEST_ENTRY_SLIPPAGE = float(
     os.getenv("BACKTEST_ENTRY_SLIPPAGE", str(TAKER_SLIPPAGE))
 )
-BACKTEST_EXIT_SLIPPAGE = float(
-    os.getenv("BACKTEST_EXIT_SLIPPAGE", str(TAKER_SLIPPAGE))
-)
+BACKTEST_EXIT_SLIPPAGE = float(os.getenv("BACKTEST_EXIT_SLIPPAGE", str(TAKER_SLIPPAGE)))
 
 MIN_NET_RISK_REWARD = float(os.getenv("MIN_NET_RISK_REWARD", "1.50"))
 POST_ONLY_ENTRY_ENABLED = (
     os.getenv("POST_ONLY_ENTRY_ENABLED", "true").strip().lower() == "true"
 )
-POST_ONLY_ENTRY_OFFSET_PCT = float(
-    os.getenv("POST_ONLY_ENTRY_OFFSET_PCT", "0.0002")
-)
+POST_ONLY_ENTRY_OFFSET_PCT = float(os.getenv("POST_ONLY_ENTRY_OFFSET_PCT", "0.0002"))
 POST_ONLY_ENTRY_TIMEOUT_SECONDS = int(
     os.getenv("POST_ONLY_ENTRY_TIMEOUT_SECONDS", "900")
 )
