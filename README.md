@@ -63,7 +63,7 @@ Do not set `LIVE_TRADING_ENABLED=true` yet.
 ## Read-only futures entry advisory
 
 The advisory command uses Binance's unauthenticated public APIs and ranks up
-to twenty liquid USDT coins, including a broader group of more volatile
+to fifteen liquid USDT coins, including a broader group of more volatile
 altcoins. USD-M futures quote volume, spread, and contract age select the
 tradeable universe; all indicators and planned levels use completed Binance
 USD-M futures candles and the current mark price.
@@ -175,7 +175,7 @@ adjustment.
 Optional `.env` settings:
 
 ```dotenv
-ADVISORY_TOP_COINS=20
+ADVISORY_TOP_COINS=15
 ADVISORY_MAX_SIGNALS=2
 ADVISORY_MAX_CORRELATION=0.80
 ADVISORY_DATA_SOURCE=binance

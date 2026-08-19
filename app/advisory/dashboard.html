@@ -53,7 +53,7 @@
 <body>
   <main class="shell">
     <header>
-      <div><div class="eyebrow">Manual futures intelligence</div><h1>Crypto Signal Desk</h1><p class="subtitle">Twenty liquid markets. Completed USD-M futures candles. Futures positioning context. Two correlation-aware setups at most.</p></div>
+      <div><div class="eyebrow">Manual futures intelligence</div><h1>Crypto Signal Desk</h1><p class="subtitle">Fifteen liquid markets. Completed USD-M futures candles. Futures positioning context. Two correlation-aware setups at most.</p></div>
       <div class="safety">● Read only · execution disabled</div>
     </header>
     <section class="control">
@@ -97,7 +97,7 @@
     if(staticMode){document.querySelector('#force-label').hidden=true;button.textContent='Refresh published signals'}
     button.addEventListener('click',async()=>{
       button.disabled=true;content.hidden=true;
-      setStatus(staticMode?'Loading the latest 17:00 publication…':'Scanning 20 markets across five candle periods and futures positioning…',true);
+      setStatus(staticMode?'Loading the latest publication…':'Scanning 15 markets across five candle periods and futures positioning…',true);
       try{
         const response=staticMode
           ?await fetch(`signals.json?t=${Date.now()}`,{cache:'no-store'})

@@ -83,7 +83,7 @@ TOP_COINS = 5
 
 # Read-only discretionary-trading assistant. It ranks opportunities but never
 # imports a broker or submits an exchange order.
-ADVISORY_TOP_COINS = int(os.getenv("ADVISORY_TOP_COINS", "20"))
+ADVISORY_TOP_COINS = int(os.getenv("ADVISORY_TOP_COINS", "15"))
 ADVISORY_MAX_SIGNALS = int(os.getenv("ADVISORY_MAX_SIGNALS", "2"))
 ADVISORY_MAX_CORRELATION = float(os.getenv("ADVISORY_MAX_CORRELATION", "0.80"))
 ADVISORY_DATA_SOURCE = os.getenv("ADVISORY_DATA_SOURCE", "binance").strip().lower()
