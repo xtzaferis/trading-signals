@@ -2,7 +2,8 @@ from app.storage.advisory_signal_repository import AdvisorySignalRepository
 
 
 def main() -> None:
-    statistics = AdvisorySignalRepository().statistics()
+    repository = AdvisorySignalRepository()
+    statistics = repository.statistics()
     print("=" * 64)
     print("FORWARD ADVISORY PERFORMANCE - SHORTLISTED SETUPS")
     print(f"Resolved:           {statistics['resolved']}")
@@ -11,7 +12,7 @@ def main() -> None:
     print(f"Timeouts:           {statistics['timeouts']}")
     print(f"Average net return: {statistics['average_return_pct']:+.3f}%")
     print(f"Sum of returns:     {statistics['total_return_pct']:+.3f}%")
-    calibration = AdvisorySignalRepository().calibration()
+    calibration = repository.calibration()
     overall = calibration["overall"]
     print(f"Target rate:        {overall['target_rate_pct']:.2f}%")
     print(
@@ -28,6 +29,19 @@ def main() -> None:
             f"  {direction:<5}: sample={result['sample']}, "
             f"target={result['target_rate_pct']:.2f}%, "
             f"avg={result['average_net_return_pct']:+.3f}%"
+        )
+    diagnostics = repository.outcome_diagnostics()
+    if diagnostics["resolved"]:
+        print("Outcome diagnostics:")
+        print(f"  Average MFE:      {diagnostics['average_mfe_pct']:+.3f}%")
+        print(f"  Average MAE:      {diagnostics['average_mae_pct']:+.3f}%")
+        print(
+            "  Average exit time: "
+            f"{diagnostics['average_time_to_exit_minutes']:.1f} minutes"
+        )
+        print(
+            "  Actual funding:    "
+            f"{diagnostics['average_actual_funding_rate']:+.6f} average rate"
         )
     if statistics["resolved"] == 0:
         print("No resolved observations yet. Run the scanner on multiple days.")

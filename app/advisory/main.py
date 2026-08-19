@@ -75,6 +75,20 @@ def print_report(report) -> None:
                     f"    Pressure: {context.label} | funding={funding} | "
                     f"OI 5m={oi_change} | accounts L/S={ratio} | taker B/S={taker}"
                 )
+            if candidate.trade is not None:
+                book = candidate.order_book or {}
+                spread = _number(book.get("spread_bps"))
+                imbalance = _number(book.get("imbalance"))
+                deviation = _number(candidate.entry_deviation_pct)
+                expiry = (
+                    candidate.expires_at.isoformat(timespec="seconds")
+                    if candidate.expires_at
+                    else "-"
+                )
+                print(
+                    f"    Execution: deviation={deviation}% | spread={spread} bps | "
+                    f"book imbalance={imbalance} | valid until={expiry}"
+                )
         if report.shortlist:
             print("\nTOP ACTIONABLE SETUPS (maximum two):")
             for candidate in report.shortlist:

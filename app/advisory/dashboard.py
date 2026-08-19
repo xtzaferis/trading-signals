@@ -31,6 +31,12 @@ def report_to_dict(report: AdvisoryReport, duration_seconds: float) -> dict:
                 "status": candidate.status,
                 "risk": candidate.risk,
                 "market_regime": candidate.market_regime,
+                "setup_price": candidate.setup_price,
+                "entry_deviation_pct": candidate.entry_deviation_pct,
+                "expires_at": (
+                    candidate.expires_at.isoformat() if candidate.expires_at else None
+                ),
+                "order_book": candidate.order_book,
                 "score": candidate.score,
                 "price": candidate.price,
                 "trade": trade,

@@ -8,6 +8,7 @@ import pandas as pd
 from app.advisory.directional_signal import DirectionalSignalEngine
 from app.advisory.planner import FuturesAdvisoryPlanner
 from app.config.settings import (
+    ADVISORY_END_HOUR,
     ADVISORY_FUTURES_FEE,
     ADVISORY_FUTURES_SLIPPAGE,
     ADVISORY_START_HOUR,
@@ -89,7 +90,13 @@ class AdvisoryReplayEngine:
             for timeframe, values in candles.items()
         }
         trades = []
+        traded_dates = set()
+        blocked_until = None
         for decision_at in self._decision_times(start, end):
+            if decision_at.date() in traded_dates:
+                continue
+            if blocked_until is not None and decision_at < blocked_until:
+                continue
             data = {
                 "regime": self._row_at(frames["1d"], "1d", decision_at),
                 "trend": self._row_at(frames["4h"], "4h", decision_at),
@@ -116,18 +123,29 @@ class AdvisoryReplayEngine:
             )
             if trade is not None:
                 trades.append(trade)
+                traded_dates.add(decision_at.date())
+                blocked_until = trade.closed_at.astimezone(ZoneInfo(ADVISORY_TIMEZONE))
         return AdvisoryReplayResult(tuple(trades))
 
     def _decision_times(self, start: datetime, end: datetime):
-        timezone = ZoneInfo(ADVISORY_TIMEZONE)
-        current = start.astimezone(timezone).replace(
+        local_timezone = ZoneInfo(ADVISORY_TIMEZONE)
+        local_start = start.astimezone(local_timezone)
+        local_end = end.astimezone(local_timezone)
+        session_start = local_start.replace(
             hour=ADVISORY_START_HOUR, minute=0, second=0, microsecond=0
         )
-        if current < start.astimezone(timezone):
-            current += timedelta(days=1)
-        while current <= end.astimezone(timezone):
-            yield current
-            current += timedelta(days=1)
+        while session_start <= local_end:
+            session_end = session_start.replace(hour=ADVISORY_END_HOUR)
+            current = max(session_start, local_start)
+            minute_remainder = current.minute % 15
+            if minute_remainder or current.second or current.microsecond:
+                current = current.replace(second=0, microsecond=0) + timedelta(
+                    minutes=15 - minute_remainder
+                )
+            while current < session_end and current <= local_end:
+                yield current
+                current += timedelta(minutes=15)
+            session_start += timedelta(days=1)
 
     def _row_at(self, frame: pd.DataFrame, timeframe: str, decision_at: datetime):
         completed_before = decision_at.astimezone(timezone.utc).replace(

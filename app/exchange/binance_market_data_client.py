@@ -56,6 +56,41 @@ class BinanceMarketDataClient:
             )
         return summaries
 
+    def get_futures_order_book_quality(
+        self,
+        symbol: str,
+        limit: int = 20,
+    ) -> dict:
+        """Summarize current top-of-book execution quality for use as a veto."""
+        depth = self.exchange.fapiPublicGetDepth(
+            {"symbol": self._market_id(symbol), "limit": limit}
+        )
+        bids = self._levels(depth.get("bids", []))
+        asks = self._levels(depth.get("asks", []))
+        best_bid = bids[0][0] if bids else None
+        best_ask = asks[0][0] if asks else None
+        spread_bps = None
+        if (
+            best_bid is not None
+            and best_ask is not None
+            and best_bid > 0
+            and best_ask >= best_bid
+        ):
+            spread_bps = (best_ask - best_bid) / ((best_ask + best_bid) / 2) * 10_000
+        bid_depth = sum(price * quantity for price, quantity in bids)
+        ask_depth = sum(price * quantity for price, quantity in asks)
+        total_depth = bid_depth + ask_depth
+        imbalance = (
+            (bid_depth - ask_depth) / total_depth if total_depth > 0 else None
+        )
+        return {
+            "spread_bps": spread_bps,
+            "bid_depth_usdt": bid_depth,
+            "ask_depth_usdt": ask_depth,
+            "total_depth_usdt": total_depth,
+            "imbalance": imbalance,
+        }
+
     def get_ohlcv(
         self,
         symbol: str,
@@ -224,6 +259,18 @@ class BinanceMarketDataClient:
         if isinstance(value, list):
             return value
         return [value] if isinstance(value, dict) else []
+
+    @classmethod
+    def _levels(cls, rows: list) -> list[tuple[float, float]]:
+        levels = []
+        for row in rows:
+            if len(row) < 2:
+                continue
+            price = cls._optional_float(row[0])
+            quantity = cls._optional_float(row[1])
+            if price is not None and quantity is not None:
+                levels.append((price, quantity))
+        return levels
 
     @staticmethod
     def _optional_float(value) -> float | None:

@@ -76,12 +76,18 @@ class AdvisorySignalRepository:
         exit_price: float,
         outcome: str,
         net_return_pct: float,
+        metrics: dict | None = None,
     ) -> None:
+        metrics = metrics or {}
         self.database.execute(
             """
             UPDATE advisory_signals
             SET outcome_status = 'RESOLVED', resolved_at = ?, exit_price = ?,
-                outcome = ?, net_return_pct = ?
+                outcome = ?, net_return_pct = ?, actual_funding_rate = ?,
+                max_favorable_excursion_pct = ?,
+                max_adverse_excursion_pct = ?, time_to_exit_minutes = ?,
+                return_15m_pct = ?, return_1h_pct = ?, return_4h_pct = ?,
+                return_24h_pct = ?
             WHERE id = ? AND outcome_status = 'OPEN'
             """,
             (
@@ -89,6 +95,14 @@ class AdvisorySignalRepository:
                 exit_price,
                 outcome,
                 net_return_pct,
+                metrics.get("actual_funding_rate"),
+                metrics.get("max_favorable_excursion_pct"),
+                metrics.get("max_adverse_excursion_pct"),
+                metrics.get("time_to_exit_minutes"),
+                metrics.get("return_15m_pct"),
+                metrics.get("return_1h_pct"),
+                metrics.get("return_4h_pct"),
+                metrics.get("return_24h_pct"),
                 signal_id,
             ),
         )
@@ -113,6 +127,34 @@ class AdvisorySignalRepository:
             "timeouts": int(row[3] or 0),
             "average_return_pct": float(row[4] or 0.0),
             "total_return_pct": float(row[5] or 0.0),
+        }
+
+    def outcome_diagnostics(self) -> dict:
+        row = self.database.execute(
+            """
+            SELECT COUNT(*), AVG(actual_funding_rate),
+                   AVG(max_favorable_excursion_pct),
+                   AVG(max_adverse_excursion_pct), AVG(time_to_exit_minutes),
+                   AVG(return_15m_pct), AVG(return_1h_pct),
+                   AVG(return_4h_pct), AVG(return_24h_pct)
+            FROM advisory_signals
+            WHERE outcome_status = 'RESOLVED' AND shortlisted = 1
+            """
+        ).fetchone()
+        names = (
+            "resolved",
+            "average_actual_funding_rate",
+            "average_mfe_pct",
+            "average_mae_pct",
+            "average_time_to_exit_minutes",
+            "average_return_15m_pct",
+            "average_return_1h_pct",
+            "average_return_4h_pct",
+            "average_return_24h_pct",
+        )
+        return {
+            name: int(value or 0) if name == "resolved" else self._optional_float(value)
+            for name, value in zip(names, row)
         }
 
     def calibration(self) -> dict:
@@ -243,3 +285,7 @@ class AdvisorySignalRepository:
     def _columns(self) -> tuple[str, ...]:
         rows = self.database.execute("PRAGMA table_info(advisory_signals)").fetchall()
         return tuple(row[1] for row in rows if row[1] != "id")
+
+    @staticmethod
+    def _optional_float(value) -> float | None:
+        return float(value) if value is not None else None

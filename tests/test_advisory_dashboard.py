@@ -46,6 +46,7 @@ def test_dashboard_serializes_signal_report_for_browser():
     assert payload["candidates"][0]["trade"]["stop_loss"] == 6.37
     assert payload["candidates"][0]["derivatives"]["label"] == "BEARISH"
     assert payload["calibration"]["overall"]["sample"] == 4
+    assert "expires_at" in payload["candidates"][0]
 
 
 def test_dashboard_application_passes_force_to_read_only_service():

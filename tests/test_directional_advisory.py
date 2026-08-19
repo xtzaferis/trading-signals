@@ -25,6 +25,11 @@ def bullish_data():
         },
     }
     data["trigger"] = dict(data["entry"])
+    data["trigger"].update(
+        close_prev=108,
+        ema20_prev=104,
+        macd_histogram_prev=0.5,
+    )
     return data
 
 
@@ -51,6 +56,11 @@ def bearish_data():
         },
     }
     data["trigger"] = dict(data["entry"])
+    data["trigger"].update(
+        close_prev=82,
+        ema20_prev=86,
+        macd_histogram_prev=-0.5,
+    )
     return data
 
 
@@ -90,6 +100,16 @@ def test_missing_five_minute_confirmation_waits():
 
     assert signal.direction == "WAIT"
     assert signal.reasons[0] == "5m long timing is not confirmed"
+
+
+def test_five_minute_direction_must_persist_for_two_closed_candles():
+    data = bullish_data()
+    data["trigger"].update(close_prev=100, ema20_prev=105)
+
+    signal = DirectionalSignalEngine().evaluate("BTC/EUR", data)
+
+    assert signal.direction == "WAIT"
+    assert "did not persist" in signal.reasons[0]
 
 
 def test_short_levels_place_stop_above_and_target_below_entry():

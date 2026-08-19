@@ -100,6 +100,20 @@ ADVISORY_MAX_FUTURES_SPREAD_BPS = float(
     os.getenv("ADVISORY_MAX_FUTURES_SPREAD_BPS", "10")
 )
 ADVISORY_MIN_CONTRACT_AGE_DAYS = int(os.getenv("ADVISORY_MIN_CONTRACT_AGE_DAYS", "30"))
+ADVISORY_SIGNAL_TTL_MINUTES = int(os.getenv("ADVISORY_SIGNAL_TTL_MINUTES", "10"))
+ADVISORY_MAX_ENTRY_DEVIATION_ATR = float(
+    os.getenv("ADVISORY_MAX_ENTRY_DEVIATION_ATR", "0.50")
+)
+ADVISORY_ORDER_BOOK_LEVELS = int(os.getenv("ADVISORY_ORDER_BOOK_LEVELS", "20"))
+ADVISORY_MIN_BOOK_DEPTH_USDT = float(
+    os.getenv("ADVISORY_MIN_BOOK_DEPTH_USDT", "100000")
+)
+ADVISORY_MAX_BOOK_SPREAD_BPS = float(
+    os.getenv("ADVISORY_MAX_BOOK_SPREAD_BPS", "8")
+)
+ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE = float(
+    os.getenv("ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE", "0.35")
+)
 
 if ADVISORY_TOP_COINS <= 0:
     raise ValueError("ADVISORY_TOP_COINS must be positive.")
@@ -127,6 +141,20 @@ if ADVISORY_MAX_FUTURES_SPREAD_BPS <= 0:
     raise ValueError("ADVISORY_MAX_FUTURES_SPREAD_BPS must be positive.")
 if ADVISORY_MIN_CONTRACT_AGE_DAYS < 0:
     raise ValueError("ADVISORY_MIN_CONTRACT_AGE_DAYS cannot be negative.")
+if ADVISORY_SIGNAL_TTL_MINUTES <= 0:
+    raise ValueError("ADVISORY_SIGNAL_TTL_MINUTES must be positive.")
+if ADVISORY_MAX_ENTRY_DEVIATION_ATR <= 0:
+    raise ValueError("ADVISORY_MAX_ENTRY_DEVIATION_ATR must be positive.")
+if ADVISORY_ORDER_BOOK_LEVELS <= 0:
+    raise ValueError("ADVISORY_ORDER_BOOK_LEVELS must be positive.")
+if ADVISORY_MIN_BOOK_DEPTH_USDT < 0:
+    raise ValueError("ADVISORY_MIN_BOOK_DEPTH_USDT cannot be negative.")
+if ADVISORY_MAX_BOOK_SPREAD_BPS <= 0:
+    raise ValueError("ADVISORY_MAX_BOOK_SPREAD_BPS must be positive.")
+if not 0 <= ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE <= 1:
+    raise ValueError(
+        "ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE must be between 0 and 1."
+    )
 
 # A fixed universe avoids selecting newly listed coins merely because they
 # have a temporary volume spike. These are still crypto assets and can remain

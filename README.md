@@ -102,7 +102,8 @@ server binds only to the local computer by default and contains no order route.
 ### Free GitHub Pages publication
 
 The `advisory-pages.yml` workflow runs in the public `trading-signals`
-repository at 17:00 in the `Europe/Athens` timezone. Under **Settings → Pages**,
+repository every 15 minutes from 17:00 through 18:45 in the
+`Europe/Athens` timezone. Under **Settings → Pages**,
 set the source to **GitHub Actions**, then manually rerun the workflow once.
 No deployment token or API key is required. The dashboard URL is:
 
@@ -124,6 +125,13 @@ reading is not a true liquidation heatmap and must be treated only as supporting
 context; exact liquidation clusters generally require continuously collected
 liquidation events or a specialist data provider.
 
+Actionable signals require the 5-minute direction to persist across two closed
+candles. A current order-book snapshot vetoes unusually wide spreads, shallow
+depth, or strong opposing imbalance. The mark price must also remain within
+half an ATR of the completed 15-minute setup candle. Published signals expire
+after ten minutes and the dashboard automatically removes expired cards; run a
+fresh scan instead of entering from an old snapshot.
+
 Each row is classified `LOW`, `MEDIUM`, or `HIGH` risk from its 15-minute ATR
 percentage. At most two qualifying entries are repeated under `TOP ACTIONABLE
 SETUPS`; the section can legitimately be empty when no setup passes every gate.
@@ -144,6 +152,9 @@ forward outcomes by direction, score band, and 4-hour market regime. Results
 remain explicitly preliminary until a group contains at least 30 resolved
 shortlisted setups; the displayed 95% interval communicates small-sample
 uncertainty.
+It also records realized funding, maximum favorable and adverse excursion,
+time to exit, and available 15-minute, 1-hour, 4-hour, and 24-hour directional
+returns.
 
 Run a candle replay for an individual USD-M futures symbol with:
 
@@ -154,7 +165,9 @@ Run a candle replay for an individual USD-M futures symbol with:
 The replay uses the same candle signal and level planner, includes fees,
 slippage and historical funding, and never sends orders. It reports separate
 chronological windows with frozen rules so that one favorable period cannot
-hide instability in another. Historical
+hide instability in another. Within each day it evaluates every completed
+15-minute decision point from 17:00 through 18:45, permits at most one entry per
+symbol, and prevents overlapping positions. Historical
 long/short-account and taker-flow snapshots are not available for the entire
 replay range, so the replay deliberately excludes the live positioning score
 adjustment.
@@ -175,4 +188,10 @@ ADVISORY_FUTURES_SLIPPAGE=0.0005
 ADVISORY_MIN_FUTURES_QUOTE_VOLUME=10000000
 ADVISORY_MAX_FUTURES_SPREAD_BPS=10
 ADVISORY_MIN_CONTRACT_AGE_DAYS=30
+ADVISORY_SIGNAL_TTL_MINUTES=10
+ADVISORY_MAX_ENTRY_DEVIATION_ATR=0.50
+ADVISORY_ORDER_BOOK_LEVELS=20
+ADVISORY_MIN_BOOK_DEPTH_USDT=100000
+ADVISORY_MAX_BOOK_SPREAD_BPS=8
+ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE=0.35
 ```

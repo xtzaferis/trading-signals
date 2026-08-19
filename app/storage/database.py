@@ -275,6 +275,14 @@ class Database:
                 outcome TEXT,
                 net_return_pct REAL,
                 market_regime TEXT NOT NULL DEFAULT 'UNKNOWN',
+                actual_funding_rate REAL,
+                max_favorable_excursion_pct REAL,
+                max_adverse_excursion_pct REAL,
+                time_to_exit_minutes REAL,
+                return_15m_pct REAL,
+                return_1h_pct REAL,
+                return_4h_pct REAL,
+                return_24h_pct REAL,
                 UNIQUE(generated_at, symbol)
             )
             """
@@ -286,6 +294,17 @@ class Database:
             "market_regime",
             "TEXT NOT NULL DEFAULT 'UNKNOWN'",
         )
+        for column in (
+            "actual_funding_rate",
+            "max_favorable_excursion_pct",
+            "max_adverse_excursion_pct",
+            "time_to_exit_minutes",
+            "return_15m_pct",
+            "return_1h_pct",
+            "return_4h_pct",
+            "return_24h_pct",
+        ):
+            self._ensure_column(cursor, "advisory_signals", column, "REAL")
         self._ensure_column(
             cursor,
             "exchange_order_intents",

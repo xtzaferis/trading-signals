@@ -123,3 +123,19 @@ def test_scan_reports_progress_for_each_coin():
 )
 def test_advisory_classifies_short_term_volatility_risk(atr_pct, expected):
     assert EntryAdvisoryService._risk_label(atr_pct) == expected
+
+
+def test_entry_is_rejected_after_large_move_from_completed_setup_candle():
+    assert EntryAdvisoryService._entry_deviation_failure(100, 102, 2) is not None
+    assert EntryAdvisoryService._entry_deviation_failure(100, 100.5, 2) is None
+
+
+def test_order_book_vetoes_opposing_imbalance_and_wide_spread():
+    assert EntryAdvisoryService._order_book_failure(
+        "LONG",
+        {"spread_bps": 2, "total_depth_usdt": 200_000, "imbalance": -0.6},
+    ) == "Current order-book imbalance opposes the setup"
+    assert EntryAdvisoryService._order_book_failure(
+        "SHORT",
+        {"spread_bps": 20, "total_depth_usdt": 200_000, "imbalance": 0},
+    ) == "Current futures spread is too wide"

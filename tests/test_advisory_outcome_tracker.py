@@ -70,3 +70,29 @@ def test_outcome_tracker_closes_at_timeout():
 
     assert resolved == 1
     assert repository.resolve.call_args.args[3] == "TIMEOUT"
+
+
+def test_outcome_tracker_records_actual_funding_and_excursions():
+    repository = Mock()
+    open_signal = signal()
+    repository.list_open.return_value = [open_signal]
+    opened = datetime.fromisoformat(open_signal["generated_at"])
+    client = Mock()
+    client.get_ohlcv_since.return_value = [
+        [int((opened + timedelta(minutes=5)).timestamp() * 1000), 100, 103, 99, 102, 10],
+        [int((opened + timedelta(minutes=10)).timestamp() * 1000), 102, 105, 101, 104, 10],
+    ]
+    client.get_funding_rates_range.return_value = [
+        (int((opened + timedelta(minutes=8)).timestamp() * 1000), 0.0002)
+    ]
+
+    AdvisoryOutcomeTracker(client, repository).resolve_open(
+        opened + timedelta(hours=1)
+    )
+
+    metrics = repository.resolve.call_args.kwargs["metrics"]
+    assert metrics["actual_funding_rate"] == 0.0002
+    assert metrics["max_favorable_excursion_pct"] == 5.0
+    assert metrics["max_adverse_excursion_pct"] == 1.0
+    assert metrics["time_to_exit_minutes"] == 10
+    assert metrics["return_15m_pct"] == 4.0

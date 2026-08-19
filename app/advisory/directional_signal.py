@@ -117,6 +117,18 @@ class DirectionalSignalEngine:
                 and sign * row["macd_histogram"] > 0
             ):
                 return f"{label} {direction.lower()} timing is not confirmed"
+        trigger = data["trigger"]
+        previous_close = trigger.get("close_prev")
+        previous_ema = trigger.get("ema20_prev")
+        previous_histogram = trigger.get("macd_histogram_prev")
+        if (
+            previous_close is None
+            or previous_ema is None
+            or previous_histogram is None
+            or sign * (previous_close - previous_ema) <= 0
+            or sign * previous_histogram <= 0
+        ):
+            return f"5m {direction.lower()} confirmation did not persist for two candles"
         if data["entry"].get("adx", 0) < 15:
             return "15m trend strength is too low"
         if data["entry"].get("atr_pct", 0) < 0.0005:

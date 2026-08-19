@@ -52,3 +52,15 @@ def test_replay_uses_athens_decision_time_and_resolves_target():
 
 def test_replay_result_compounds_trade_returns():
     assert AdvisoryReplayEngine._net_return("SHORT", 100, 96, 0) > 0.038
+
+
+def test_replay_evaluates_every_fifteen_minutes_in_full_session():
+    engine = AdvisoryReplayEngine()
+    start = datetime(2026, 8, 19, 14, tzinfo=timezone.utc)
+
+    decisions = list(engine._decision_times(start, start + timedelta(hours=2)))
+
+    assert len(decisions) == 8
+    assert decisions[0].hour == 17
+    assert decisions[-1].hour == 18
+    assert decisions[-1].minute == 45

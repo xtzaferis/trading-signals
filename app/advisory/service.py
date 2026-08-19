@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import ccxt
@@ -13,12 +13,18 @@ from app.advisory.outcome_tracker import AdvisoryOutcomeTracker
 from app.advisory.planner import AdvisoryLevels, FuturesAdvisoryPlanner
 from app.config.settings import (
     ADVISORY_END_HOUR,
+    ADVISORY_MAX_BOOK_SPREAD_BPS,
     ADVISORY_MAX_CORRELATION,
+    ADVISORY_MAX_ENTRY_DEVIATION_ATR,
     ADVISORY_MAX_FUTURES_SPREAD_BPS,
+    ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE,
     ADVISORY_MAX_SIGNALS,
+    ADVISORY_MIN_BOOK_DEPTH_USDT,
     ADVISORY_MIN_CONTRACT_AGE_DAYS,
     ADVISORY_MIN_FUTURES_QUOTE_VOLUME,
+    ADVISORY_ORDER_BOOK_LEVELS,
     ADVISORY_QUOTE_CURRENCY,
+    ADVISORY_SIGNAL_TTL_MINUTES,
     ADVISORY_SPOT_BASES,
     ADVISORY_START_HOUR,
     ADVISORY_TIMEZONE,
@@ -42,6 +48,10 @@ class AdvisoryCandidate:
     derivatives: DerivativesContext | None = None
     risk: str = "UNKNOWN"
     market_regime: str = "UNKNOWN"
+    setup_price: float | None = None
+    entry_deviation_pct: float | None = None
+    expires_at: datetime | None = None
+    order_book: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -153,29 +163,55 @@ class EntryAdvisoryService:
                 trade = None
                 reasons = list(signal.reasons)
                 status = signal.direction
+                setup_price = self._float_or_none(data["entry"].get("close"))
+                current_price = (
+                    context.mark_price
+                    if context is not None and context.mark_price is not None
+                    else setup_price
+                )
+                entry_deviation_pct = self._entry_deviation_pct(
+                    setup_price,
+                    current_price,
+                )
+                order_book = None
                 if status in {"LONG", "SHORT"}:
-                    entry_data = data["entry"].copy()
-                    if context is not None and context.mark_price is not None:
-                        entry_data["close"] = context.mark_price
-                    trade = self.planner.create(status, entry_data)
-                    if trade is None:
+                    failure = self._entry_deviation_failure(
+                        setup_price,
+                        current_price,
+                        data["entry"].get("atr"),
+                    )
+                    order_book = self._load_order_book(symbol)
+                    failure = failure or self._order_book_failure(status, order_book)
+                    if failure is not None:
                         status = "WAIT"
-                        reasons.append("Net reward/risk is too low after costs")
+                        reasons.insert(0, failure)
+                    else:
+                        entry_data = data["entry"].copy()
+                        if current_price is not None:
+                            entry_data["close"] = current_price
+                        trade = self.planner.create(status, entry_data)
+                        if trade is None:
+                            status = "WAIT"
+                            reasons.insert(0, "Net reward/risk is too low after costs")
                 candidates.append(
                     AdvisoryCandidate(
                         symbol=symbol,
                         status=status,
                         score=signal.score,
-                        price=(
-                            context.mark_price
-                            if context is not None and context.mark_price is not None
-                            else self._float_or_none(data["entry"].get("close"))
-                        ),
+                        price=current_price,
                         trade=trade,
                         reasons=tuple(reasons),
                         derivatives=context,
                         risk=self._risk_label(data["entry"].get("atr_pct")),
                         market_regime=self._market_regime(data.get("trend", {})),
+                        setup_price=setup_price,
+                        entry_deviation_pct=entry_deviation_pct,
+                        expires_at=(
+                            local_now + timedelta(minutes=ADVISORY_SIGNAL_TTL_MINUTES)
+                            if trade is not None
+                            else None
+                        ),
+                        order_book=order_book,
                     )
                 )
                 self.progress(
@@ -240,6 +276,68 @@ class EntryAdvisoryService:
             ValueError,
         ):
             return None
+
+    def _load_order_book(self, symbol: str) -> dict | None:
+        try:
+            quality = self.context_client.get_futures_order_book_quality(
+                symbol,
+                limit=ADVISORY_ORDER_BOOK_LEVELS,
+            )
+            return quality if isinstance(quality, dict) else None
+        except (
+            ccxt.NetworkError,
+            ccxt.ExchangeError,
+            AttributeError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+    @staticmethod
+    def _entry_deviation_pct(
+        setup_price: float | None,
+        current_price: float | None,
+    ) -> float | None:
+        if setup_price in {None, 0.0} or current_price is None:
+            return None
+        return abs(current_price / setup_price - 1) * 100
+
+    @staticmethod
+    def _entry_deviation_failure(
+        setup_price: float | None,
+        current_price: float | None,
+        atr,
+    ) -> str | None:
+        if setup_price is None or current_price is None or atr is None:
+            return None
+        maximum = float(atr) * ADVISORY_MAX_ENTRY_DEVIATION_ATR
+        if abs(current_price - setup_price) > maximum:
+            return "Mark price moved too far from the completed setup candle"
+        return None
+
+    @staticmethod
+    def _order_book_failure(direction: str, quality: dict | None) -> str | None:
+        if quality is None:
+            return None
+        spread = quality.get("spread_bps")
+        if spread is not None and float(spread) > ADVISORY_MAX_BOOK_SPREAD_BPS:
+            return "Current futures spread is too wide"
+        depth = quality.get("total_depth_usdt")
+        if depth is not None and float(depth) < ADVISORY_MIN_BOOK_DEPTH_USDT:
+            return "Current futures order-book depth is too low"
+        imbalance = quality.get("imbalance")
+        if imbalance is not None:
+            opposing = (
+                direction == "LONG"
+                and float(imbalance) < -ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE
+            ) or (
+                direction == "SHORT"
+                and float(imbalance) > ADVISORY_MAX_OPPOSING_BOOK_IMBALANCE
+            )
+            if opposing:
+                return "Current order-book imbalance opposes the setup"
+        return None
 
     @staticmethod
     def _risk_label(atr_pct) -> str:
