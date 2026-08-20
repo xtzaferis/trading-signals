@@ -93,6 +93,21 @@ def test_force_scans_outside_session_without_changing_actual_window():
     outcome_tracker.resolve_open.assert_not_called()
 
 
+def test_scan_reports_when_no_futures_markets_are_eligible():
+    scanner = Mock()
+    scanner.get_top_futures_pairs.return_value = []
+    report = EntryAdvisoryService(
+        scanner=scanner,
+        journal=Mock(),
+        outcome_tracker=Mock(),
+    ).scan(datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc))
+
+    assert report.candidates == ()
+    assert report.errors == (
+        "Market scan returned no eligible Binance USD-M futures markets.",
+    )
+
+
 def test_scan_reports_progress_for_each_coin():
     scanner = Mock()
     scanner.get_top_futures_pairs.return_value = ["BTC/EUR"]

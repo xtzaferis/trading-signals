@@ -147,6 +147,11 @@ class EntryAdvisoryService:
                 errors=(f"Market scan failed: {error}",),
             )
 
+        if not symbols:
+            errors.append(
+                "Market scan returned no eligible Binance USD-M futures markets."
+            )
+
         for index, symbol in enumerate(symbols, start=1):
             self.progress(
                 f"[{index}/{len(symbols)}] Loading {symbol} indicators "

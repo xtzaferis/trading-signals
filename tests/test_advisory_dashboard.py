@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from unittest.mock import Mock
 
-from app.advisory.dashboard import DashboardApplication, report_to_dict
+from app.advisory.dashboard import HTML_PATH, DashboardApplication, report_to_dict
 from app.advisory.derivatives_context import DerivativesContext
 from app.advisory.planner import AdvisoryLevels
 from app.advisory.service import AdvisoryCandidate, AdvisoryReport
@@ -47,6 +47,26 @@ def test_dashboard_serializes_signal_report_for_browser():
     assert payload["candidates"][0]["derivatives"]["label"] == "BEARISH"
     assert payload["calibration"]["overall"]["sample"] == 4
     assert "expires_at" in payload["candidates"][0]
+
+
+def test_dashboard_serializes_scan_errors_for_browser():
+    report = AdvisoryReport(
+        generated_at=datetime(2026, 8, 19, 15, tzinfo=timezone.utc),
+        window_open=True,
+        errors=("Market scan failed",),
+    )
+
+    payload = report_to_dict(report, 1.0)
+
+    assert payload["errors"] == ["Market scan failed"]
+    assert payload["summary"]["shortlisted"] == 0
+
+
+def test_dashboard_has_visible_scan_error_container():
+    html = HTML_PATH.read_text(encoding="utf-8")
+
+    assert 'id="errors"' in html
+    assert "Market scan warning" in html
 
 
 def test_dashboard_application_passes_force_to_read_only_service():

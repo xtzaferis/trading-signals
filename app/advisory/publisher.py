@@ -26,7 +26,10 @@ def publish(
 
     shutil.copyfile(HTML_PATH, site_dir / "index.html")
     repository.export_public_history(history_path)
-    if not report.candidates:
+    # Preserve the last useful snapshot outside the configured window. During
+    # the session, publish empty/error reports so the dashboard never mistakes
+    # a failed market scan for a stale successful deployment.
+    if not report.window_open and not report.forced:
         return False
     payload = report_to_dict(report, duration)
     payload["performance"] = repository.statistics()

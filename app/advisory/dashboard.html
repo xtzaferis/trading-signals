@@ -24,6 +24,9 @@
     .status { min-height:54px; display:flex; align-items:center; gap:11px; color:var(--muted); padding:16px 3px; }
     .spinner { width:18px; height:18px; border:2px solid #28445d; border-top-color:var(--cyan); border-radius:50%; animation:spin .8s linear infinite; display:none; }
     .loading .spinner { display:block; } @keyframes spin { to { transform:rotate(360deg); } }
+    .errors { margin:0 0 20px; border:1px solid #743849; background:#2a1320; color:#ffc2cc; border-radius:16px; padding:15px 18px; font-size:.84rem; line-height:1.55; }
+    .errors strong { display:block; margin-bottom:5px; color:#ffe8ec; }
+    .errors ul { margin:0; padding-left:18px; }
     .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:4px 0 24px; }
     .metric { border:1px solid var(--line); background:rgba(13,27,45,.75); border-radius:16px; padding:16px; }
     .metric span { color:var(--muted); font-size:.74rem; text-transform:uppercase; letter-spacing:.1em; }
@@ -61,6 +64,7 @@
       <div class="actions"><label id="force-label"><input id="force" type="checkbox"> Test outside 17:00–19:00</label><button id="scan">Get signals</button></div>
     </section>
     <div id="status" class="status"><span class="spinner"></span><span>Ready. No market data has been requested yet.</span></div>
+    <div id="errors" class="errors" hidden></div>
     <section id="content" hidden>
       <div id="summary" class="summary"></div>
       <div class="section-head"><h2>Top actionable setups</h2><p>Maximum two · candle gates and cost-aware R:R passed</p></div>
@@ -71,7 +75,7 @@
     </section>
   </main>
   <script>
-    const button=document.querySelector('#scan'), statusBox=document.querySelector('#status'), content=document.querySelector('#content');
+    const button=document.querySelector('#scan'), statusBox=document.querySelector('#status'), content=document.querySelector('#content'), errorsBox=document.querySelector('#errors');
     let latestSnapshot=null;
     const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const num=v=>v==null?'—':Math.abs(v)>=1000?Number(v).toLocaleString(undefined,{maximumFractionDigits:2}):Number(v).toLocaleString(undefined,{maximumSignificantDigits:7});
@@ -82,10 +86,14 @@
       latestSnapshot=data;
       content.hidden=false;
       const s=data.summary;
+      const errors=Array.isArray(data.errors)?data.errors:[];
+      errorsBox.hidden=!errors.length;
+      errorsBox.innerHTML=errors.length?`<strong>Market scan warning</strong><ul>${errors.map(error=>`<li>${esc(error)}</li>`).join('')}</ul>`:'';
       document.querySelector('#summary').innerHTML=[['Qualified',s.shortlisted],['Long',s.long],['Short',s.short],['Wait',s.wait]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
       const picks=data.candidates.filter(c=>c.shortlisted&&!expired(c));
       document.querySelector('#picks').innerHTML=picks.length?picks.map(c=>`<article class="pick ${esc(c.status)}"><div class="pick-top"><div><div class="pair">${esc(c.symbol)}</div><div class="reason">${esc(c.reasons[0])} · valid until ${new Date(c.expires_at).toLocaleTimeString()}</div></div><span class="badge ${esc(c.status)}">${esc(c.status)}</span></div><div class="levels"><div><small>Entry</small><b>${num(c.trade?.entry)}</b></div><div><small>Stop</small><b>${num(c.trade?.stop_loss)}</b></div><div><small>Target</small><b>${num(c.trade?.take_profit)}</b></div><div><small>Net R:R</small><b>${num(c.trade?.net_risk_reward)}</b></div></div></article>`).join(''):'<div class="empty">No current, fully confirmed setup. Signals may have expired; do not force a trade.</div>';
       document.querySelector('#list').innerHTML=data.candidates.map((c,i)=>{const state=expired(c)?'EXPIRED':c.status;return `<article class="row"><span class="rank">${i+1}</span><div><div class="pairline"><b>${esc(c.symbol)}</b><span class="badge ${esc(state)}">${esc(state)}</span></div><div class="reason">${esc(c.reasons[0])}</div></div><span class="risk risk-${esc(c.risk)}">${esc(c.risk)}</span><span class="score">${c.score}</span><span class="price">${num(c.price)}</span><span class="pressure ${pressure(c)==='BULLISH'?'positive':pressure(c)==='BEARISH'?'negative':''}">${esc(pressure(c))} pressure</span><span class="reason">${c.order_book?`Book ${num(c.order_book.spread_bps)} bps · Δ ${num(c.entry_deviation_pct)}%`:c.derivatives?`OI ${num(c.derivatives.open_interest_change_pct)}% · Taker ${num(c.derivatives.taker_buy_sell_ratio)}`:'Positioning unavailable'}</span></article>`}).join('');
+      if(!data.candidates.length)document.querySelector('#list').innerHTML='<div class="empty">No markets were evaluated in this scan. Review the warning above before trying again.</div>';
       const mode=data.forced&&!data.window_open?' · outside session test':'';
       const calibration=data.calibration?.overall;
       const evidence=calibration?.sample
@@ -97,6 +105,7 @@
     if(staticMode){document.querySelector('#force-label').hidden=true;button.textContent='Refresh published signals'}
     button.addEventListener('click',async()=>{
       button.disabled=true;content.hidden=true;
+      errorsBox.hidden=true;
       setStatus(staticMode?'Loading the latest publication…':'Scanning 15 markets across five candle periods and futures positioning…',true);
       try{
         const response=staticMode

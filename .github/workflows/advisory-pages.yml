@@ -2,7 +2,8 @@ name: Publish read-only advisory dashboard
 
 on:
   schedule:
-    - cron: "*/15 17-18 * * *"
+    # Avoid the busiest round-minute GitHub Actions scheduling windows.
+    - cron: "7,22,37,52 17-18 * * *"
       timezone: "Europe/Athens"
   workflow_dispatch:
 
