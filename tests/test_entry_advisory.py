@@ -35,11 +35,13 @@ def test_signal_expiry_is_capped_at_session_close():
     assert expiry == datetime(2026, 8, 18, 19, 0, tzinfo=service.timezone)
 
 
-def test_forced_outside_session_signal_is_immediately_expired():
+def test_forced_outside_session_signal_has_diagnostic_ttl():
     service = EntryAdvisoryService(scanner=Mock())
     local_time = datetime(2026, 8, 18, 20, 0, tzinfo=service.timezone)
 
-    assert service._signal_expiry(local_time, window_open=False) == local_time
+    assert service._signal_expiry(local_time, window_open=False) == datetime(
+        2026, 8, 18, 20, 10, tzinfo=service.timezone
+    )
 
 
 def test_directional_entry_ranks_before_higher_scoring_wait():

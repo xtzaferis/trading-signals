@@ -81,6 +81,9 @@ def test_hosted_dashboard_refreshes_publication_and_excludes_expired_counts():
     assert "['Expired',expiredCount]" in html
     assert "data.generated_at!==latestSnapshot?.generated_at" in html
     assert "SESSION CLOSED" in html
+    assert "OUTSIDE SESSION TEST" in html
+    assert "Top diagnostic setups" in html
+    assert "TEST ONLY" in html
     assert "!sessionIsOpen(data)" in html
     assert "timezone:'Europe/Athens',start_hour:17,end_hour:19" in html
     assert 'id="refresh-status"' in html

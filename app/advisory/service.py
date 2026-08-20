@@ -270,9 +270,12 @@ class EntryAdvisoryService:
         return value.astimezone(self.timezone)
 
     def _signal_expiry(self, local_now: datetime, window_open: bool) -> datetime:
-        if not window_open:
-            return local_now
         ttl_expiry = local_now + timedelta(minutes=ADVISORY_SIGNAL_TTL_MINUTES)
+        # Forced scans outside the session are diagnostic snapshots. Give the
+        # local dashboard enough time to display them; the UI still labels
+        # them TEST ONLY and never treats them as actionable.
+        if not window_open:
+            return ttl_expiry
         if self.end_hour == 24:
             session_close = local_now.replace(
                 hour=0, minute=0, second=0, microsecond=0
