@@ -32,7 +32,7 @@ jobs:
           PAGES_BASE: https://xtzaferis.github.io/trading-signals
         run: |
           mkdir -p site
-          curl --fail --silent --show-error "$PAGES_BASE/advisory-history.json" -o site/advisory-history.json || true
+          curl --fail --silent --show-error "$PAGES_BASE/advisory-history-kraken.json" -o site/advisory-history-kraken.json || true
           curl --fail --silent --show-error "$PAGES_BASE/signals.json" -o site/signals.json || true
       - name: Generate in-session signals
         run: python -m app.advisory.publisher

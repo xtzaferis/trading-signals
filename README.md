@@ -62,11 +62,11 @@ Do not set `LIVE_TRADING_ENABLED=true` yet.
 
 ## Read-only futures entry advisory
 
-The advisory command uses Binance's unauthenticated public APIs and ranks up
-to fifteen liquid USDT coins, including a broader group of more volatile
-altcoins. USD-M futures quote volume, spread, and contract age select the
-tradeable universe; all indicators and planned levels use completed Binance
-USD-M futures candles and the current mark price.
+The advisory command uses Kraken Futures' unauthenticated public APIs and
+ranks up to fifteen liquid USD perpetuals, including a broader group of more
+volatile altcoins. Futures quote volume, spread, and contract age select the
+tradeable universe; all indicators and planned levels use completed Kraken
+trade candles and the current mark price.
 Daily and 4-hour candles provide market
 context, while aligned 1-hour, 15-minute and 5-minute candles trigger a
 `LONG`, `SHORT`, or `WAIT` result. It also displays a derivatives-pressure
@@ -102,7 +102,7 @@ server binds only to the local computer by default and contains no order route.
 ### Free GitHub Pages publication
 
 The `advisory-pages.yml` workflow runs in the public `trading-signals`
-repository every 15 minutes from 17:00 through 18:45 in the
+repository at 17:07, 17:22, 17:37, 17:52, 18:07, 18:22, 18:37, and 18:52 in the
 `Europe/Athens` timezone. Under **Settings → Pages**,
 set the source to **GitHub Actions**, then manually rerun the workflow once.
 No deployment token or API key is required. The dashboard URL is:
@@ -138,7 +138,8 @@ SETUPS`; the section can legitimately be empty when no setup passes every gate.
 The second setup is skipped when its last 96 hourly returns imply at least 0.80
 effective correlation with the first setup in the proposed trade directions.
 
-Every scan is journaled locally in `data/trading.db`. On later scans, completed
+Every scan is journaled locally in `data/trading-advisory-kraken.db`. On later
+scans, completed
 five-minute futures candles resolve open observations as `TARGET`, `STOP`, or
 `TIMEOUT`; same-candle stop/target ambiguity is conservatively counted as a
 stop. View forward results with:
@@ -156,10 +157,10 @@ It also records realized funding, maximum favorable and adverse excursion,
 time to exit, and available 15-minute, 1-hour, 4-hour, and 24-hour directional
 returns.
 
-Run a candle replay for an individual USD-M futures symbol with:
+Run a candle replay for an individual Kraken USD perpetual with:
 
 ```powershell
-.\.venv\Scripts\python.exe -m app.advisory.backtest_main --symbol BTC/USDT --days 90 --validation-windows 3
+.\.venv\Scripts\python.exe -m app.advisory.backtest_main --symbol BTC/USD --days 90 --validation-windows 3
 ```
 
 The replay uses the same candle signal and level planner, includes fees,
@@ -178,14 +179,14 @@ Optional `.env` settings:
 ADVISORY_TOP_COINS=15
 ADVISORY_MAX_SIGNALS=2
 ADVISORY_MAX_CORRELATION=0.80
-ADVISORY_DATA_SOURCE=binance
-ADVISORY_QUOTE_CURRENCY=USDT
+ADVISORY_DATA_SOURCE=kraken
+ADVISORY_QUOTE_CURRENCY=USD
 ADVISORY_TIMEZONE=Europe/Athens
 ADVISORY_START_HOUR=17
 ADVISORY_END_HOUR=19
 ADVISORY_FUTURES_FEE=0.0005
 ADVISORY_FUTURES_SLIPPAGE=0.0005
-ADVISORY_MIN_FUTURES_QUOTE_VOLUME=10000000
+ADVISORY_MIN_FUTURES_QUOTE_VOLUME=1000000
 ADVISORY_MAX_FUTURES_SPREAD_BPS=10
 ADVISORY_MIN_CONTRACT_AGE_DAYS=30
 ADVISORY_SIGNAL_TTL_MINUTES=10

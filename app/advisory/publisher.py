@@ -5,6 +5,7 @@ from time import monotonic
 
 from app.advisory.dashboard import HTML_PATH, report_to_dict
 from app.advisory.service import EntryAdvisoryService
+from app.config.settings import ADVISORY_DATA_SOURCE
 from app.storage.advisory_signal_repository import AdvisorySignalRepository
 
 SITE_DIR = Path("site")
@@ -16,7 +17,7 @@ def publish(
     service=None,
 ) -> bool:
     site_dir.mkdir(parents=True, exist_ok=True)
-    history_path = site_dir / "advisory-history.json"
+    history_path = site_dir / f"advisory-history-{ADVISORY_DATA_SOURCE}.json"
     repository = repository or AdvisorySignalRepository()
     repository.import_public_history(history_path)
     service = service or EntryAdvisoryService(journal=repository)

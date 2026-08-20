@@ -104,7 +104,7 @@ def test_scan_reports_when_no_futures_markets_are_eligible():
 
     assert report.candidates == ()
     assert report.errors == (
-        "Market scan returned no eligible Binance USD-M futures markets.",
+        "Market scan returned no eligible Kraken futures markets.",
     )
 
 
@@ -127,7 +127,7 @@ def test_scan_reports_progress_for_each_coin():
 
     service.scan(datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc))
 
-    assert messages[0].startswith("Loading Binance")
+    assert messages[0].startswith("Loading Kraken")
     assert "[1/1] Loading BTC/EUR" in messages[1]
     assert messages[2] == "[1/1] BTC/EUR: WAIT score=50"
 

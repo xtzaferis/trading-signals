@@ -2,6 +2,7 @@ import argparse
 
 from app.advisory.service import EntryAdvisoryService
 from app.config.settings import (
+    ADVISORY_DATA_SOURCE,
     ADVISORY_END_HOUR,
     ADVISORY_START_HOUR,
     ADVISORY_TIMEZONE,
@@ -118,7 +119,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     print(
-        "Starting keyless Binance market-data scan...",
+        f"Starting keyless {ADVISORY_DATA_SOURCE.title()} market-data scan...",
         flush=True,
     )
     service = EntryAdvisoryService(progress=lambda message: print(message, flush=True))

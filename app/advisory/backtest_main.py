@@ -1,8 +1,9 @@
 import argparse
 from datetime import datetime, timedelta, timezone
 
+from app.advisory.market_data import create_advisory_market_data_client
 from app.advisory.replay import AdvisoryReplayEngine
-from app.exchange.binance_market_data_client import BinanceMarketDataClient
+from app.config.settings import ADVISORY_DATA_SOURCE, ADVISORY_QUOTE_CURRENCY
 
 WARMUP = {
     "1d": timedelta(days=250),
@@ -15,9 +16,9 @@ WARMUP = {
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Read-only Binance futures advisory replay"
+        description=f"Read-only {ADVISORY_DATA_SOURCE} futures advisory replay"
     )
-    parser.add_argument("--symbol", default="BTC/USDT")
+    parser.add_argument("--symbol", default=f"BTC/{ADVISORY_QUOTE_CURRENCY}")
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--validation-windows", type=int, default=3)
     args = parser.parse_args()
@@ -26,7 +27,7 @@ def main() -> None:
     if args.validation_windows <= 0:
         parser.error("--validation-windows must be positive")
 
-    client = BinanceMarketDataClient()
+    client = create_advisory_market_data_client()
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=args.days)
     candles = {}

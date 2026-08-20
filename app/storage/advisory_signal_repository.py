@@ -2,14 +2,17 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from app.storage.database import Database
+from app.config.settings import ADVISORY_DATA_SOURCE
+from app.storage.database import Database, mode_database_path
 
 
 class AdvisorySignalRepository:
     """Persist advisory observations locally; it has no exchange access."""
 
     def __init__(self, database: Database | None = None):
-        self.database = database or Database()
+        self.database = database or Database(
+            mode_database_path(f"advisory-{ADVISORY_DATA_SOURCE}")
+        )
 
     def save_report(self, report) -> None:
         shortlisted = {candidate.symbol for candidate in report.shortlist}

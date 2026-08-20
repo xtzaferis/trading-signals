@@ -9,9 +9,11 @@ import pandas as pd
 from app.advisory.correlation_selector import CorrelationAwareSelector
 from app.advisory.derivatives_context import DerivativesContext
 from app.advisory.directional_signal import DirectionalSignalEngine
+from app.advisory.market_data import create_advisory_market_data_client
 from app.advisory.outcome_tracker import AdvisoryOutcomeTracker
 from app.advisory.planner import AdvisoryLevels, FuturesAdvisoryPlanner
 from app.config.settings import (
+    ADVISORY_DATA_SOURCE,
     ADVISORY_END_HOUR,
     ADVISORY_MAX_BOOK_SPREAD_BPS,
     ADVISORY_MAX_CORRELATION,
@@ -31,7 +33,6 @@ from app.config.settings import (
     ADVISORY_TOP_COINS,
 )
 from app.data.data_service import DataService
-from app.exchange.binance_market_data_client import BinanceMarketDataClient
 from app.indicators.indicator_engine import IndicatorEngine
 from app.scanner.market_scanner import MarketScanner
 from app.storage.advisory_signal_repository import AdvisorySignalRepository
@@ -85,7 +86,7 @@ class EntryAdvisoryService:
         outcome_tracker=None,
         correlation_selector=None,
     ):
-        public_client = BinanceMarketDataClient()
+        public_client = create_advisory_market_data_client()
         self.scanner = scanner or MarketScanner(
             client=public_client,
             quote_currency=ADVISORY_QUOTE_CURRENCY,
@@ -131,7 +132,9 @@ class EntryAdvisoryService:
         candidates = []
         returns_by_symbol = {}
         errors = []
-        self.progress("Loading Binance USD-M futures liquidity and spreads...")
+        self.progress(
+            f"Loading {ADVISORY_DATA_SOURCE.title()} futures liquidity and spreads..."
+        )
         try:
             symbols = self.scanner.get_top_futures_pairs(
                 self.limit,
@@ -149,7 +152,8 @@ class EntryAdvisoryService:
 
         if not symbols:
             errors.append(
-                "Market scan returned no eligible Binance USD-M futures markets."
+                f"Market scan returned no eligible {ADVISORY_DATA_SOURCE.title()} "
+                "futures markets."
             )
 
         for index, symbol in enumerate(symbols, start=1):

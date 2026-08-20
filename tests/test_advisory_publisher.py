@@ -24,7 +24,7 @@ def test_publisher_creates_static_dashboard_and_signal_payload(tmp_path):
     payload = json.loads((site / "signals.json").read_text(encoding="utf-8"))
     assert payload["candidates"][0]["symbol"] == "BTC/USDT"
     assert (site / "index.html").exists()
-    assert (site / "advisory-history.json").exists()
+    assert (site / "advisory-history-kraken.json").exists()
 
 
 def test_publisher_preserves_previous_signals_outside_session(tmp_path):
