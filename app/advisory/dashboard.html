@@ -22,6 +22,7 @@
     button { border:0; border-radius:13px; padding:13px 20px; color:#031018; background:linear-gradient(135deg,var(--cyan),#7cf7d4); font-weight:900; cursor:pointer; box-shadow:0 8px 26px #2cd5ff35; transition:.18s transform,.18s opacity; }
     button:hover { transform:translateY(-2px); } button:disabled { opacity:.45; cursor:wait; transform:none; }
     .status { min-height:54px; display:flex; align-items:center; gap:11px; color:var(--muted); padding:16px 3px; }
+    .refresh-status { color:#6f8ca8; font-size:.76rem; margin:-11px 0 16px 32px; font-variant-numeric:tabular-nums; }
     .spinner { width:18px; height:18px; border:2px solid #28445d; border-top-color:var(--cyan); border-radius:50%; animation:spin .8s linear infinite; display:none; }
     .loading .spinner { display:block; } @keyframes spin { to { transform:rotate(360deg); } }
     .errors { margin:0 0 20px; border:1px solid #743849; background:#2a1320; color:#ffc2cc; border-radius:16px; padding:15px 18px; font-size:.84rem; line-height:1.55; }
@@ -64,6 +65,7 @@
       <div class="actions"><label id="force-label"><input id="force" type="checkbox"> Test outside 17:00–19:00</label><button id="scan">Get signals</button></div>
     </section>
     <div id="status" class="status"><span class="spinner"></span><span>Ready. No market data has been requested yet.</span></div>
+    <div id="refresh-status" class="refresh-status" hidden></div>
     <div id="errors" class="errors" hidden></div>
     <section id="content" hidden>
       <div id="summary" class="summary"></div>
@@ -75,8 +77,8 @@
     </section>
   </main>
   <script>
-    const button=document.querySelector('#scan'), statusBox=document.querySelector('#status'), content=document.querySelector('#content'), errorsBox=document.querySelector('#errors');
-    let latestSnapshot=null;
+    const button=document.querySelector('#scan'), statusBox=document.querySelector('#status'), refreshBox=document.querySelector('#refresh-status'), content=document.querySelector('#content'), errorsBox=document.querySelector('#errors');
+    let latestSnapshot=null, lastCheckedAt=null, nextRefreshAt=null;
     const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const num=v=>v==null?'—':Math.abs(v)>=1000?Number(v).toLocaleString(undefined,{maximumFractionDigits:2}):Number(v).toLocaleString(undefined,{maximumSignificantDigits:7});
     function setStatus(text,loading=false){statusBox.classList.toggle('loading',loading);statusBox.querySelector('span:last-child').textContent=text;}
@@ -104,6 +106,17 @@
     }
     const staticMode=location.hostname.endsWith('.github.io');
     if(staticMode){document.querySelector('#force-label').hidden=true;button.textContent='Refresh published signals'}
+    function markRefreshChecked(){
+      lastCheckedAt=new Date();
+      nextRefreshAt=Date.now()+60000;
+      refreshBox.hidden=false;
+      updateRefreshStatus();
+    }
+    function updateRefreshStatus(){
+      if(!staticMode||!lastCheckedAt)return;
+      const seconds=Math.max(0,Math.ceil((nextRefreshAt-Date.now())/1000));
+      refreshBox.textContent=`Last checked ${lastCheckedAt.toLocaleTimeString()} · next check in ${seconds}s`;
+    }
     button.addEventListener('click',async()=>{
       button.disabled=true;content.hidden=true;
       errorsBox.hidden=true;
@@ -116,7 +129,7 @@
         if(!response.ok)throw new Error(data.error||'Signal data is not available yet');
         if(!data.window_open&&!data.forced){setStatus('Trading window closed. Run between 17:00 and 19:00 Athens time, or enable test mode.');return}
         render(data)
-      }catch(error){setStatus(staticMode?'No published scan yet. The first one will appear after the 17:00 workflow runs.':error.message)}finally{button.disabled=false}
+      }catch(error){setStatus(staticMode?'No published scan yet. The first one will appear after the 17:00 workflow runs.':error.message)}finally{if(staticMode)markRefreshChecked();button.disabled=false}
     });
     if(staticMode)button.click();
     setInterval(async()=>{
@@ -127,7 +140,9 @@
         const data=await response.json();
         if(data.generated_at!==latestSnapshot?.generated_at)render(data);else if(latestSnapshot)render(latestSnapshot);
       }catch{/* Keep the last snapshot visible during a transient refresh failure. */}
+      finally{markRefreshChecked()}
     },60000);
+    setInterval(updateRefreshStatus,1000);
   </script>
 </body>
 </html>

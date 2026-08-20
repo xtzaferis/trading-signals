@@ -75,6 +75,9 @@ def test_hosted_dashboard_refreshes_publication_and_excludes_expired_counts():
     assert "data.candidates.filter(c=>!expired(c))" in html
     assert "['Expired',expiredCount]" in html
     assert "data.generated_at!==latestSnapshot?.generated_at" in html
+    assert 'id="refresh-status"' in html
+    assert "Last checked ${lastCheckedAt.toLocaleTimeString()}" in html
+    assert "setInterval(updateRefreshStatus,1000)" in html
 
 
 def test_dashboard_application_passes_force_to_read_only_service():
