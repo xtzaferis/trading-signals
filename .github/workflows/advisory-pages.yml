@@ -2,8 +2,9 @@ name: Publish read-only advisory dashboard
 
 on:
   schedule:
-    # Avoid the busiest round-minute GitHub Actions scheduling windows.
-    - cron: "7,22,37,52 17-18 * * *"
+    # Redundant five-minute cadence reduces the impact of delayed/dropped
+    # GitHub schedule events while avoiding the busiest top-of-hour minute.
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 17-18 * * *"
       timezone: "Europe/Athens"
   workflow_dispatch:
 

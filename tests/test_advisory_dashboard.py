@@ -69,6 +69,14 @@ def test_dashboard_has_visible_scan_error_container():
     assert "Market scan warning" in html
 
 
+def test_hosted_dashboard_refreshes_publication_and_excludes_expired_counts():
+    html = HTML_PATH.read_text(encoding="utf-8")
+
+    assert "data.candidates.filter(c=>!expired(c))" in html
+    assert "['Expired',expiredCount]" in html
+    assert "data.generated_at!==latestSnapshot?.generated_at" in html
+
+
 def test_dashboard_application_passes_force_to_read_only_service():
     service = Mock()
     service.scan.return_value = sample_report()

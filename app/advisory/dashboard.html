@@ -85,11 +85,12 @@
     function render(data){
       latestSnapshot=data;
       content.hidden=false;
-      const s=data.summary;
+      const current=data.candidates.filter(c=>!expired(c));
+      const expiredCount=data.candidates.length-current.length;
       const errors=Array.isArray(data.errors)?data.errors:[];
       errorsBox.hidden=!errors.length;
       errorsBox.innerHTML=errors.length?`<strong>Market scan warning</strong><ul>${errors.map(error=>`<li>${esc(error)}</li>`).join('')}</ul>`:'';
-      document.querySelector('#summary').innerHTML=[['Qualified',s.shortlisted],['Long',s.long],['Short',s.short],['Wait',s.wait]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
+      document.querySelector('#summary').innerHTML=[['Qualified',current.filter(c=>c.shortlisted).length],['Long',current.filter(c=>c.status==='LONG').length],['Short',current.filter(c=>c.status==='SHORT').length],['Expired',expiredCount]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
       const picks=data.candidates.filter(c=>c.shortlisted&&!expired(c));
       document.querySelector('#picks').innerHTML=picks.length?picks.map(c=>`<article class="pick ${esc(c.status)}"><div class="pick-top"><div><div class="pair">${esc(c.symbol)}</div><div class="reason">${esc(c.reasons[0])} · valid until ${new Date(c.expires_at).toLocaleTimeString()}</div></div><span class="badge ${esc(c.status)}">${esc(c.status)}</span></div><div class="levels"><div><small>Entry</small><b>${num(c.trade?.entry)}</b></div><div><small>Stop</small><b>${num(c.trade?.stop_loss)}</b></div><div><small>Target</small><b>${num(c.trade?.take_profit)}</b></div><div><small>Net R:R</small><b>${num(c.trade?.net_risk_reward)}</b></div></div></article>`).join(''):'<div class="empty">No current, fully confirmed setup. Signals may have expired; do not force a trade.</div>';
       document.querySelector('#list').innerHTML=data.candidates.map((c,i)=>{const state=expired(c)?'EXPIRED':c.status;return `<article class="row"><span class="rank">${i+1}</span><div><div class="pairline"><b>${esc(c.symbol)}</b><span class="badge ${esc(state)}">${esc(state)}</span></div><div class="reason">${esc(c.reasons[0])}</div></div><span class="risk risk-${esc(c.risk)}">${esc(c.risk)}</span><span class="score">${c.score}</span><span class="price">${num(c.price)}</span><span class="pressure ${pressure(c)==='BULLISH'?'positive':pressure(c)==='BEARISH'?'negative':''}">${esc(pressure(c))} pressure</span><span class="reason">${c.order_book?`Book ${num(c.order_book.spread_bps)} bps · Δ ${num(c.entry_deviation_pct)}%`:c.derivatives?`OI ${num(c.derivatives.open_interest_change_pct)}% · Taker ${num(c.derivatives.taker_buy_sell_ratio)}`:'Positioning unavailable'}</span></article>`}).join('');
@@ -118,7 +119,15 @@
       }catch(error){setStatus(staticMode?'No published scan yet. The first one will appear after the 17:00 workflow runs.':error.message)}finally{button.disabled=false}
     });
     if(staticMode)button.click();
-    setInterval(()=>{if(latestSnapshot)render(latestSnapshot)},30000);
+    setInterval(async()=>{
+      if(!staticMode){if(latestSnapshot)render(latestSnapshot);return}
+      try{
+        const response=await fetch(`signals.json?t=${Date.now()}`,{cache:'no-store'});
+        if(!response.ok)return;
+        const data=await response.json();
+        if(data.generated_at!==latestSnapshot?.generated_at)render(data);else if(latestSnapshot)render(latestSnapshot);
+      }catch{/* Keep the last snapshot visible during a transient refresh failure. */}
+    },60000);
   </script>
 </body>
 </html>

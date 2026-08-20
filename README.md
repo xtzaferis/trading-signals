@@ -101,9 +101,10 @@ server binds only to the local computer by default and contains no order route.
 
 ### Free GitHub Pages publication
 
-The `advisory-pages.yml` workflow runs in the public `trading-signals`
-repository at 17:07, 17:22, 17:37, 17:52, 18:07, 18:22, 18:37, and 18:52 in the
-`Europe/Athens` timezone. Under **Settings → Pages**,
+The `advisory-pages.yml` workflow requests a scan every five minutes from
+17:02 through 18:57 in the `Europe/Athens` timezone. The redundant cadence
+reduces the effect of delayed or dropped GitHub schedule events. Under
+**Settings → Pages**,
 set the source to **GitHub Actions**, then manually rerun the workflow once.
 No deployment token or API key is required. The dashboard URL is:
 
@@ -115,7 +116,8 @@ The workflow restores the previously published observation history, resolves
 older entries, performs the current scan, and republishes both the dashboard
 and public signal history. It never uploads `.env`, `data/trading.db`, or API
 credentials. Manual workflow runs outside the configured session preserve the
-last genuine signal publication.
+last genuine signal publication. An open hosted dashboard checks for a newer
+published snapshot once per minute; it does not itself trigger scans.
 
 A `LONG` or `SHORT` row has passed its short-term directional gates and a conservative
 fee-aware net reward/risk check. A `WAIT` row is informational and is not an
