@@ -216,7 +216,7 @@ class EntryAdvisoryService:
                         setup_price=setup_price,
                         entry_deviation_pct=entry_deviation_pct,
                         expires_at=(
-                            local_now + timedelta(minutes=ADVISORY_SIGNAL_TTL_MINUTES)
+                            self._signal_expiry(local_now, window_open)
                             if trade is not None
                             else None
                         ),
@@ -268,6 +268,20 @@ class EntryAdvisoryService:
         if value.tzinfo is None:
             raise ValueError("Advisory timestamps must be timezone-aware.")
         return value.astimezone(self.timezone)
+
+    def _signal_expiry(self, local_now: datetime, window_open: bool) -> datetime:
+        if not window_open:
+            return local_now
+        ttl_expiry = local_now + timedelta(minutes=ADVISORY_SIGNAL_TTL_MINUTES)
+        if self.end_hour == 24:
+            session_close = local_now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + timedelta(days=1)
+        else:
+            session_close = local_now.replace(
+                hour=self.end_hour, minute=0, second=0, microsecond=0
+            )
+        return min(ttl_expiry, session_close)
 
     @staticmethod
     def _float_or_none(value) -> float | None:

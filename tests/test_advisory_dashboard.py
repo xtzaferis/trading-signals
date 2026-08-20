@@ -42,6 +42,11 @@ def test_dashboard_serializes_signal_report_for_browser():
         "shortlisted": 1,
     }
     assert payload["duration_seconds"] == 12.3
+    assert payload["session"] == {
+        "timezone": "Europe/Athens",
+        "start_hour": 17,
+        "end_hour": 19,
+    }
     assert payload["candidates"][0]["shortlisted"] is True
     assert payload["candidates"][0]["trade"]["stop_loss"] == 6.37
     assert payload["candidates"][0]["derivatives"]["label"] == "BEARISH"
@@ -72,9 +77,12 @@ def test_dashboard_has_visible_scan_error_container():
 def test_hosted_dashboard_refreshes_publication_and_excludes_expired_counts():
     html = HTML_PATH.read_text(encoding="utf-8")
 
-    assert "data.candidates.filter(c=>!expired(c))" in html
+    assert "data.candidates.filter(c=>!expired(c,data))" in html
     assert "['Expired',expiredCount]" in html
     assert "data.generated_at!==latestSnapshot?.generated_at" in html
+    assert "SESSION CLOSED" in html
+    assert "!sessionIsOpen(data)" in html
+    assert "timezone:'Europe/Athens',start_hour:17,end_hour:19" in html
     assert 'id="refresh-status"' in html
     assert "Last checked ${lastCheckedAt.toLocaleTimeString()}" in html
     assert "setInterval(updateRefreshStatus,1000)" in html

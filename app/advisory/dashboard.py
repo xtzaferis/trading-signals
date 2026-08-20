@@ -9,7 +9,12 @@ from time import monotonic
 from urllib.parse import urlparse
 
 from app.advisory.service import AdvisoryReport, EntryAdvisoryService
-from app.config.settings import ADVISORY_DATA_SOURCE
+from app.config.settings import (
+    ADVISORY_DATA_SOURCE,
+    ADVISORY_END_HOUR,
+    ADVISORY_START_HOUR,
+    ADVISORY_TIMEZONE,
+)
 
 HTML_PATH = Path(__file__).with_name("dashboard.html")
 
@@ -51,6 +56,11 @@ def report_to_dict(report: AdvisoryReport, duration_seconds: float) -> dict:
         "generated_at": report.generated_at.isoformat(),
         "window_open": report.window_open,
         "forced": report.forced,
+        "session": {
+            "timezone": ADVISORY_TIMEZONE,
+            "start_hour": ADVISORY_START_HOUR,
+            "end_hour": ADVISORY_END_HOUR,
+        },
         "duration_seconds": round(duration_seconds, 1),
         "candidates": candidates,
         "errors": list(report.errors),

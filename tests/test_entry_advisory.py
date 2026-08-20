@@ -26,6 +26,22 @@ def test_advisory_session_is_athens_1700_until_1900():
     assert not service.is_window_open(datetime(2026, 8, 18, 16, 0, tzinfo=timezone.utc))
 
 
+def test_signal_expiry_is_capped_at_session_close():
+    service = EntryAdvisoryService(scanner=Mock())
+    local_time = datetime(2026, 8, 18, 18, 57, tzinfo=service.timezone)
+
+    expiry = service._signal_expiry(local_time, window_open=True)
+
+    assert expiry == datetime(2026, 8, 18, 19, 0, tzinfo=service.timezone)
+
+
+def test_forced_outside_session_signal_is_immediately_expired():
+    service = EntryAdvisoryService(scanner=Mock())
+    local_time = datetime(2026, 8, 18, 20, 0, tzinfo=service.timezone)
+
+    assert service._signal_expiry(local_time, window_open=False) == local_time
+
+
 def test_directional_entry_ranks_before_higher_scoring_wait():
     scanner = Mock()
     scanner.get_top_futures_pairs.return_value = ["BTC/EUR", "ETH/EUR"]

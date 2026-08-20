@@ -83,26 +83,36 @@
     const num=v=>v==null?'—':Math.abs(v)>=1000?Number(v).toLocaleString(undefined,{maximumFractionDigits:2}):Number(v).toLocaleString(undefined,{maximumSignificantDigits:7});
     function setStatus(text,loading=false){statusBox.classList.toggle('loading',loading);statusBox.querySelector('span:last-child').textContent=text;}
     function pressure(c){return c.derivatives?.label||'UNAVAILABLE'}
-    const expired=c=>Boolean(c.expires_at&&Date.now()>=new Date(c.expires_at).getTime());
+    function sessionIsOpen(data){
+      const session=data?.session||{timezone:'Europe/Athens',start_hour:17,end_hour:19};
+      try{
+        const hour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:session.timezone,hour:'2-digit',hourCycle:'h23'}).format(new Date()));
+        return hour>=session.start_hour&&hour<session.end_hour;
+      }catch{return false}
+    }
+    const expired=(c,data)=>Boolean(!sessionIsOpen(data)||(c.expires_at&&Date.now()>=new Date(c.expires_at).getTime()));
     function render(data){
       latestSnapshot=data;
       content.hidden=false;
-      const current=data.candidates.filter(c=>!expired(c));
+      const sessionClosed=!sessionIsOpen(data);
+      const current=data.candidates.filter(c=>!expired(c,data));
       const expiredCount=data.candidates.length-current.length;
       const errors=Array.isArray(data.errors)?data.errors:[];
       errorsBox.hidden=!errors.length;
       errorsBox.innerHTML=errors.length?`<strong>Market scan warning</strong><ul>${errors.map(error=>`<li>${esc(error)}</li>`).join('')}</ul>`:'';
       document.querySelector('#summary').innerHTML=[['Qualified',current.filter(c=>c.shortlisted).length],['Long',current.filter(c=>c.status==='LONG').length],['Short',current.filter(c=>c.status==='SHORT').length],['Expired',expiredCount]].map(x=>`<div class="metric"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
-      const picks=data.candidates.filter(c=>c.shortlisted&&!expired(c));
+      const picks=data.candidates.filter(c=>c.shortlisted&&!expired(c,data));
       document.querySelector('#picks').innerHTML=picks.length?picks.map(c=>`<article class="pick ${esc(c.status)}"><div class="pick-top"><div><div class="pair">${esc(c.symbol)}</div><div class="reason">${esc(c.reasons[0])} · valid until ${new Date(c.expires_at).toLocaleTimeString()}</div></div><span class="badge ${esc(c.status)}">${esc(c.status)}</span></div><div class="levels"><div><small>Entry</small><b>${num(c.trade?.entry)}</b></div><div><small>Stop</small><b>${num(c.trade?.stop_loss)}</b></div><div><small>Target</small><b>${num(c.trade?.take_profit)}</b></div><div><small>Net R:R</small><b>${num(c.trade?.net_risk_reward)}</b></div></div></article>`).join(''):'<div class="empty">No current, fully confirmed setup. Signals may have expired; do not force a trade.</div>';
-      document.querySelector('#list').innerHTML=data.candidates.map((c,i)=>{const state=expired(c)?'EXPIRED':c.status;return `<article class="row"><span class="rank">${i+1}</span><div><div class="pairline"><b>${esc(c.symbol)}</b><span class="badge ${esc(state)}">${esc(state)}</span></div><div class="reason">${esc(c.reasons[0])}</div></div><span class="risk risk-${esc(c.risk)}">${esc(c.risk)}</span><span class="score">${c.score}</span><span class="price">${num(c.price)}</span><span class="pressure ${pressure(c)==='BULLISH'?'positive':pressure(c)==='BEARISH'?'negative':''}">${esc(pressure(c))} pressure</span><span class="reason">${c.order_book?`Book ${num(c.order_book.spread_bps)} bps · Δ ${num(c.entry_deviation_pct)}%`:c.derivatives?`OI ${num(c.derivatives.open_interest_change_pct)}% · Taker ${num(c.derivatives.taker_buy_sell_ratio)}`:'Positioning unavailable'}</span></article>`}).join('');
+      document.querySelector('#list').innerHTML=data.candidates.map((c,i)=>{const state=expired(c,data)?'EXPIRED':c.status;return `<article class="row"><span class="rank">${i+1}</span><div><div class="pairline"><b>${esc(c.symbol)}</b><span class="badge ${esc(state)}">${esc(state)}</span></div><div class="reason">${esc(c.reasons[0])}</div></div><span class="risk risk-${esc(c.risk)}">${esc(c.risk)}</span><span class="score">${c.score}</span><span class="price">${num(c.price)}</span><span class="pressure ${pressure(c)==='BULLISH'?'positive':pressure(c)==='BEARISH'?'negative':''}">${esc(pressure(c))} pressure</span><span class="reason">${c.order_book?`Book ${num(c.order_book.spread_bps)} bps · Δ ${num(c.entry_deviation_pct)}%`:c.derivatives?`OI ${num(c.derivatives.open_interest_change_pct)}% · Taker ${num(c.derivatives.taker_buy_sell_ratio)}`:'Positioning unavailable'}</span></article>`}).join('');
       if(!data.candidates.length)document.querySelector('#list').innerHTML='<div class="empty">No markets were evaluated in this scan. Review the warning above before trying again.</div>';
       const mode=data.forced&&!data.window_open?' · outside session test':'';
       const calibration=data.calibration?.overall;
       const evidence=calibration?.sample
         ?` · forward sample ${calibration.sample}, target rate ${calibration.target_rate_pct}%${calibration.reliable?'':' (preliminary)'}`
         :' · awaiting forward-validation outcomes';
-      setStatus(`Updated ${new Date(data.generated_at).toLocaleString()} · ${data.duration_seconds}s${mode}${evidence}`);
+      setStatus(sessionClosed
+        ?`SESSION CLOSED · all signals are invalid until 17:00 ${data.session?.timezone||'Athens time'} · last scan ${new Date(data.generated_at).toLocaleString()}`
+        :`Updated ${new Date(data.generated_at).toLocaleString()} · ${data.duration_seconds}s${mode}${evidence}`);
     }
     const staticMode=location.hostname.endsWith('.github.io');
     if(staticMode){document.querySelector('#force-label').hidden=true;button.textContent='Refresh published signals'}
