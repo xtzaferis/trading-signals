@@ -17,6 +17,10 @@ assert.equal(status, 204);
 assert.match(request.url, /advisory-pages\.yml\/dispatches$/);
 assert.equal(request.options.method, "POST");
 assert.equal(request.options.headers.Authorization, "Bearer test-token");
+assert.equal(
+  request.options.headers["User-Agent"],
+  "trading-signals-scheduler/1.0",
+);
 assert.deepEqual(JSON.parse(request.options.body), { ref: "main" });
 
 console.log("Cloudflare scheduler tests passed");

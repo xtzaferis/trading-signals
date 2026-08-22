@@ -26,6 +26,7 @@ export async function dispatchWorkflow(token, fetchImplementation = fetch) {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "User-Agent": "trading-signals-scheduler/1.0",
       "X-GitHub-Api-Version": "2026-03-10",
     },
     body: JSON.stringify({ ref: "main" }),
