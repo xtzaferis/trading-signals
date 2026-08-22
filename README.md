@@ -119,6 +119,14 @@ credentials. Manual workflow runs outside the configured session preserve the
 last genuine signal publication. An open hosted dashboard checks for a newer
 published snapshot once per minute; it does not itself trigger scans.
 
+GitHub's native `schedule` trigger is best effort and can delay or drop runs.
+For dependable five-minute dispatches, deploy the optional Cloudflare Cron
+Worker in `deploy/cloudflare-advisory-scheduler`. It calls only the existing
+read-only `workflow_dispatch` endpoint during 17:00–19:00 Europe/Athens and
+keeps its restricted GitHub token in Cloudflare Secrets. The native GitHub
+schedule remains enabled as a fallback. See the deployment directory README
+for the one-time setup.
+
 A `LONG` or `SHORT` row has passed its short-term directional gates and a conservative
 fee-aware net reward/risk check. A `WAIT` row is informational and is not an
 instruction to force a trade. Confirm the futures contract, spread, leverage
