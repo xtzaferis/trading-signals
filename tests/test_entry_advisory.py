@@ -70,6 +70,7 @@ def test_directional_entry_ranks_before_higher_scoring_wait():
         indicators=indicators,
         signal_engine=signal_engine,
         planner=planner,
+        context_client=Mock(),
     )
 
     report = service.scan(datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc))
@@ -82,6 +83,59 @@ def test_directional_entry_ranks_before_higher_scoring_wait():
     assert report.candidates[1].status == "WAIT"
     assert report.shortlist == (report.candidates[0],)
     planner.create.assert_called_once_with("LONG", {"close": 50.0})
+
+
+def test_existing_open_signal_is_marked_continuing_with_original_plan():
+    scanner = Mock()
+    scanner.get_top_futures_pairs.return_value = ["BTC/EUR"]
+    indicators = Mock()
+    indicators.calculate_multi_timeframe.return_value = {
+        "entry": {"close": 101.0}
+    }
+    signal_engine = Mock()
+    signal_engine.evaluate.return_value = DirectionalSignal(
+        "BTC/EUR", "LONG", 85, ("Bullish setup",)
+    )
+    planner = Mock()
+    planner.create.return_value = AdvisoryLevels(
+        "LONG", 101.0, 99.0, 107.0, 1.8
+    )
+    journal = Mock()
+    journal.list_open.return_value = [
+        {
+            "id": 1,
+            "generated_at": "2026-08-18T17:00:00+03:00",
+            "symbol": "BTC/EUR",
+            "direction": "LONG",
+            "reference_price": 100.0,
+            "stop_loss": 98.0,
+            "take_profit": 106.0,
+            "net_risk_reward": 1.9,
+            "funding_rate": 0.0,
+            "shortlisted": 1,
+        }
+    ]
+    service = EntryAdvisoryService(
+        scanner=scanner,
+        indicators=indicators,
+        signal_engine=signal_engine,
+        planner=planner,
+        journal=journal,
+        outcome_tracker=Mock(),
+        context_client=Mock(),
+    )
+
+    report = service.scan(datetime(2026, 8, 18, 15, 5, tzinfo=timezone.utc))
+
+    candidate = report.candidates[0]
+    assert candidate.continuing is True
+    assert candidate.originated_at == datetime.fromisoformat(
+        "2026-08-18T17:00:00+03:00"
+    )
+    assert candidate.trade == AdvisoryLevels("LONG", 100.0, 98.0, 106.0, 1.9)
+    assert candidate.expires_at is None
+    assert report.shortlist == ()
+    journal.normalize_open_signals.assert_called_once()
 
 
 def test_naive_timestamp_is_rejected():

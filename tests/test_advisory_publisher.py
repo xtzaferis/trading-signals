@@ -64,4 +64,5 @@ def test_publisher_exposes_in_session_scan_failure(tmp_path):
         "short": 0,
         "wait": 0,
         "shortlisted": 0,
+        "continuing": 0,
     }

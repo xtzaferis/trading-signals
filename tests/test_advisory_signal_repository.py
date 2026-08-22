@@ -60,6 +60,52 @@ def test_wait_observation_is_not_opened_for_outcome_tracking(tmp_path):
     assert count == 1
 
 
+def test_non_shortlisted_trade_is_not_opened_for_outcome_tracking(tmp_path):
+    repository = AdvisorySignalRepository(Database(tmp_path / "advisory.db"))
+    candidate = AdvisoryCandidate(
+        "BTC/USDT",
+        "LONG",
+        80,
+        100,
+        AdvisoryLevels("LONG", 100, 98, 104, 1.8),
+    )
+    report = AdvisoryReport(
+        generated_at=datetime(2026, 8, 19, 15, tzinfo=timezone.utc),
+        window_open=True,
+        candidates=(candidate,),
+    )
+
+    repository.save_report(report)
+
+    assert repository.list_open() == []
+
+
+def test_repository_normalizes_duplicate_open_shortlisted_signals(tmp_path):
+    repository = AdvisorySignalRepository(Database(tmp_path / "advisory.db"))
+    candidate = AdvisoryCandidate(
+        "BTC/USDT",
+        "LONG",
+        80,
+        100,
+        AdvisoryLevels("LONG", 100, 98, 104, 1.8),
+    )
+    for minute in (0, 5):
+        repository.save_report(
+            AdvisoryReport(
+                generated_at=datetime(2026, 8, 19, 15, minute, tzinfo=timezone.utc),
+                window_open=True,
+                candidates=(candidate,),
+                shortlist=(candidate,),
+            )
+        )
+
+    assert repository.normalize_open_signals() == 1
+
+    open_signals = repository.list_open(shortlisted_only=True)
+    assert len(open_signals) == 1
+    assert open_signals[0]["generated_at"] == "2026-08-19T15:00:00+00:00"
+
+
 def test_public_history_round_trip_preserves_forward_statistics(tmp_path):
     first = AdvisorySignalRepository(Database(tmp_path / "first.db"))
     candidate = AdvisoryCandidate(

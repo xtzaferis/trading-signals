@@ -42,6 +42,12 @@ def report_to_dict(report: AdvisoryReport, duration_seconds: float) -> dict:
                 "expires_at": (
                     candidate.expires_at.isoformat() if candidate.expires_at else None
                 ),
+                "continuing": candidate.continuing,
+                "originated_at": (
+                    candidate.originated_at.isoformat()
+                    if candidate.originated_at
+                    else None
+                ),
                 "order_book": candidate.order_book,
                 "score": candidate.score,
                 "price": candidate.price,
@@ -69,6 +75,7 @@ def report_to_dict(report: AdvisoryReport, duration_seconds: float) -> dict:
             "short": sum(item.status == "SHORT" for item in report.candidates),
             "wait": sum(item.status == "WAIT" for item in report.candidates),
             "shortlisted": len(report.shortlist),
+            "continuing": sum(item.continuing for item in report.candidates),
         },
         "calibration": report.calibration,
     }

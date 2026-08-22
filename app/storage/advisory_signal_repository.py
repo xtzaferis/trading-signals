@@ -17,6 +17,8 @@ class AdvisorySignalRepository:
     def save_report(self, report) -> None:
         shortlisted = {candidate.symbol for candidate in report.shortlist}
         for candidate in report.candidates:
+            if candidate.continuing:
+                continue
             trade = candidate.trade
             context = candidate.derivatives
             self.database.execute(
@@ -45,18 +47,58 @@ class AdvisorySignalRepository:
                     context.long_short_ratio if context else None,
                     context.taker_buy_sell_ratio if context else None,
                     int(candidate.symbol in shortlisted),
-                    "OPEN" if trade else "NOT_APPLICABLE",
+                    (
+                        "OPEN"
+                        if trade and candidate.symbol in shortlisted
+                        else "NOT_APPLICABLE"
+                    ),
                     candidate.market_regime,
                 ),
             )
 
-    def list_open(self) -> list[dict]:
+    def normalize_open_signals(self) -> int:
+        """Keep one tracked shortlisted plan per symbol and direction."""
+        changed = self.database.execute(
+            """
+            UPDATE advisory_signals
+            SET outcome_status = 'NOT_APPLICABLE'
+            WHERE outcome_status = 'OPEN' AND shortlisted = 0
+            """
+        ).rowcount
         rows = self.database.execute(
             """
-            SELECT id, generated_at, symbol, direction, reference_price,
-                   stop_loss, take_profit, funding_rate
+            SELECT id, symbol, direction
             FROM advisory_signals
-            WHERE outcome_status = 'OPEN'
+            WHERE outcome_status = 'OPEN' AND shortlisted = 1
+            ORDER BY generated_at, id
+            """
+        ).fetchall()
+        seen = set()
+        for signal_id, symbol, direction in rows:
+            key = (symbol, direction)
+            if key in seen:
+                self.database.execute(
+                    """
+                    UPDATE advisory_signals
+                    SET outcome_status = 'DUPLICATE'
+                    WHERE id = ? AND outcome_status = 'OPEN'
+                    """,
+                    (signal_id,),
+                )
+                changed += 1
+            else:
+                seen.add(key)
+        return changed
+
+    def list_open(self, shortlisted_only: bool = False) -> list[dict]:
+        shortlist_filter = " AND shortlisted = 1" if shortlisted_only else ""
+        rows = self.database.execute(
+            f"""
+            SELECT id, generated_at, symbol, direction, reference_price,
+                   stop_loss, take_profit, net_risk_reward, funding_rate,
+                   shortlisted
+            FROM advisory_signals
+            WHERE outcome_status = 'OPEN'{shortlist_filter}
             ORDER BY generated_at, symbol
             """
         ).fetchall()
@@ -68,7 +110,9 @@ class AdvisorySignalRepository:
             "reference_price",
             "stop_loss",
             "take_profit",
+            "net_risk_reward",
             "funding_rate",
+            "shortlisted",
         )
         return [dict(zip(columns, row)) for row in rows]
 

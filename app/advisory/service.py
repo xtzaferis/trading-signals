@@ -53,6 +53,8 @@ class AdvisoryCandidate:
     entry_deviation_pct: float | None = None
     expires_at: datetime | None = None
     order_book: dict | None = None
+    continuing: bool = False
+    originated_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -126,8 +128,19 @@ class EntryAdvisoryService:
         if not window_open and not force:
             return AdvisoryReport(local_now, False)
 
+        active_signals = []
         if window_open:
+            normalize = getattr(self.journal, "normalize_open_signals", None)
+            if callable(normalize):
+                normalize()
             self.outcome_tracker.resolve_open(local_now)
+            listed = self.journal.list_open(shortlisted_only=True)
+            if isinstance(listed, list):
+                active_signals = listed
+        active_by_key = {
+            (signal["symbol"], signal["direction"]): signal
+            for signal in active_signals
+        }
 
         candidates = []
         returns_by_symbol = {}
@@ -202,6 +215,23 @@ class EntryAdvisoryService:
                         if trade is None:
                             status = "WAIT"
                             reasons.insert(0, "Net reward/risk is too low after costs")
+                continuing = False
+                originated_at = None
+                active = active_by_key.get((symbol, status))
+                if trade is not None and active is not None:
+                    continuing = True
+                    originated_at = datetime.fromisoformat(active["generated_at"])
+                    trade = AdvisoryLevels(
+                        direction=status,
+                        entry=float(active["reference_price"]),
+                        stop_loss=float(active["stop_loss"]),
+                        take_profit=float(active["take_profit"]),
+                        net_risk_reward=float(active["net_risk_reward"]),
+                    )
+                    reasons.insert(
+                        0,
+                        "Existing signal remains confirmed; do not enter again",
+                    )
                 candidates.append(
                     AdvisoryCandidate(
                         symbol=symbol,
@@ -217,10 +247,12 @@ class EntryAdvisoryService:
                         entry_deviation_pct=entry_deviation_pct,
                         expires_at=(
                             self._signal_expiry(local_now, window_open)
-                            if trade is not None
+                            if trade is not None and not continuing
                             else None
                         ),
                         order_book=order_book,
+                        continuing=continuing,
+                        originated_at=originated_at,
                     )
                 )
                 self.progress(
@@ -244,10 +276,21 @@ class EntryAdvisoryService:
             )
         )
         visible_candidates = tuple(candidates[: self.limit])
-        shortlist = self.correlation_selector.select(
-            visible_candidates,
-            returns_by_symbol,
-            self.max_signals,
+        continuing_count = sum(
+            candidate.continuing for candidate in visible_candidates
+        )
+        remaining_slots = max(0, self.max_signals - continuing_count)
+        new_candidates = tuple(
+            candidate for candidate in visible_candidates if not candidate.continuing
+        )
+        shortlist = (
+            self.correlation_selector.select(
+                new_candidates,
+                returns_by_symbol,
+                remaining_slots,
+            )
+            if remaining_slots
+            else ()
         )
         report = AdvisoryReport(
             generated_at=local_now,

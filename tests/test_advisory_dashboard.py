@@ -40,6 +40,7 @@ def test_dashboard_serializes_signal_report_for_browser():
         "short": 1,
         "wait": 0,
         "shortlisted": 1,
+        "continuing": 0,
     }
     assert payload["duration_seconds"] == 12.3
     assert payload["session"] == {
@@ -48,6 +49,7 @@ def test_dashboard_serializes_signal_report_for_browser():
         "end_hour": 19,
     }
     assert payload["candidates"][0]["shortlisted"] is True
+    assert payload["candidates"][0]["continuing"] is False
     assert payload["candidates"][0]["trade"]["stop_loss"] == 6.37
     assert payload["candidates"][0]["derivatives"]["label"] == "BEARISH"
     assert payload["calibration"]["overall"]["sample"] == 4
@@ -78,11 +80,13 @@ def test_hosted_dashboard_refreshes_publication_and_excludes_expired_counts():
     html = HTML_PATH.read_text(encoding="utf-8")
 
     assert "data.candidates.filter(c=>!expired(c,data))" in html
-    assert "['Expired',expiredCount]" in html
+    assert "['Continuing',continuing.length]" in html
     assert "data.generated_at!==latestSnapshot?.generated_at" in html
     assert "SESSION CLOSED" in html
     assert "OUTSIDE SESSION TEST" in html
     assert "Top diagnostic setups" in html
+    assert "Continuing setups" in html
+    assert "CONTINUING ${esc(c.status)}" in html
     assert "TEST ONLY" in html
     assert "!sessionIsOpen(data)" in html
     assert "timezone:'Europe/Athens',start_hour:17,end_hour:19" in html
