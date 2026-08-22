@@ -24,3 +24,5 @@ data/backtest_cache/
 # OS
 .DS_Store
 Thumbs.db
+
+.wrangler/
